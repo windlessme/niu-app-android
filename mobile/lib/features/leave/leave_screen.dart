@@ -218,10 +218,16 @@ class _LeaveScreenState extends State<LeaveScreen> {
       appBar: const IosPageHeader(title: '學生請假'),
       body: SafeArea(
         top: false,
+        maintainBottomViewPadding: true,
         child: loading
             ? const AppLoadingState()
             : ListView(
-                padding: const EdgeInsets.all(NiuSpacing.xl),
+                padding: const EdgeInsets.fromLTRB(
+                  NiuSpacing.xl,
+                  NiuSpacing.xl,
+                  NiuSpacing.xl,
+                  NiuSpacing.xxl,
+                ),
                 children: [
                   FilledButton.icon(
                     onPressed: busy ? null : () => open(application: true),
@@ -250,9 +256,9 @@ class _LeaveScreenState extends State<LeaveScreen> {
                               '${stats['updatedAt']}',
                             ),
                           ),
-                        const SizedBox(height: NiuSpacing.xl),
-                        LeaveTypeStatistics(periods: periods),
                         const SizedBox(height: NiuSpacing.md),
+                        LeaveTypeStatistics(periods: periods),
+                        const SizedBox(height: NiuSpacing.sm),
                         TextButton.icon(
                           onPressed: busy
                               ? null
@@ -276,6 +282,9 @@ class _LeaveScreenState extends State<LeaveScreen> {
                     ),
                     Text(
                       '第 ${list['data']['page']}／${list['data']['pages']} 頁',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: NiuColors.of(context).secondary,
+                      ),
                     ),
                     Wrap(
                       children: [
