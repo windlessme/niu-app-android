@@ -27,7 +27,9 @@ void main() {
         <input type="button" id="QUERY_BTN3" onclick="document.getElementById('table2').innerHTML += '<tr><td>2</td><td>09:10</td><td></td></tr>'">
         <table id="table2"><tr><th>節次</th><th>時間</th><th>星期二</th></tr>
         <tr><td>1</td><td>08:10~09:00</td><td>教師<br>測試課程<br>A101</td></tr></table>
-        <div id="div_B">10 20 30 40</div><div id="CRS_PROG">測試學程</div>
+         <div id="div_B">10 20 30 40</div><div id="CRS_PROG">測試學程</div>
+         <input type="hidden" name="captcha-token" value="fixture">
+         <input id="captcha" style="display:none">
         </body></html>''',
               ),
               onLoadStop: (controller, _) {
@@ -69,6 +71,40 @@ void main() {
           as String,
     );
     expect(graduation['diverseHours'], ['10', '20', '30', '40']);
+    expect(
+      await controller.evaluateJavascript(source: portalInteractionScript),
+      isNull,
+    );
+    await controller.evaluateJavascript(
+      source: "document.getElementById('captcha').style.display = 'block'",
+    );
+    expect(
+      await controller.evaluateJavascript(source: portalInteractionScript),
+      'interaction-required',
+    );
+    final navigation = academicNavigationScript(
+      Uri.parse(
+        'https://acade.niu.edu.tw/NIU/Application/TKE/TKE22/TKE2240_01.aspx',
+      ),
+    );
+    expect(
+      await controller.evaluateJavascript(source: navigation),
+      'interaction-required',
+    );
+    await controller.evaluateJavascript(
+      source: "document.getElementById('captcha').style.display = 'none'",
+    );
+    expect(await controller.evaluateJavascript(source: navigation), 'ready');
+    final wakeup = Completer<void>();
+    controller.addJavaScriptHandler(
+      handlerName: 'academicSnapshot',
+      callback: (arguments) {
+        expect(arguments, isEmpty);
+        if (!wakeup.isCompleted) wakeup.complete();
+      },
+    );
+    await controller.evaluateJavascript(source: academicNavigationWakeupScript);
+    await wakeup.future.timeout(const Duration(seconds: 10));
     await tester.pumpWidget(const SizedBox.shrink());
   });
 }

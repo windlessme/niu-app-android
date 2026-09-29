@@ -112,8 +112,11 @@ class _NiuAppState extends State<NiuApp> {
       ),
       GoRoute(
         path: '/graduation',
-        builder: (_, _) =>
-            const AuthGate(title: '畢業門檻', child: GraduationScreen()),
+        builder: (_, _) => const AuthGate(
+          title: '畢業門檻',
+          allowLocalAccount: true,
+          child: GraduationScreen(),
+        ),
       ),
       GoRoute(
         path: '/events',

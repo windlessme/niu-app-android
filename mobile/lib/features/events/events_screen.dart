@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../core/web/academic_portal_screen.dart';
 import '../../shared/shared.dart';
 import 'event_portal.dart';
@@ -315,7 +316,7 @@ class EventSyncScreen extends StatelessWidget {
       title: '同步活動',
       target: target,
       bridge: false,
-      entryBuilder: eventPortalEntry,
+      entryBuilder: (session) => eventPortalEntry(session, target: target),
       navigationScript: eventNavigationScript(target),
       extractScript: eventsExtractScript,
       onSnapshot: (value, _) async {
@@ -358,7 +359,10 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               title: applied ? '修改／取消報名' : '報名活動',
               target: event.actionUri(applied: applied),
               bridge: false,
-              entryBuilder: eventPortalEntry,
+              entryBuilder: (session) => eventPortalEntry(
+                session,
+                target: event.actionUri(applied: applied),
+              ),
               navigationScript: eventNavigationScript(
                 event.actionUri(applied: applied),
               ),

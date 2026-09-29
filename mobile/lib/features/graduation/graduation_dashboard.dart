@@ -6,8 +6,16 @@ import 'graduation_screen.dart';
 enum _StatusFilter { all, attention, completed }
 
 class GraduationDashboard extends StatefulWidget {
-  const GraduationDashboard({super.key, required this.data});
+  const GraduationDashboard({
+    super.key,
+    required this.data,
+    this.updatedAt,
+    this.offline = false,
+    this.needsReauthentication = false,
+  });
   final GraduationData data;
+  final DateTime? updatedAt;
+  final bool offline, needsReauthentication;
 
   @override
   State<GraduationDashboard> createState() => _GraduationDashboardState();
@@ -44,6 +52,19 @@ class _GraduationDashboardState extends State<GraduationDashboard> {
         NiuSpacing.xxxl,
       ),
       children: [
+        if (widget.updatedAt != null) ...[
+          RelativeUpdateText(updatedAt: widget.updatedAt),
+          const SizedBox(height: NiuSpacing.xs),
+          Text(
+            widget.offline
+                ? '離線中・顯示已儲存資料'
+                : widget.needsReauthentication
+                ? '校務登入已過期・顯示已儲存資料，更新時需重新登入'
+                : '顯示已儲存資料，點右上角更新可查詢最新進度',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: NiuSpacing.lg),
+        ],
         _Overview(model: model),
         const SizedBox(height: NiuSpacing.lg),
         Wrap(
