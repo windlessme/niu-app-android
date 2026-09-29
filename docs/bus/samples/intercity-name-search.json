@@ -1,0 +1,36 @@
+{
+  "metadata": {
+    "observedDate": "2026-09-29",
+    "observationWindowUTC": "06:35–06:38",
+    "method": "functions.webfetch(format=text)",
+    "verification": "tool-observed; not direct authenticated verification",
+    "httpStatus": null,
+    "note": "Bodies copied verbatim as response arrays; tool did not expose response headers or authentication."
+  },
+  "observations": [
+    {
+      "url": "https://tdx.transportdata.tw/api/basic/v2/Bus/Stop/InterCity?$filter=contains(StopName/Zh_tw,'宜蘭大學')&$format=JSON",
+      "response": []
+    },
+    {
+      "url": "https://tdx.transportdata.tw/api/basic/v2/Bus/Station/InterCity?$filter=contains(StationName/Zh_tw,'宜蘭大學')&$format=JSON",
+      "response": []
+    },
+    {
+      "url": "https://tdx.transportdata.tw/api/basic/v2/Bus/StopOfRoute/InterCity?$filter=Stops/any(s:contains(s/StopName/Zh_tw,'宜蘭大學'))&$format=JSON",
+      "response": []
+    },
+    {
+      "url": "https://tdx.transportdata.tw/api/basic/v2/Bus/Route/InterCity?$filter=RouteName/Zh_tw%20eq%20'1786'%20or%20RouteName/Zh_tw%20eq%20'751'%20or%20RouteName/Zh_tw%20eq%20'753'%20or%20RouteName/Zh_tw%20eq%20'771'%20or%20RouteName/Zh_tw%20eq%20'771A'&$format=JSON",
+      "response": []
+    },
+    {
+      "url": "https://tdx.transportdata.tw/api/basic/v2/Bus/StopOfRoute/InterCity/1786?$format=JSON",
+      "response": []
+    },
+    {
+      "url": "https://tdx.transportdata.tw/api/basic/v2/Bus/Stop/InterCity?$filter=LocationCityCode%20eq%20'ILA'&$select=StopUID,StopName&$top=1000&$skip=1000&$format=JSON",
+      "response": []
+    }
+  ]
+}

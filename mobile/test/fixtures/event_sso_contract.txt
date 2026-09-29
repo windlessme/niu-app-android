@@ -1,0 +1,21 @@
+Source inspected 2026-09-29:
+https://ccsys1.niu.edu.tw/SSO/main.d2bd6ea9933e00bf.js
+
+loadAllApplicationsFromApi(){this.http.get(`${this.apiUrl}/AppList/allApps`).pipe((0,z.T)(V=>{const Z=V.map(ue=>this.convertAppListDtoToApplication(ue));return this.allApplications.next(Z),Z})
+
+convertAppListDtoToApplication(V){const Z=V.IconName?.trim()||this.mapPicToIcon(V.PIC),ue=V.AppColor?.trim()||this.getColorByPKID(V.PKID);return{id:`app-${V.PKID}`,pkid:V.PKID,systemName:V.SYSNAME||"",categoryId:String(V.PID||V.PKID),auth:V.AUTH?.trim()||"",method:V.action_method?.trim().toUpperCase()||"GET",parameter:V.PT_Name||"",guidContent:V.GUIDTYPE?.trim()||"",systemUrl:V.SYSURL||"",icon:Z,color:ue,description:V.SYSNAME||"",viewType:V.VIEWTYPE||!1,sort:V.Sort||0}}
+
+https://ccsys1.niu.edu.tw/SSO/common.1d14af97d2b7031e.js
+getGuidUrl(n){return this.http.get(`${this.apiUrl}/GUID/${n}`).pipe((0,a.T)(d=>d.guid))}
+
+Unauthenticated GET /SSO/API/AppList/allApps returned HTTP 401.
+No actual authenticated event DTO was available. URL values in parser unit
+tests are synthetic cases, not a captured or verified school event endpoint.
+Historical investigation only: AppList/GUID discovery was removed because it
+did not establish an event session. The public form is captured in
+event_login.html. EventLoginService now submits Account/Password once in a
+shared WebView, preserving the form token and matching HttpOnly CSRF cookie.
+Public GET /MvcTeam/Act/ApplyMe redirects to the login form with ReturnUrl.
+Its protected response is used to verify the session; /MvcTeam/Act is public.
+GET login returns __RequestVerificationToken_L012Y1RlYW01; path=/; HttpOnly.
+No live credentials or registration submissions were used in these checks.

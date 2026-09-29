@@ -1,0 +1,17 @@
+# Moodle / attendance / library integration
+
+Dependencies: existing `file_selector`, `mobile_scanner`, `html`, `url_launcher`, `screen_brightness`, `path_provider`, `share_plus`. No additional dependencies needed.
+
+Routes: `MoodleScreen(account: username, password: password)` (credentials optional; otherwise shows login), `LibraryScreen(account: username)`, `AttendanceScannerScreen(repository: moodleRepository)` after Moodle authentication. All are Material-compatible Chinese screens. Moodle session is immutable and feature-local; create `MoodleRepository(MoodleApiClient(schoolClient('https://euni.niu.edu.tw')), MoodleSession(...))` for shared secure-session integration. Optional `onAuthenticated` receives the repository. Do not persist the password in the feature.
+
+Android requires CAMERA permission (scanner); Internet already required. All mutations are single-attempt and errors do not trigger fallback resubmission.
+
+`MoodleSession` constructor requires `account`, `token`, `userId`, with optional `privateToken`. `MoodleScreen` has optional `repository` and `onAuthenticated`. It registers `CampusSession.instance` cleanup, guards login completion by epoch, clears local credentials on logout, and binds repositories to campus account/epoch when signed in. Bound repositories check epoch before and after requests and between upload/save mutations. Standalone repositories can call `bindSession(CampusSession.instance)` explicitly. Library registers cleanup, clears image/timer/brightness and guards in-flight responses by epoch. Key protected feature routes by session/account and remove them on logout, including pushed detail/WebView routes.
+
+`AttendanceRepository(moodle, loadHtml: optionalSchoolSessionHtmlLoader)` supports native API plus parsed HTML fallback; default UI exposes the authenticated school WebView for deployments without the attendance API. Unknown/pending records never count as absent; the resolved-only attendance percentage matches iOS. Attachments download internally with redirects disabled; image/text previews display in-app and sharing exports local temporary files, never token URLs. Temporary files are deleted on screen disposal/logout. Other activities, online-text submission, full feedback and unsupported module types are functional through the school WebView.
+
+Encrypted restore: auth/storage owner must allow `moodleSession` in CredentialVault. `MoodleSessionStore` stores a single encrypted JSON envelope (account, token, privateToken, userId), validates account and live site identity on restore, and waits for pending writes before logout clearing. `MoodleScreen` automatically restores before showing login; no router constructor changes. Passwords are not persisted.
+
+Scanner pauses/resumes with app lifecycle and serializes camera operations. Its single-flight open boundary spans camera pause, explicit confirmation (opening attendance GET may record attendance), and WebView navigation; errors release the boundary and restart the camera when foregrounded.
+
+Tests: `flutter test test/moodle_wire_test.dart test/moodle_session_flow_test.dart`. Wire adapter consumes serialized request bytes, including multipart; covers form encoding, exact bracket keys, upload/save, no mutation retries, malformed payloads, QR/result rules, encrypted account-bound restore and logout/write races, confirmation cancellation, navigation recovery, authenticated download and logout response suppression. No live account/submission was used.

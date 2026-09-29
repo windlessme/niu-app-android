@@ -1,0 +1,285 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
+
+import '../core/session/campus_session.dart';
+import '../features/academic_calendar/calendar_screen.dart';
+import '../features/authentication/login_screen.dart';
+import '../features/authentication/remember_school_login.dart';
+import '../features/attendance/attendance_screen.dart';
+import '../features/events/events_screen.dart';
+import '../features/grades/grades_screen.dart';
+import '../features/graduation/graduation_screen.dart';
+import '../features/home/home_screen.dart';
+import '../features/home/today_courses.dart';
+import '../features/library/library_screen.dart';
+import '../features/moodle/moodle_repository.dart';
+import '../features/moodle/moodle_screen.dart';
+import '../features/schedule/schedule_screen.dart';
+import '../features/settings/settings_screen.dart';
+import '../features/registration/registration_screen.dart';
+import '../features/settings/credits_repository.dart';
+import '../shared/niu_theme.dart';
+import 'auth_gate.dart';
+import 'campus_shell.dart';
+import 'deep_links.dart';
+
+class NiuApp extends StatefulWidget {
+  const NiuApp({super.key});
+  @override
+  State<NiuApp> createState() => _NiuAppState();
+}
+
+class _NiuAppState extends State<NiuApp> {
+  final session = CampusSession.instance;
+  MoodleRepository? moodle;
+  final appearance = ValueNotifier<ThemeMode>(ThemeMode.system);
+  ThemeMode get mode => appearance.value;
+  CreditsRepository? credits;
+  late final GoRouter router = GoRouter(
+    observers: [libraryRouteObserver],
+    redirect: (_, state) => campusDeepLink(state.uri),
+    routes: [
+      ShellRoute(
+        builder: (_, state, child) =>
+            CampusShell(path: state.uri.path, child: child),
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (_, _) => ListenableBuilder(
+              listenable: session,
+              builder: (_, _) => CampusHomeScreen(
+                name: session.hasLocalAccount ? session.displayName : null,
+                department: session.profile['facultyName']?.toString(),
+                courses: _todayCourses(),
+                onRefresh: session.retryRestore,
+                offline: session.isOffline,
+                ssoNeedsReauthentication: session.ssoNeedsReauthentication,
+                hasSchedule: session.cachedSchedule != null,
+              ),
+            ),
+          ),
+          GoRoute(
+            path: '/schedule',
+            builder: (_, _) => const AuthGate(
+              title: '我的課表',
+              allowLocalAccount: true,
+              child: ScheduleScreen(),
+            ),
+          ),
+          GoRoute(
+            path: '/moodle',
+            builder: (_, _) => AuthGate(
+              title: 'M 園區',
+              allowLocalAccount: true,
+              child: ListenableBuilder(
+                listenable: session,
+                builder: (_, _) => _moodleScreen(),
+              ),
+            ),
+          ),
+          GoRoute(
+            path: '/campus',
+            builder: (_, _) => const CampusServicesScreen(),
+          ),
+        ],
+      ),
+      GoRoute(
+        path: '/login',
+        builder: (context, _) => LoginScreen(
+          onSignedIn: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/');
+            }
+          },
+        ),
+      ),
+      GoRoute(path: '/calendar', builder: (_, _) => const CalendarScreen()),
+      GoRoute(
+        path: '/registration',
+        builder: (_, _) =>
+            const AuthGate(title: '註冊資訊', child: RegistrationScreen()),
+      ),
+      GoRoute(
+        path: '/grades',
+        builder: (_, _) => const AuthGate(title: '歷年成績', child: GradesScreen()),
+      ),
+      GoRoute(
+        path: '/graduation',
+        builder: (_, _) =>
+            const AuthGate(title: '畢業門檻', child: GraduationScreen()),
+      ),
+      GoRoute(
+        path: '/events',
+        builder: (_, _) => const AuthGate(
+          title: '活動報名',
+          allowLocalAccount: true,
+          child: EventsScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/library',
+        builder: (_, _) => AuthGate(
+          title: '圖書館',
+          allowLocalAccount: true,
+          child: ListenableBuilder(
+            listenable: session,
+            builder: (_, _) => LibraryScreen(account: session.account ?? ''),
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/attendance',
+        builder: (_, _) => AuthGate(
+          title: '快速點名',
+          allowLocalAccount: true,
+          child: ListenableBuilder(
+            listenable: session,
+            builder: (_, _) => moodle == null
+                ? _moodleScreen(forAttendance: true)
+                : AttendanceScannerScreen(repository: moodle!),
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/settings',
+        builder: (_, _) => ListenableBuilder(
+          listenable: session,
+          builder: (_, _) => ValueListenableBuilder<ThemeMode>(
+            valueListenable: appearance,
+            builder: (_, selectedMode, _) => SettingsScreen(
+              name: session.hasLocalAccount ? session.displayName : null,
+              username: session.hasLocalAccount ? session.account : null,
+              offline: session.isOffline,
+              ssoNeedsReauthentication: session.ssoNeedsReauthentication,
+              onReconnect: session.hasLocalAccount
+                  ? () => router.push('/login')
+                  : null,
+              department: session.profile['facultyName']?.toString(),
+              grade: session.profile['grade']?.toString(),
+              themeMode: selectedMode,
+              creditsRepository: credits,
+              onThemeModeChanged: _setTheme,
+              onForgetSchoolLogin: RememberSchoolLogin.forSession(
+                session,
+              ).forget,
+              onLogout: session.account != null || session.cleanupPending
+                  ? session.logout
+                  : null,
+              onRefreshProfile: session.hasLocalAccount
+                  ? () async {
+                      await session.retryRestore();
+                      if (!session.isSignedIn) {
+                        throw StateError('校務連線尚未恢復');
+                      }
+                    }
+                  : null,
+            ),
+          ),
+        ),
+      ),
+    ],
+  );
+
+  Widget _moodleScreen({bool forAttendance = false}) => MoodleScreen(
+    account: session.account,
+    repository: moodle,
+    onAuthenticated: (value) {
+      moodle = value;
+      if (mounted) setState(() {});
+      if (forAttendance) router.pushReplacement('/attendance');
+    },
+  );
+
+  List<HomeCourse> _todayCourses() {
+    return todayCourses(session.cachedSchedule, now: DateTime.now());
+  }
+
+  Future<void> _clearMoodle() async {
+    router.go('/');
+    await moodle?.invalidate();
+    moodle = null;
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    session.registerCleanup(_clearMoodle);
+    _restorePreferences();
+    session.restore().catchError((Object _) {});
+  }
+
+  Future<void> _restorePreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    try {
+      final support = await getApplicationSupportDirectory();
+      credits = CreditsRepository(
+        cacheDirectory: Directory('${support.path}/public_credits'),
+      );
+    } catch (_) {
+      /* Public credits remain available without persistent cache. */
+    }
+    final name = prefs.getString('appearance');
+    if (mounted) {
+      setState(
+        () => appearance.value = ThemeMode.values.firstWhere(
+          (value) => value.name == name,
+          orElse: () => ThemeMode.system,
+        ),
+      );
+    }
+  }
+
+  Future<void> _setTheme(ThemeMode value) async {
+    setState(() => appearance.value = value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('appearance', value.name);
+  }
+
+  @override
+  void dispose() {
+    session.unregisterCleanup(_clearMoodle);
+    router.dispose();
+    appearance.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => MaterialApp.router(
+    title: 'NIU-Life',
+    debugShowCheckedModeBanner: false,
+    locale: const Locale('zh', 'TW'),
+    supportedLocales: const [Locale('zh', 'TW')],
+    localizationsDelegates: GlobalMaterialLocalizations.delegates,
+    theme: NiuTheme.light,
+    darkTheme: NiuTheme.dark,
+    themeMode: mode,
+    themeAnimationDuration:
+        MediaQuery.maybeOf(context)?.disableAnimations == true
+        ? Duration.zero
+        : const Duration(milliseconds: 200),
+    builder: (context, child) {
+      final dark = Theme.of(context).brightness == Brightness.dark;
+      return AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: dark ? Brightness.light : Brightness.dark,
+          statusBarBrightness: dark ? Brightness.dark : Brightness.light,
+          systemNavigationBarColor: Theme.of(context).scaffoldBackgroundColor,
+          systemNavigationBarIconBrightness: dark
+              ? Brightness.light
+              : Brightness.dark,
+        ),
+        child: child ?? const SizedBox.shrink(),
+      );
+    },
+    routerConfig: router,
+  );
+}
