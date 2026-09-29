@@ -8,4 +8,4 @@ node tool/check_schedule_lifecycle.js
 cmp assets/LICENSE ../LICENSE
 dart format --output=none --set-exit-if-changed lib test integration_test
 flutter analyze
-flutter test
+flutter test --concurrency="${FLUTTER_TEST_CONCURRENCY:-2}"

@@ -1,0 +1,53 @@
+name: Independent review record
+
+on:
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: PR number to recheck once this workflow exists on main
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: read
+  checks: write
+
+jobs:
+  review:
+    if: github.event_name == 'workflow_dispatch' || github.event.issue.pull_request
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Never checkout or execute PR code in this write-permission workflow.
+      - uses: actions/github-script@v7
+        env:
+          PR_NUMBER: ${{ inputs.pr || github.event.issue.number }}
+        with:
+          script: |
+            const number = Number(process.env.PR_NUMBER);
+            if (!Number.isSafeInteger(number) || number <= 0) throw new Error('Invalid PR number');
+            const repo = context.repo;
+            const {data: pr} = await github.rest.pulls.get({...repo, pull_number: number});
+            if (pr.state !== 'open' || pr.base.ref !== 'main') return;
+            const marker = `<!-- niu-code-review:${pr.head.sha} -->`;
+            const comments = await github.paginate(github.rest.issues.listComments, {...repo, issue_number: number, per_page: 100});
+            let record;
+            for (const comment of comments.reverse()) {
+              if (!comment.body.includes(marker) || comment.user.type !== 'User') continue;
+              const {data} = await github.rest.repos.getCollaboratorPermissionLevel({...repo, username: comment.user.login});
+              if (['admin', 'maintain', 'write'].includes(data.permission)) { record = comment; break; }
+            }
+            // Only ever certify the exact SHA quoted in the maintainer's record.
+            // No matching report: leave GitHub's required check pending.
+            if (!record) { core.info('No authorized independent review record for current HEAD'); return; }
+            const {data: current} = await github.rest.pulls.get({...repo, pull_number: number});
+            if (current.head.sha !== pr.head.sha) throw new Error('PR changed during verification');
+            await github.rest.checks.create({
+              ...repo, name: 'Independent code review', head_sha: pr.head.sha,
+              status: 'completed', conclusion: 'success',
+              output: { title: 'Independent review recorded for current HEAD', summary: `Maintainer-attested independent review: ${record.html_url}\nThis is a recorded agent review, not a second-account GitHub approval.` }
+            });

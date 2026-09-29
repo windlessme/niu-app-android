@@ -2,17 +2,23 @@ name: Android Flutter
 
 on:
   pull_request:
-    paths: ['mobile/**', 'calendar-data/**', '.github/workflows/android.yml']
+    branches: [main]
   push:
-    paths: ['mobile/**', 'calendar-data/**', '.github/workflows/android.yml']
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: android-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   verify:
+    name: Android verification
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: mobile
@@ -31,8 +37,16 @@ jobs:
           channel: stable
           cache: true
       - uses: android-actions/setup-android@v3
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python3 -m pip install -r ../calendar-data/requirements.txt
+      - run: python3 ../calendar-data/scripts/validate.py
+      - run: python3 -m unittest discover -s ../calendar-data/tests -v
       - run: flutter pub get --enforce-lockfile
       - run: bash tool/verify.sh
+        env:
+          FLUTTER_TEST_CONCURRENCY: '2'
       - run: flutter build apk --debug
       - uses: actions/upload-artifact@v4
         with:
