@@ -10,6 +10,9 @@ import '../../shared/shared.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import '../../features/authentication/login_screen.dart';
+import '../../features/authentication/school_reauthorization.dart';
+import '../../features/authentication/remember_school_login.dart';
+import '../../features/events/event_login_service.dart';
 import '../session/campus_session.dart';
 import 'portal_policy.dart';
 import 'academic_portal_scripts.dart';
@@ -78,6 +81,7 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen>
   final Set<String> navigated = {};
   bool targetReady = false;
   bool eventLoginRequired = false;
+  bool eventRecoveryAttempted = false;
   late String readRun;
 
   @override
@@ -182,6 +186,7 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen>
     navigated.clear();
     targetReady = false;
     eventLoginRequired = false;
+    eventRecoveryAttempted = false;
     interactionRequired = false;
     reconnecting = false;
     schoolPage = false;
@@ -202,6 +207,10 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen>
     syncWork();
     menuClicked = false;
     try {
+      if (widget.bridge && !session.isSignedIn && session.hasLocalAccount) {
+        await SchoolReauthorization.restore(session);
+        if (!mounted || current != generation || error != null) return;
+      }
       final uri = widget.entryBuilder != null
           ? await widget.entryBuilder!(session)
           : widget.bridge
@@ -319,6 +328,31 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen>
           return;
         }
         if (navigation == 'login-required') {
+          if (!eventRecoveryAttempted && !widget.bridge) {
+            eventRecoveryAttempted = true;
+            final remembered = RememberSchoolLogin.forSession(session);
+            final credentials = await remembered.restore();
+            if (!mounted || current != generation || error != null) return;
+            if (credentials != null &&
+                (session.isSignedIn ||
+                    await SchoolReauthorization.restore(session))) {
+              if (!mounted || current != generation || error != null) return;
+              final restored = await EventLoginService().establish(
+                credentials.account,
+                credentials.password,
+                session,
+                epoch,
+              );
+              if (!mounted || current != generation || error != null) return;
+              if (restored) {
+                navigated.clear();
+                await web.loadUrl(
+                  urlRequest: URLRequest(url: WebUri(widget.target.toString())),
+                );
+                return;
+              }
+            }
+          }
           deadline?.cancel();
           if (!eventLoginRequired) {
             // A prior attempt to visit ApplyMe may have redirected to login.

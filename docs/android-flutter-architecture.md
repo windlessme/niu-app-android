@@ -31,6 +31,8 @@ Riverpod 管理校曆資料來源與非同步狀態；CampusSession 使用 Chang
 
 ## 設計系統
 
+重新授權由 `SchoolReauthorization` 共用同一次進行中的 SSO 恢復請求：僅在已有本機帳號時讀取安全儲存帳密，以暫時 WebView 嘗試登入，最多等待 20 秒。只點擊校方登入按鈕一次，遇到驗證元件、停用的按鈕或失敗則回到可見登入頁；Token 必須經伺服器身分驗證後才能恢復 Session。活動登入失效時也只嘗試一次帳密恢復，不重送報名操作。
+
 `NiuColors` 為 ThemeExtension，區分 page/card/control/navigation surfaces 及狀態色；`NiuSpacing`、`NiuRadius`、`NiuMotion` 為共用 tokens。畫面使用 textTheme 與既有 shared 元件，保留 Android SafeArea、返回與字體縮放。QR 原始影像與白色 quiet zone 是掃描用途的例外。
 
 ## 驗證

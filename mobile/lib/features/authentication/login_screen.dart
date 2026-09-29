@@ -12,6 +12,7 @@ import '../moodle/moodle_login_service.dart';
 import '../events/event_login_service.dart';
 import 'school_login_capture.dart';
 import 'remember_school_login.dart';
+import 'school_reauthorization.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key, this.session, this.onSignedIn});
@@ -29,6 +30,7 @@ class _LoginScreenState extends State<LoginScreen> {
   late final remembered = RememberSchoolLogin.forSession(session);
   SubmittedSchoolCredentials? prefillCredentials;
   bool preferenceReady = false;
+  bool recovering = false;
   int documentGeneration = 0;
   int prefillAttempts = 0;
   bool prefilling = false;
@@ -50,11 +52,29 @@ class _LoginScreenState extends State<LoginScreen> {
     super.initState();
     session.registerCleanup(clearWebData);
     remembered.setEnabled(true);
+    if (session.hasLocalAccount && !session.isSignedIn) {
+      recovering = true;
+      recoverAutomatically();
+    }
     restoreRemembered();
     timer = Timer.periodic(const Duration(seconds: 1), (_) {
       prefill();
       checkToken();
     });
+  }
+
+  Future<void> recoverAutomatically() async {
+    final success = await SchoolReauthorization.restore(session);
+    if (!mounted) return;
+    setState(() => recovering = false);
+    if (!success) return;
+    complete = true;
+    timer?.cancel();
+    if (widget.onSignedIn != null) {
+      widget.onSignedIn!();
+    } else if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop(true);
+    }
   }
 
   Future<void> restoreRemembered() async {
@@ -255,7 +275,9 @@ class _LoginScreenState extends State<LoginScreen> {
     ),
     body: SafeArea(
       top: false,
-      child: complete
+      child: recovering
+          ? const Center(child: AppLoadingState(message: '連線中…'))
+          : complete
           ? Center(child: Text('已登入：${session.displayName}'))
           : Column(
               children: [
