@@ -8,6 +8,7 @@
 ## Independent review
 - Reviewer/session:
 - Reviewed HEAD:
+- Reviewed base SHA:
 - Findings and resolutions:
 - Verdict:
 

@@ -11,7 +11,7 @@ All future changes must use a feature branch and pull request. Never push to
 4. Resolve all blocking findings and request another review for the new HEAD.
 5. Record the independent review on the PR: reviewer identity/session, exact HEAD
    SHA, findings, resolutions, and verdict. Only after a passing review, publish
-   a comment containing `<!-- niu-code-review:FULL_HEAD_SHA -->`.
+   a comment containing `<!-- niu-code-review:FULL_HEAD_SHA:base:FULL_BASE_SHA -->`.
    Never publish this marker before the independent review has completed.
 6. Wait for required CI checks and the recorded-review check on the current HEAD.
    Then squash-merge the PR and delete its branch. User approval is not required.
@@ -19,7 +19,9 @@ All future changes must use a feature branch and pull request. Never push to
 
 The recorded-review check attests that an independent review was performed; it
 is not a GitHub approval from another GitHub account. The maintainer may post the
-report on behalf of the review agent. New commits invalidate old review markers.
+report on behalf of the review agent. New head or base commits invalidate old
+review markers. Review the exact base...head diff and record both full SHAs.
+Pushes to main revalidate open PR records; strict CI still requires an up-to-date branch.
 Editing or deleting review comments revalidates the required status. To withdraw
 approval, remove all matching authorized markers for that SHA. If collaborator
 permissions change, dispatch the review workflow to revalidate them. GitHub

@@ -12,6 +12,8 @@ on:
         description: PR number to recheck once this workflow exists on main
         required: true
         type: string
+  push:
+    branches: [main]
 
 permissions:
   contents: read
@@ -20,7 +22,7 @@ permissions:
   statuses: write
 
 concurrency:
-  group: independent-review-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}
+  group: independent-review-records
   cancel-in-progress: false
 
 jobs:
@@ -35,9 +37,15 @@ jobs:
           PR_NUMBER: ${{ inputs.pr || github.event.pull_request.number || github.event.issue.number }}
         with:
           script: |
-            const number = Number(process.env.PR_NUMBER);
-            if (!Number.isSafeInteger(number) || number <= 0) throw new Error('Invalid PR number');
             const repo = context.repo;
+            const numbers = context.eventName === 'push'
+              ? (await github.paginate(github.rest.pulls.list, {...repo, state: 'open', base: 'main', per_page: 100})).map(pr => pr.number)
+              : [Number(process.env.PR_NUMBER)];
+            for (const number of numbers) {
+              if (!Number.isSafeInteger(number) || number <= 0) throw new Error('Invalid PR number');
+              await verify(number);
+            }
+            async function verify(number) {
             const {data: pr} = await github.rest.pulls.get({...repo, pull_number: number});
             if (pr.state !== 'open' || pr.base.ref !== 'main') return;
             const status = (state, description, url) => github.rest.repos.createCommitStatus({
@@ -46,7 +54,7 @@ jobs:
             });
             // Immediately revoke an earlier success while revalidating records.
             await status('pending', 'Revalidating independent review for current HEAD');
-            const marker = `<!-- niu-code-review:${pr.head.sha} -->`;
+            const marker = `<!-- niu-code-review:${pr.head.sha}:base:${pr.base.sha} -->`;
             const comments = await github.paginate(github.rest.issues.listComments, {...repo, issue_number: number, per_page: 100});
             let record;
             for (const comment of comments.reverse()) {
@@ -63,9 +71,10 @@ jobs:
             // Only ever certify the exact SHA quoted in the maintainer's record.
             // Deleted/edited records no longer authorize this exact SHA.
             const {data: current} = await github.rest.pulls.get({...repo, pull_number: number});
-            if (current.head.sha !== pr.head.sha) throw new Error('PR changed during verification');
+            if (current.head.sha !== pr.head.sha || current.base.sha !== pr.base.sha || current.base.ref !== pr.base.ref) throw new Error('PR changed during verification');
             if (!record) {
               await status('failure', 'No authorized independent review record for current HEAD');
               return;
             }
             await status('success', 'Maintainer-attested independent agent review recorded', record.html_url);
+            }
