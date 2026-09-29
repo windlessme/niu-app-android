@@ -57,6 +57,7 @@ const form = {
   action: ${jsonEncode(form.attributes['action'])},
   method: ${jsonEncode(form.attributes['method'])},
   querySelector(selector) {
+    if (selector.startsWith('.cf-turnstile')) return null;
     const name = selector.match(/name="([^"]+)"/)[1];
     const input = inputs[name];
     const type = selector.match(/type="([^"]+)"/);

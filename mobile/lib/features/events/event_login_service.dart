@@ -195,6 +195,7 @@ String eventLoginFormScript(String account, String password) =>
       url.pathname.toLowerCase() !== '/mvcteam/account/login') return 'wrong-page';
   const form = document.querySelector('#loginForm form');
   if (!form || form.method.toLowerCase() !== 'post') return 'missing-form';
+  if (form.querySelector('.cf-turnstile, .g-recaptcha, .h-captcha, iframe[src*="challenges.cloudflare.com"], iframe[src*="recaptcha"], input[name*="captcha" i], input[name*="otp" i]')) return 'interaction-required';
   const action = new URL(form.action, location.href);
   if (action.origin !== url.origin || action.pathname.toLowerCase() !== '/mvcteam/account/login') return 'wrong-action';
   const account = form.querySelector('input[name="Account"]');
