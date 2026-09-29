@@ -25,7 +25,7 @@ class EventStatusPill extends StatelessWidget {
     return Semantics(
       label: '活動狀態：${text.isEmpty ? '尚未提供' : text}',
       excludeSemantics: true,
-      child: NiuStatusChip(label: text.isEmpty ? '狀態未提供' : text, tone: tone),
+      child: NiuStatusChip(label: text.isEmpty ? '-' : text, tone: tone),
     );
   }
 }
@@ -42,7 +42,7 @@ class EventListCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          event.name.isEmpty ? '未提供活動名稱' : event.name,
+          event.name.isEmpty ? '-' : event.name,
           style: Theme.of(context).textTheme.titleMedium,
         ),
         const SizedBox(height: 10),
@@ -101,7 +101,7 @@ class EventFactGroup extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           SelectableText(
-            facts[index].$2.trim().isEmpty ? '校方尚未提供' : facts[index].$2,
+            facts[index].$2.trim().isEmpty ? '-' : facts[index].$2,
           ),
         ],
       ],

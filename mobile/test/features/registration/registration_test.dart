@@ -31,9 +31,9 @@ void main() {
   );
 
   test('missing and numeric status are not converted to success', () {
-    expect(RegistrationData.display(null), '校方未提供');
-    expect(RegistrationData.display('null'), '校方未提供');
-    expect(RegistrationData.display('  '), '校方未提供');
+    expect(RegistrationData.display(null), '-');
+    expect(RegistrationData.display('null'), '-');
+    expect(RegistrationData.display('  '), '-');
     expect(RegistrationData.display(0), '0');
   });
 
@@ -75,6 +75,6 @@ void main() {
     expect(saved, isTrue);
     expect(find.text('校方原文'), findsOneWidget);
     expect(find.text('0'), findsOneWidget);
-    expect(find.text('校方未提供'), findsWidgets);
+    expect(find.text('-'), findsWidgets);
   });
 }
