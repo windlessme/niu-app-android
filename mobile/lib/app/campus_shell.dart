@@ -98,6 +98,7 @@ class CampusServicesScreen extends StatelessWidget {
     ('歷年成績', '歷年修課、成績與 GPA', CupertinoIcons.chart_bar, '/grades'),
     ('畢業門檻', '多元時數、英文與體適能', CupertinoIcons.checkmark_seal, '/graduation'),
     ('註冊資訊', '註冊查詢與在學證明 PDF', CupertinoIcons.doc_text, '/registration'),
+    ('學生請假', '申請與請假紀錄', CupertinoIcons.calendar, '/leave'),
     ('活動報名', '活動資訊與報名紀錄', CupertinoIcons.ticket, '/events'),
     ('設定', '帳號、外觀與支援', CupertinoIcons.gear, '/settings'),
   ];
