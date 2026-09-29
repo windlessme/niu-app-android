@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut android:shortcutId="attendance" android:enabled="true"
+        android:icon="@drawable/ic_notification" android:shortcutShortLabel="@string/shortcut_attendance">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="dev.niulife.prototype.niu_mobile"
+            android:targetClass="dev.niulife.prototype.niu_mobile.MainActivity" android:data="niulife://attendance" />
+    </shortcut>
+    <shortcut android:shortcutId="library" android:enabled="true"
+        android:icon="@drawable/ic_notification" android:shortcutShortLabel="@string/shortcut_library">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="dev.niulife.prototype.niu_mobile"
+            android:targetClass="dev.niulife.prototype.niu_mobile.MainActivity" android:data="niulife://library" />
+    </shortcut>
+</shortcuts>
