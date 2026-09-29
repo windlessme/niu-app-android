@@ -54,15 +54,13 @@ class _GraduationDashboardState extends State<GraduationDashboard> {
       children: [
         if (widget.updatedAt != null) ...[
           RelativeUpdateText(updatedAt: widget.updatedAt),
-          const SizedBox(height: NiuSpacing.xs),
-          Text(
-            widget.offline
-                ? '離線中・顯示已儲存資料'
-                : widget.needsReauthentication
-                ? '校務登入已過期・顯示已儲存資料，更新時需重新登入'
-                : '顯示已儲存資料，點右上角更新可查詢最新進度',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
+          if (widget.offline || widget.needsReauthentication) ...[
+            const SizedBox(height: NiuSpacing.xs),
+            Text(
+              widget.offline ? '離線' : '登入已過期',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
           const SizedBox(height: NiuSpacing.lg),
         ],
         _Overview(model: model),
@@ -354,10 +352,7 @@ class _QualificationCard extends StatelessWidget {
           ],
           if (requirement.source.isEmpty) ...[
             const SizedBox(height: NiuSpacing.sm),
-            Text(
-              '校方尚未提供資料',
-              style: text.bodySmall?.copyWith(color: colors.secondary),
-            ),
+            Text('-', style: text.bodySmall?.copyWith(color: colors.secondary)),
           ],
         ],
       ),

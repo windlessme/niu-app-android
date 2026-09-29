@@ -77,7 +77,7 @@ void main() {
         await tester.pumpAndSettle();
         expect(calls, [false]);
         expect(find.byType(IosPageHeader), findsOneWidget);
-        expect(find.text('狀態未提供'), findsOneWidget);
+        expect(find.text('-'), findsOneWidget);
         expect(tester.takeException(), isNull);
         for (final query in ['學務處', '圖書館', '永續']) {
           await tester.enterText(find.byType(TextField), query);
@@ -141,7 +141,7 @@ void main() {
       200,
       scrollable: find.byType(Scrollable).first,
     );
-    expect(find.text('校方尚未提供'), findsWidgets);
+    expect(find.text('-'), findsWidgets);
     expect(find.textContaining('0 人'), findsNothing);
     expect(
       tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,

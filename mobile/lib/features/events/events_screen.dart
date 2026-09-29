@@ -410,7 +410,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    event.name.isEmpty ? '未提供活動名稱' : event.name,
+                    event.name.isEmpty ? '-' : event.name,
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
                   const SizedBox(height: 16),
@@ -430,7 +430,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             const SectionHeader(title: '活動內容'),
             AppCard(
               child: SelectableText(
-                event.details.trim().isEmpty ? '校方尚未提供活動內容。' : event.details,
+                event.details.trim().isEmpty ? '-' : event.details,
               ),
             ),
             const SectionHeader(title: '報名資訊'),
