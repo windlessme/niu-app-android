@@ -5,7 +5,7 @@ on:
     types: [created, edited, deleted]
   pull_request_target:
     branches: [main]
-    types: [opened, reopened, synchronize, ready_for_review, edited]
+    types: [opened, reopened, synchronize, ready_for_review, edited, closed]
   workflow_dispatch:
     inputs:
       pr:
@@ -19,7 +19,7 @@ permissions:
   contents: read
   pull-requests: read
   issues: read
-  statuses: write
+  checks: write
 
 concurrency:
   group: independent-review-records
@@ -44,43 +44,52 @@ jobs:
                 (!Number.isSafeInteger(Number(process.env.PR_NUMBER)) || Number(process.env.PR_NUMBER) <= 0)) {
               throw new Error('Invalid PR number');
             }
-            const numbers = (await github.paginate(github.rest.pulls.list, {...repo, state: 'open', base: 'main', per_page: 100})).map(pr => pr.number);
-            const failures = [];
-            for (const number of numbers) {
-              try { await verify(number); }
-              catch (error) { failures.push(number); core.error(`Review reconciliation failed for PR ${number}: ${error.message}`); }
+            const list = () => github.paginate(github.rest.pulls.list, {...repo, state: 'open', base: 'main', per_page: 100});
+            const groups = new Map();
+            for (const pr of await list()) {
+              if (!groups.has(pr.head.sha)) groups.set(pr.head.sha, []);
+              groups.get(pr.head.sha).push(pr);
             }
-            if (failures.length) core.setFailed(`Unable to reconcile PRs: ${failures.join(', ')}`);
-            async function verify(number) {
-            const {data: pr} = await github.rest.pulls.get({...repo, pull_number: number});
-            if (pr.state !== 'open' || pr.base.ref !== 'main') return;
-            const status = (state, description, url) => github.rest.repos.createCommitStatus({
-              ...repo, sha: pr.head.sha, context: 'Independent code review', state,
-              description, target_url: url || pr.html_url
-            });
-            // Immediately revoke an earlier success while revalidating records.
-            await status('pending', 'Revalidating independent review for current HEAD');
-            const marker = `<!-- niu-code-review:${pr.head.sha}:base:${pr.base.sha} -->`;
-            const comments = await github.paginate(github.rest.issues.listComments, {...repo, issue_number: number, per_page: 100});
-            let record;
-            for (const comment of comments.reverse()) {
-              if (!comment.body.includes(marker) || comment.user.type !== 'User') continue;
-              let data;
+            const failures = [];
+            for (const [sha, prs] of groups) {
+              try { await reconcile(sha, prs); }
+              catch (error) { failures.push(sha); core.error(`Review reconciliation failed for ${sha}: ${error.message}`); }
+            }
+            if (failures.length) core.setFailed(`Unable to reconcile HEADs: ${failures.join(', ')}`);
+            async function reconcile(sha, prs) {
+              const name = 'Independent code review';
+              const existing = await github.paginate(github.rest.checks.listForRef, {...repo, ref: sha, check_name: name, per_page: 100});
+              const own = existing.find(check => check.app?.slug === 'github-actions' && check.external_id === 'niu-independent-review-v1');
+              const running = {status: 'in_progress', output: {title: 'Revalidating review records', summary: 'Every open main PR sharing this HEAD must have its own current-base review.'}};
+              const {data: check} = own
+                ? await github.rest.checks.update({...repo, check_run_id: own.id, ...running})
+                : await github.rest.checks.create({...repo, name, head_sha: sha, external_id: 'niu-independent-review-v1', ...running});
               try {
-                ({data} = await github.rest.repos.getCollaboratorPermissionLevel({...repo, username: comment.user.login}));
+                const records = [];
+                let approved = true;
+                for (const pr of prs) {
+                  const marker = `<!-- niu-code-review:${sha}:base:${pr.base.sha} -->`;
+                  const comments = await github.paginate(github.rest.issues.listComments, {...repo, issue_number: pr.number, per_page: 100});
+                  let record;
+                  for (const comment of comments.reverse()) {
+                    if (!comment.body.includes(marker) || comment.user.type !== 'User') continue;
+                    let permission;
+                    try { permission = (await github.rest.repos.getCollaboratorPermissionLevel({...repo, username: comment.user.login})).data.permission; }
+                    catch (error) { if (error.status === 404) continue; throw error; }
+                    if (['admin', 'maintain', 'write'].includes(permission)) { record = comment; break; }
+                  }
+                  if (!record) approved = false;
+                  records.push(record ? `PR #${pr.number}: ${record.html_url}` : `PR #${pr.number}: no authorized record`);
+                }
+                // Check membership and base revisions again before certifying the group.
+                const signature = rows => rows.map(pr => `${pr.number}:${pr.head.sha}:${pr.base.ref}:${pr.base.sha}`).sort().join('|');
+                const current = (await list()).filter(pr => pr.head.sha === sha);
+                if (signature(current) !== signature(prs)) throw new Error('PR group changed during verification');
+                await github.rest.checks.update({...repo, check_run_id: check.id, status: 'completed', conclusion: approved ? 'success' : 'failure',
+                  output: {title: approved ? 'All PR review records verified' : 'Independent review required', summary: records.join('\n')}});
               } catch (error) {
-                if (error.status === 404) continue;
+                await github.rest.checks.update({...repo, check_run_id: check.id, status: 'completed', conclusion: 'failure',
+                  output: {title: 'Review verification incomplete', summary: 'Re-run after resolving API errors or concurrent PR changes.'}});
                 throw error;
               }
-              if (['admin', 'maintain', 'write'].includes(data.permission)) { record = comment; break; }
-            }
-            // Only ever certify the exact SHA quoted in the maintainer's record.
-            // Deleted/edited records no longer authorize this exact SHA.
-            const {data: current} = await github.rest.pulls.get({...repo, pull_number: number});
-            if (current.head.sha !== pr.head.sha || current.base.sha !== pr.base.sha || current.base.ref !== pr.base.ref) throw new Error('PR changed during verification');
-            if (!record) {
-              await status('failure', 'No authorized independent review record for current HEAD');
-              return;
-            }
-            await status('success', 'Maintainer-attested independent agent review recorded', record.html_url);
             }

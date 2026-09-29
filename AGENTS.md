@@ -22,6 +22,8 @@ is not a GitHub approval from another GitHub account. The maintainer may post th
 report on behalf of the review agent. New head or base commits invalidate old
 review markers. Review the exact base...head diff and record both full SHAs.
 Pushes to main revalidate open PR records; strict CI still requires an up-to-date branch.
+The workflow updates a reusable Check Run per HEAD. If multiple open PRs share
+that HEAD, every PR must have its own matching review record before it passes.
 Editing or deleting review comments revalidates the required status. To withdraw
 approval, remove all matching authorized markers for that SHA. If collaborator
 permissions change, dispatch the review workflow to revalidate them. GitHub
