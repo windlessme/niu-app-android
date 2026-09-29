@@ -22,6 +22,7 @@ import '../features/moodle/moodle_screen.dart';
 import '../features/schedule/schedule_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/registration/registration_screen.dart';
+import '../features/leave/leave_screen.dart';
 import '../features/settings/credits_repository.dart';
 import '../shared/niu_theme.dart';
 import 'auth_gate.dart';
@@ -101,6 +102,14 @@ class _NiuAppState extends State<NiuApp> {
         ),
       ),
       GoRoute(path: '/calendar', builder: (_, _) => const CalendarScreen()),
+      GoRoute(
+        path: '/leave',
+        builder: (_, _) => const AuthGate(
+          title: '學生請假',
+          allowLocalAccount: true,
+          child: LeaveScreen(),
+        ),
+      ),
       GoRoute(
         path: '/registration',
         builder: (_, _) =>
