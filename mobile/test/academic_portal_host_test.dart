@@ -52,6 +52,8 @@ assert.equal(eval(script), 'https://ccsys.niu.edu.tw/SSO/bridge.aspx');
 window.document = doc('https://acade.niu.edu.tw/NIU/MainFrame.aspx');
 window.document.readyState = 'loading';
 assert.equal(eval(script), null);
+window.document.readyState = 'interactive';
+assert.equal(eval(script), 'https://acade.niu.edu.tw/NIU/target.aspx');
 window.document.readyState = 'complete';
 assert.equal(eval(script), 'https://acade.niu.edu.tw/NIU/target.aspx');
 window.frames = [{document: doc('https://acade.niu.edu.tw/NIU/target.aspx'), frames: []}];
@@ -63,7 +65,10 @@ window.frames[0].document.readyState = 'complete';
 assert.equal(eval(script), 'ready');
 window.frames = [];
 window.document = doc('https://acade.niu.edu.tw/NIU/Login.aspx');
-assert.equal(eval(script), null);
+assert.equal(eval(script), 'session-expired');
+window.document = doc('https://acade.niu.edu.tw/NIU/MainFrame.aspx');
+window.frames = [{document: doc('https://acade.niu.edu.tw/NIU/TimeOutPage.aspx'), frames: []}];
+assert.equal(eval(script), 'session-expired');
 ''',
     ]);
     expect(result.exitCode, 0, reason: '${result.stderr}');
@@ -100,22 +105,57 @@ assert.notEqual(result.signature, eval(identity));
     },
   );
 
-  test('frame extraction accepts complete scripts with trailing semicolon', () {
-    final script = academicFrameSnapshotScript(
-      '(() => JSON.stringify([1]))();\n',
-    );
+  test('frame wakeup runs before unrelated resources finish loading', () {
     final result = Process.runSync('node', [
       '-e',
       '''
 const assert = require('node:assert/strict');
-let tick, received;
-global.setInterval = cb => { tick = cb; return 1; };
-global.clearInterval = () => {};
+let calls = 0;
+const events = {};
 global.location = {hostname: 'acade.niu.edu.tw'};
-global.window = {flutter_inappwebview: {callHandler: (name, value) => { received = value; }}};
-$script
-tick();
-assert.equal(received, '[1]');
+global.document = {readyState: 'loading', addEventListener: (name, cb) => {events[name] = cb;}};
+global.window = {addEventListener: (name, cb) => {events[name] = cb;}};
+$academicNavigationWakeupScript
+document.readyState = 'interactive';
+events.readystatechange();
+assert.equal(calls, 0);
+window.flutter_inappwebview = {callHandler: (name, ...args) => {
+  assert.equal(name, 'academicSnapshot'); assert.equal(args.length, 0); calls++;
+}};
+events.flutterInAppWebViewPlatformReady();
+assert.equal(calls, 1);
+document.readyState = 'complete';
+events.readystatechange();
+assert.equal(calls, 2);
+''',
+    ]);
+    expect(result.exitCode, 0, reason: '${result.stderr}');
+  });
+
+  test('visible challenges are exposed while hidden tokens are ignored', () {
+    final result = Process.runSync('node', [
+      '-e',
+      '''
+const assert = require('node:assert/strict');
+const script = ${jsonEncode(portalInteractionScript)};
+let controls = [];
+const doc = {location: {href: 'https://acade.niu.edu.tw/NIU/Login.aspx?GUID=fixture'}, querySelectorAll: () => controls};
+global.window = {document: doc, frames: [], getComputedStyle: () => ({visibility: 'visible'})};
+assert.equal(eval(script), null);
+controls = [{type: 'hidden', getClientRects: () => [1]}];
+assert.equal(eval(script), null);
+controls = [{type: 'text', getClientRects: () => []}];
+assert.equal(eval(script), null);
+controls = [{type: 'text', getClientRects: () => [1]}];
+assert.equal(eval(script), 'interaction-required');
+window.getComputedStyle = () => ({visibility: 'hidden'});
+assert.equal(eval(script), null);
+window.getComputedStyle = () => ({visibility: 'visible'});
+const child = {...window};
+window = {document: {location: {href: 'about:blank'}}, frames: [child]};
+assert.equal(eval(script), 'interaction-required');
+doc.location.href = 'https://example.com/';
+assert.equal(eval(script), null);
 ''',
     ]);
     expect(result.exitCode, 0, reason: '${result.stderr}');

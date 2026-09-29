@@ -1,10 +1,14 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:collection';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
+
 import '../../shared/shared.dart';
+
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+
 import '../../features/authentication/login_screen.dart';
 import '../session/campus_session.dart';
 import 'portal_policy.dart';
@@ -50,7 +54,8 @@ class AcademicPortalScreen extends StatefulWidget {
   State<AcademicPortalScreen> createState() => _AcademicPortalScreenState();
 }
 
-class _AcademicPortalScreenState extends State<AcademicPortalScreen> {
+class _AcademicPortalScreenState extends State<AcademicPortalScreen>
+    with WidgetsBindingObserver {
   late final session = widget.session ?? CampusSession.instance;
   InAppWebViewController? controller;
   Uri? entry;
@@ -62,9 +67,14 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen> {
   bool loading = true;
   int generation = 0;
   int epoch = 0;
-  int attempts = 0;
   Timer? timer;
   Timer? deadline;
+  final loadWatch = Stopwatch();
+  bool foreground = true;
+  bool routeActive = true;
+  bool reusedAcademicSession = false;
+  bool reconnecting = false;
+  bool interactionRequired = false;
   final Set<String> navigated = {};
   bool targetReady = false;
   bool eventLoginRequired = false;
@@ -73,9 +83,60 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    foreground =
+        WidgetsBinding.instance.lifecycleState == null ||
+        WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
     session.addListener(sessionChanged);
     session.registerCleanup(clearWebData);
     start();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    routeActive = ModalRoute.of(context)?.isCurrent ?? true;
+    syncWork();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    foreground = state == AppLifecycleState.resumed;
+    syncWork();
+    if (foreground && routeActive) unawaited(poll());
+  }
+
+  void syncWork() {
+    final active =
+        foreground &&
+        routeActive &&
+        error == null &&
+        snapshot == null &&
+        !(targetReady && widget.extractScript == null);
+    if (active) {
+      timer ??= Timer.periodic(
+        const Duration(milliseconds: 750),
+        (_) => poll(),
+      );
+    } else {
+      timer?.cancel();
+      timer = null;
+    }
+    if (active && loading) {
+      loadWatch.start();
+      deadline ??= Timer(widget.loadTimeout - loadWatch.elapsed, () {
+        if (!mounted) return;
+        setState(() {
+          loading = false;
+          error = '資料載入逾時，可重試或開啟校方頁面。';
+        });
+        syncWork();
+      });
+    } else {
+      loadWatch.stop();
+      deadline?.cancel();
+      deadline = null;
+    }
   }
 
   void sessionChanged() {
@@ -89,6 +150,7 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen> {
         error = '已登出，請重新登入';
         loading = false;
       });
+      syncWork();
     }
   }
 
@@ -104,20 +166,31 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen> {
     readRun = '$current-${DateTime.now().microsecondsSinceEpoch}';
     epoch = session.coordinator.epoch;
     timer?.cancel();
+    timer = null;
     deadline?.cancel();
+    deadline = null;
+    loadWatch
+      ..stop()
+      ..reset();
+    try {
+      await controller?.stopLoading();
+    } catch (_) {
+      // A platform view may already have been torn down during navigation.
+    }
+    if (!mounted || current != generation) return;
     controller = null;
     navigated.clear();
     targetReady = false;
     eventLoginRequired = false;
-    deadline = Timer(widget.loadTimeout, () {
-      if (!mounted || current != generation) return;
-      timer?.cancel();
-      setState(() {
-        loading = false;
-        error = '資料載入逾時，可重試或開啟校方頁面。';
-        schoolPage = true;
-      });
-    });
+    interactionRequired = false;
+    reconnecting = false;
+    schoolPage = false;
+    reusedAcademicSession =
+        widget.bridge &&
+        widget.entryBuilder == null &&
+        widget.target?.host == 'acade.niu.edu.tw' &&
+        PortalPolicy.academic.allows(widget.target!) &&
+        session.hasAcademicSession;
     if (mounted) {
       setState(() {
         error = null;
@@ -126,19 +199,20 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen> {
         entry = null;
       });
     }
+    syncWork();
     menuClicked = false;
-    attempts = 0;
     try {
       final uri = widget.entryBuilder != null
           ? await widget.entryBuilder!(session)
           : widget.bridge
-          ? await session.academicEntry()
+          ? reusedAcademicSession
+                ? widget.target!
+                : await session.academicEntry()
           : widget.target!;
       if (!mounted || current != generation) return;
       if (!loading) return;
       session.coordinator.requireCurrent(epoch);
       setState(() => entry = uri);
-      timer = Timer.periodic(const Duration(milliseconds: 750), (_) => poll());
     } catch (_) {
       if (mounted && current == generation) {
         deadline?.cancel();
@@ -146,13 +220,66 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen> {
           error = '校務連線未完成，請登入後重試。';
           loading = false;
         });
+        syncWork();
       }
+    }
+  }
+
+  Future<void> expiredAcademicSession(int current) async {
+    if (!mounted ||
+        current != generation ||
+        session.coordinator.epoch != epoch ||
+        reconnecting) {
+      return;
+    }
+    session.invalidateAcademicSession(epoch);
+    if (!reusedAcademicSession) {
+      setState(() {
+        loading = false;
+        error = '登入已過期，請重新登入';
+        schoolPage = true;
+      });
+      syncWork();
+      return;
+    }
+    // A reused Cookie can expire independently of SSO. Bridge once, never loop
+    // or replay a school form when that bridge also requires user interaction.
+    reusedAcademicSession = false;
+    reconnecting = true;
+    navigated.clear();
+    targetReady = false;
+    try {
+      final uri = await session.academicEntry();
+      if (!mounted ||
+          current != generation ||
+          error != null ||
+          !foreground ||
+          !routeActive) {
+        return;
+      }
+      session.coordinator.requireCurrent(epoch);
+      await controller?.loadUrl(
+        urlRequest: URLRequest(url: WebUri(uri.toString())),
+      );
+    } catch (_) {
+      if (mounted && current == generation) {
+        setState(() {
+          loading = false;
+          error = '校務連線未完成，請登入後重試。';
+        });
+        syncWork();
+      }
+    } finally {
+      if (current == generation) reconnecting = false;
     }
   }
 
   Future<void> poll() async {
     if (pollingGeneration == generation ||
         controller == null ||
+        reconnecting ||
+        !foreground ||
+        !routeActive ||
         !mounted ||
         snapshot != null ||
         error != null) {
@@ -169,7 +296,28 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen> {
               widget.navigationScript ??
               academicNavigationScript(widget.target),
         );
-        if (!mounted || current != generation || error != null) return;
+        if (!mounted ||
+            current != generation ||
+            error != null ||
+            !foreground ||
+            !routeActive) {
+          return;
+        }
+        if (navigation == 'session-expired' && widget.bridge) {
+          await expiredAcademicSession(current);
+          return;
+        }
+        if (navigation == 'interaction-required') {
+          if (!interactionRequired) {
+            setState(() {
+              interactionRequired = true;
+              loading = false;
+              schoolPage = true;
+            });
+            syncWork();
+          }
+          return;
+        }
         if (navigation == 'login-required') {
           deadline?.cancel();
           if (!eventLoginRequired) {
@@ -182,24 +330,19 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen> {
               loading = false;
               schoolPage = true;
             });
+            syncWork();
           }
           return;
         }
-        if (eventLoginRequired && navigation != null) {
+        if ((eventLoginRequired || interactionRequired) && navigation != null) {
           setState(() {
             eventLoginRequired = false;
+            interactionRequired = false;
             loading = true;
             schoolPage = false;
           });
-          deadline = Timer(widget.loadTimeout, () {
-            if (!mounted || current != generation) return;
-            timer?.cancel();
-            setState(() {
-              loading = false;
-              error = '資料載入逾時，可重試或開啟校方頁面。';
-              schoolPage = true;
-            });
-          });
+          loadWatch.reset();
+          syncWork();
         }
         if (navigation == 'ready') {
           targetReady = true;
@@ -207,6 +350,7 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen> {
             deadline?.cancel();
             timer?.cancel();
             setState(() => loading = false);
+            syncWork();
           }
         } else if (navigation is String) {
           targetReady = false;
@@ -237,24 +381,16 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen> {
       } else {
         targetReady = true;
       }
-      if (++attempts > 80) {
-        timer?.cancel();
-        if (mounted) {
-          setState(() {
-            loading = false;
-            error = '資料載入逾時，可重試或開啟校方頁面。';
-            schoolPage = true;
-          });
-        }
-        return;
-      }
       if (widget.menuLabel != null && !menuClicked) {
         final result = await controller!.evaluateJavascript(
           source: academicMenuScript(widget.menuLabel!),
         );
         menuClicked = result == true;
       }
-      if (widget.extractScript == null) return;
+      if (widget.extractScript == null) {
+        syncWork();
+        return;
+      }
       if (widget.target != null && !targetReady) return;
       final value = await web.evaluateJavascript(
         source: academicReadScript(
@@ -263,7 +399,13 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen> {
           run: readRun,
         ),
       );
-      if (!mounted || current != generation || error != null) return;
+      if (!mounted ||
+          current != generation ||
+          error != null ||
+          !foreground ||
+          !routeActive) {
+        return;
+      }
       if (value is String && value.isNotEmpty && value != 'null') {
         final envelope = jsonDecode(value) as Map<String, dynamic>;
         final identity = await web.evaluateJavascript(
@@ -272,6 +414,8 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen> {
         if (!mounted ||
             current != generation ||
             error != null ||
+            !foreground ||
+            !routeActive ||
             envelope['signature'] != identity) {
           return;
         }
@@ -281,6 +425,7 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen> {
             current == generation &&
             error == null) {
           session.coordinator.requireCurrent(epoch);
+          if (widget.bridge) session.confirmAcademicSession(epoch);
           await widget.onSnapshot?.call(parsed, epoch);
           if (!mounted || current != generation || error != null) return;
           setState(() {
@@ -290,6 +435,7 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen> {
           });
           timer?.cancel();
           deadline?.cancel();
+          syncWork();
         }
       }
     } catch (_) {
@@ -300,18 +446,18 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen> {
   }
 
   Future<void> loaded(InAppWebViewController web, WebUri? url) async {
-    if (!mounted || url == null || web != controller || error != null) return;
+    if (!mounted ||
+        url == null ||
+        web != controller ||
+        error != null ||
+        !foreground ||
+        !routeActive) {
+      return;
+    }
     final current = generation;
     final uri = Uri.parse(url.toString());
     if (widget.bridge && isAcademicSessionExpired(uri)) {
-      timer?.cancel();
-      deadline?.cancel();
-      if (!mounted || current != generation) return;
-      setState(() {
-        loading = false;
-        error = '登入已過期，請重新登入';
-        schoolPage = true;
-      });
+      await expiredAcademicSession(current);
       return;
     }
     if (widget.extractScript == null &&
@@ -319,6 +465,7 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen> {
         mounted) {
       deadline?.cancel();
       setState(() => loading = false);
+      syncWork();
     }
     await poll();
   }
@@ -328,6 +475,8 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen> {
     generation++;
     timer?.cancel();
     deadline?.cancel();
+    loadWatch.stop();
+    WidgetsBinding.instance.removeObserver(this);
     session.removeListener(sessionChanged);
     session.unregisterCleanup(clearWebData);
     controller?.stopLoading();
@@ -337,6 +486,10 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen> {
   @override
   Widget build(BuildContext context) {
     final viewGeneration = generation;
+    final nativeCover =
+        !schoolPage &&
+        widget.extractScript != null &&
+        (snapshot == null || widget.snapshotBuilder == null);
     return Scaffold(
       appBar: IosPageHeader(
         title: widget.title,
@@ -352,190 +505,286 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen> {
           CircleIconButton(
             label: '重新整理',
             icon: CupertinoIcons.arrow_clockwise,
-            onPressed: start,
+            onPressed: loading || reconnecting ? null : start,
           ),
         ],
       ),
-      body: Column(
-        children: [
-          if (eventLoginRequired)
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                children: [
-                  const Text('活動登入尚未建立或已過期。重新連接校務登入後，會自動返回此活動頁面。'),
-                  TextButton(
-                    onPressed: () async {
-                      final ok = await Navigator.of(context).push<bool>(
-                        MaterialPageRoute(
-                          builder: (_) => LoginScreen(session: session),
-                        ),
-                      );
-                      if (ok == true && mounted) start();
-                    },
-                    child: const Text('重新連接活動登入'),
-                  ),
-                ],
+      body: SafeArea(
+        top: false,
+        child: Column(
+          children: [
+            if (eventLoginRequired)
+              banner(
+                Column(
+                  children: [
+                    const Text('活動登入尚未建立或已過期。重新連接校務登入後，會自動返回此活動頁面。'),
+                    TextButton(
+                      onPressed: () async {
+                        final ok = await Navigator.of(context).push<bool>(
+                          MaterialPageRoute(
+                            builder: (_) => LoginScreen(session: session),
+                          ),
+                        );
+                        if (ok == true && mounted) start();
+                      },
+                      child: const Text('重新連接活動登入'),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          if (loading)
-            const Padding(
-              padding: EdgeInsets.all(20),
-              child: Row(
-                children: [
-                  CupertinoActivityIndicator(),
-                  SizedBox(width: 12),
-                  Expanded(child: Text('正在連線校務系統並讀取資料…')),
-                ],
+            if (interactionRequired)
+              banner(const Text('請在校方頁面完成驗證或登入，完成後會繼續讀取資料。')),
+            if (loading && !nativeCover)
+              const Padding(
+                padding: EdgeInsets.all(NiuSpacing.xl),
+                child: Row(
+                  children: [
+                    CupertinoActivityIndicator(),
+                    SizedBox(width: NiuSpacing.md),
+                    Expanded(child: Text('正在連線校務系統並讀取資料…')),
+                  ],
+                ),
               ),
-            ),
-          if (error != null)
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                children: [
-                  Text(error!),
-                  TextButton(
-                    onPressed: () async {
-                      final ok = await Navigator.of(context).push<bool>(
-                        MaterialPageRoute(
-                          builder: (_) => LoginScreen(session: session),
-                        ),
-                      );
-                      if (ok == true && mounted) start();
-                    },
-                    child: const Text('登入校務帳號'),
-                  ),
-                ],
+            if (error != null && !nativeCover)
+              banner(
+                Column(
+                  children: [
+                    Text(error!),
+                    TextButton(
+                      onPressed: () async {
+                        final ok = await Navigator.of(context).push<bool>(
+                          MaterialPageRoute(
+                            builder: (_) => LoginScreen(session: session),
+                          ),
+                        );
+                        if (ok == true && mounted) start();
+                      },
+                      child: const Text('登入校務帳號'),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          Expanded(
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                if (entry != null)
-                  Offstage(
-                    offstage:
-                        snapshot != null &&
-                        !schoolPage &&
-                        widget.snapshotBuilder != null,
-                    child: buildWebView(
-                      () => InAppWebView(
-                        key: ValueKey(generation),
-                        initialUrlRequest: URLRequest(
-                          url: WebUri(entry.toString()),
-                        ),
-                        initialSettings: InAppWebViewSettings(
-                          javaScriptEnabled: true,
-                          useShouldOverrideUrlLoading: true,
-                          supportMultipleWindows: true,
-                          javaScriptCanOpenWindowsAutomatically: true,
-                          allowFileAccess: false,
-                        ),
-                        initialUserScripts: widget.extractScript == null
-                            ? null
-                            : UnmodifiableListView([
+            Expanded(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (entry != null)
+                    ExcludeSemantics(
+                      excluding: nativeCover,
+                      child: IgnorePointer(
+                        ignoring: nativeCover,
+                        child: Offstage(
+                          offstage:
+                              snapshot != null &&
+                              !schoolPage &&
+                              widget.snapshotBuilder != null,
+                          child: buildWebView(
+                            () => InAppWebView(
+                              key: ValueKey(generation),
+                              initialUrlRequest: URLRequest(
+                                url: WebUri(entry.toString()),
+                                headers: reusedAcademicSession
+                                    ? {
+                                        'Referer':
+                                            (widget.referer ??
+                                                    Uri.parse(
+                                                      'https://acade.niu.edu.tw/NIU/MainFrame.aspx',
+                                                    ))
+                                                .toString(),
+                                      }
+                                    : null,
+                              ),
+                              initialSettings: InAppWebViewSettings(
+                                javaScriptEnabled: true,
+                                sharedCookiesEnabled: true,
+                                useShouldOverrideUrlLoading: true,
+                                supportMultipleWindows: true,
+                                javaScriptCanOpenWindowsAutomatically: true,
+                                allowFileAccess: false,
+                              ),
+                              initialUserScripts: UnmodifiableListView([
                                 UserScript(
-                                  source: academicFrameSnapshotScript(
-                                    widget.extractScript!,
-                                  ),
+                                  source: academicNavigationWakeupScript,
                                   injectionTime:
-                                      UserScriptInjectionTime.AT_DOCUMENT_END,
+                                      UserScriptInjectionTime.AT_DOCUMENT_START,
                                   forMainFrameOnly: false,
                                 ),
                               ]),
-                        onWebViewCreated: (web) {
-                          if (!mounted || viewGeneration != generation) return;
-                          controller = web;
-                          final captured = viewGeneration;
-                          web.addJavaScriptHandler(
-                            handlerName: 'academicSnapshot',
-                            callback: (arguments) async {
-                              if (!mounted ||
-                                  captured != generation ||
-                                  session.coordinator.epoch != epoch ||
-                                  error != null ||
-                                  snapshot != null ||
-                                  arguments.isEmpty) {
-                                return;
-                              }
-                              // Frame messages are wakeups, never authoritative
-                              // data: a queued message may belong to an old DOM.
-                              await poll();
-                            },
-                          );
-                        },
-                        onLoadStop: loaded,
-                        onLoadStart: (web, _) {
-                          if (web == controller) targetReady = false;
-                        },
-                        onCreateWindow: (web, action) async {
-                          if (web != controller ||
-                              viewGeneration != generation) {
-                            return false;
-                          }
-                          final uri = Uri.tryParse(
-                            action.request.url?.toString() ?? '',
-                          );
-                          if (uri != null &&
-                              PortalPolicy.academic.allows(uri)) {
-                            await web.loadUrl(
-                              urlRequest: URLRequest(
-                                url: WebUri(uri.toString()),
-                              ),
-                            );
-                          }
-                          return false;
-                        },
-                        shouldOverrideUrlLoading: (_, action) async {
-                          if (action.isForMainFrame == false) {
-                            return NavigationActionPolicy.ALLOW;
-                          }
-                          final uri = Uri.tryParse(
-                            action.request.url?.toString() ?? '',
-                          );
-                          return uri != null &&
-                                  (uri.toString() == 'about:blank' ||
-                                      PortalPolicy.academic.allows(uri))
-                              ? NavigationActionPolicy.ALLOW
-                              : NavigationActionPolicy.CANCEL;
-                        },
-                        onReceivedError: (web, request, failure) {
-                          if (web == controller &&
-                              request.isForMainFrame == true &&
-                              mounted) {
-                            deadline?.cancel();
-                            timer?.cancel();
-                            setState(() {
-                              error = '校方頁面載入失敗，請檢查網路後重試。';
-                              loading = false;
-                            });
-                          }
-                        },
+                              onWebViewCreated: (web) {
+                                if (!mounted || viewGeneration != generation) {
+                                  return;
+                                }
+                                controller = web;
+                                final captured = viewGeneration;
+                                web.addJavaScriptHandler(
+                                  handlerName: 'academicSnapshot',
+                                  callback: (arguments) async {
+                                    if (!mounted ||
+                                        captured != generation ||
+                                        session.coordinator.epoch != epoch ||
+                                        error != null ||
+                                        snapshot != null) {
+                                      return;
+                                    }
+                                    // Frame messages are wakeups, never authoritative
+                                    // data: a queued message may belong to an old DOM.
+                                    await poll();
+                                  },
+                                );
+                              },
+                              onLoadStop: loaded,
+                              onLoadStart: (web, _) {
+                                if (web == controller) targetReady = false;
+                              },
+                              onCreateWindow: (web, action) async {
+                                if (web != controller ||
+                                    viewGeneration != generation) {
+                                  return false;
+                                }
+                                final uri = Uri.tryParse(
+                                  action.request.url?.toString() ?? '',
+                                );
+                                if (uri != null &&
+                                    PortalPolicy.academic.allows(uri)) {
+                                  await web.loadUrl(
+                                    urlRequest: URLRequest(
+                                      url: WebUri(uri.toString()),
+                                    ),
+                                  );
+                                }
+                                return false;
+                              },
+                              shouldOverrideUrlLoading: (_, action) async {
+                                if (action.isForMainFrame == false) {
+                                  return NavigationActionPolicy.ALLOW;
+                                }
+                                final uri = Uri.tryParse(
+                                  action.request.url?.toString() ?? '',
+                                );
+                                return uri != null &&
+                                        (uri.toString() == 'about:blank' ||
+                                            PortalPolicy.academic.allows(uri))
+                                    ? NavigationActionPolicy.ALLOW
+                                    : NavigationActionPolicy.CANCEL;
+                              },
+                              onReceivedError: (web, request, failure) {
+                                if (web == controller &&
+                                    request.isForMainFrame == true &&
+                                    mounted) {
+                                  deadline?.cancel();
+                                  timer?.cancel();
+                                  setState(() {
+                                    error = '校方頁面載入失敗，請檢查網路後重試。';
+                                    loading = false;
+                                  });
+                                  syncWork();
+                                }
+                              },
+                              onReceivedHttpError:
+                                  (web, request, response) async {
+                                    if (!mounted ||
+                                        web != controller ||
+                                        request.isForMainFrame != true) {
+                                      return;
+                                    }
+                                    if (widget.bridge &&
+                                        [
+                                          401,
+                                          403,
+                                        ].contains(response.statusCode)) {
+                                      await expiredAcademicSession(
+                                        viewGeneration,
+                                      );
+                                      return;
+                                    }
+                                    setState(() {
+                                      error = '校方系統暫時無法提供資料，請稍後重試。';
+                                      loading = false;
+                                    });
+                                    syncWork();
+                                  },
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                if (snapshot != null &&
-                    !schoolPage &&
-                    widget.snapshotBuilder != null)
-                  Positioned.fill(
-                    child: ColoredBox(
-                      color: Theme.of(context).scaffoldBackgroundColor,
-                      child: widget.snapshotBuilder!(context, snapshot),
+                  if (snapshot != null &&
+                      !schoolPage &&
+                      widget.snapshotBuilder != null)
+                    Positioned.fill(
+                      child: ColoredBox(
+                        color: Theme.of(context).scaffoldBackgroundColor,
+                        child: widget.snapshotBuilder!(context, snapshot),
+                      ),
                     ),
-                  ),
-                if (entry == null && error == null)
-                  const Center(child: CircularProgressIndicator()),
-              ],
+                  if (nativeCover)
+                    Positioned.fill(
+                      child: ColoredBox(
+                        color: Theme.of(context).scaffoldBackgroundColor,
+                        child: Center(
+                          child: SingleChildScrollView(
+                            padding: const EdgeInsets.all(NiuSpacing.xl),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (interactionRequired || eventLoginRequired)
+                                  const Text('請開啟校方頁面完成驗證或登入。')
+                                else if (error == null)
+                                  const AppLoadingState(
+                                    message: '正在連線校務系統並讀取資料…',
+                                  )
+                                else ...[
+                                  AppErrorState(
+                                    message: error!,
+                                    onRetry: start,
+                                  ),
+                                  TextButton(
+                                    onPressed: () async {
+                                      final ok = await Navigator.of(context)
+                                          .push<bool>(
+                                            MaterialPageRoute(
+                                              builder: (_) =>
+                                                  LoginScreen(session: session),
+                                            ),
+                                          );
+                                      if (ok == true && mounted) start();
+                                    },
+                                    child: const Text('登入校務帳號'),
+                                  ),
+                                ],
+                                TextButton.icon(
+                                  onPressed: entry == null
+                                      ? null
+                                      : () => setState(() => schoolPage = true),
+                                  icon: const Icon(CupertinoIcons.globe),
+                                  label: const Text('開啟校方頁面'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  if (entry == null && error == null && !nativeCover)
+                    const Center(child: CircularProgressIndicator()),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget buildWebView(Widget Function() create) =>
       widget.webViewBuilder?.call(create) ?? create();
+
+  Widget banner(Widget child) => Flexible(
+    child: SingleChildScrollView(
+      padding: const EdgeInsets.all(NiuSpacing.md),
+      child: child,
+    ),
+  );
 }
 
 bool isAcademicSessionExpired(Uri uri) {

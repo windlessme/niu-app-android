@@ -41,6 +41,7 @@ void main() {
       await vault.write('moodleToken', 'fixture-moodle');
       await vault.write('moodleSession', 'fixture-envelope');
       await vault.write('eventSession', 'fixture-event-cookie');
+      await vault.write('graduationCache', 'fixture-graduation');
       await vault.write(
         'rememberedSchoolLogin',
         'fixture-encrypted-storage-value',
