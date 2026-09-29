@@ -24,7 +24,8 @@ report on behalf of the review agent. New commits invalidate old review markers.
 Bootstrap exception for installing the review workflow itself: comment/dispatch
 workflows do not run until present on the default branch. After the independent
 review of the exact installation HEAD, an authorized maintainer may publish the
-same `Independent code review` check through GitHub's Checks API, linking the PR
+same `Independent code review` context through GitHub's Commit Status API (or
+Checks API when authenticated as an App), linking the PR
 review record. This does not waive review or CI and does not bypass protection.
 Subsequent PRs use the installed workflow. Only `main` is long-lived; delete each
 temporary branch after merging (repository auto-delete is enabled).
