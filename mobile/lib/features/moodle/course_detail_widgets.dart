@@ -42,7 +42,7 @@ class _CourseDetailTabsState extends State<CourseDetailTabs> {
                             : colors.onSurfaceVariant,
                         backgroundColor: selected == index
                             ? colors.primary
-                            : colors.surfaceContainerHighest,
+                            : NiuColors.of(context).surface,
                         textStyle: TextStyle(
                           fontWeight: selected == index
                               ? FontWeight.w700

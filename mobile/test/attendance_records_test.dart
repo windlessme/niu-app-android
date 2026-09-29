@@ -4,6 +4,7 @@ import 'package:niu_mobile/core/network/school_clients.dart';
 import 'package:niu_mobile/features/attendance/attendance_repository.dart';
 import 'package:niu_mobile/features/attendance/attendance_screen.dart';
 import 'package:niu_mobile/features/moodle/moodle_repository.dart';
+import 'package:niu_mobile/shared/shared.dart';
 
 class AttendanceMoodle extends MoodleRepository {
   AttendanceMoodle()
@@ -53,6 +54,59 @@ final pendingApi = {
 };
 
 void main() {
+  test('attendance date presentation preserves unfamiliar source text', () {
+    expect(attendanceDateLines('2026/09/29 11:22-11:32'), [
+      '2026/09/29（週二）',
+      '11:22–11:32',
+    ]);
+    expect(attendanceDateLines('校方原始日期'), ['校方原始日期']);
+    expect(attendanceDateLines('2026/02/30 11:22'), ['2026/02/30 11:22']);
+  });
+  for (final dark in [false, true]) {
+    testWidgets(
+      'attendance hierarchy wraps at 320px and double text dark=$dark',
+      (tester) async {
+        tester.view.physicalSize = const Size(320, 800);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final repository = AttendanceMoodle()
+          ..response = {
+            'sessions': [
+              {
+                'sessdate': 1790652120,
+                'description': 'QR code 點名',
+                'remarks': '自行紀錄的',
+                'statusid': 1,
+              },
+            ],
+            'statuses': [
+              {'id': 1, 'description': '出席', 'grade': 2},
+            ],
+          };
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: dark ? NiuTheme.dark : NiuTheme.light,
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: const TextScaler.linear(2)),
+              child: child!,
+            ),
+            home: Scaffold(
+              body: AttendanceRecords(repository: repository, courseId: 1),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.byType(AppCard), findsOneWidget);
+        expect(find.text('QR Code 點名'), findsOneWidget);
+        expect(find.text('來源：自行記錄'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+  }
   test('API failure falls back to same-course read-only HTML URL', () async {
     final moodle = AttendanceMoodle()
       ..response = const FormatException('API unavailable');
