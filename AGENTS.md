@@ -20,6 +20,12 @@ All future changes must use a feature branch and pull request. Never push to
 The recorded-review check attests that an independent review was performed; it
 is not a GitHub approval from another GitHub account. The maintainer may post the
 report on behalf of the review agent. New commits invalidate old review markers.
+Editing or deleting review comments revalidates the required status. To withdraw
+approval, remove all matching authorized markers for that SHA. If collaborator
+permissions change, dispatch the review workflow to revalidate them. GitHub
+events are asynchronous; revocation is not instantaneous. During installation,
+before this workflow exists on main, withdraw bootstrap approval with a failing
+Commit Status API update using the same context and SHA.
 
 Bootstrap exception for installing the review workflow itself: comment/dispatch
 workflows do not run until present on the default branch. After the independent

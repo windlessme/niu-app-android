@@ -24,6 +24,8 @@ jobs:
         working-directory: mobile
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -37,11 +39,21 @@ jobs:
           channel: stable
           cache: true
       - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - run: python3 -m pip install -r ../calendar-data/requirements.txt
-      - run: python3 ../calendar-data/scripts/validate.py
+      - name: Validate calendar and published history
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [[ -n "$BASE_SHA" && ! "$BASE_SHA" =~ ^0+$ ]]; then
+            python3 ../calendar-data/scripts/validate.py --base-ref "$BASE_SHA"
+          else
+            python3 ../calendar-data/scripts/validate.py
+          fi
       - run: python3 -m unittest discover -s ../calendar-data/tests -v
       - run: flutter pub get --enforce-lockfile
       - run: bash tool/verify.sh
