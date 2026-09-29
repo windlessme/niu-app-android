@@ -4,6 +4,7 @@ import '../../core/session/campus_session.dart';
 import '../../core/web/academic_portal_screen.dart';
 import '../../shared/shared.dart';
 import 'leave_repository.dart';
+import 'leave_widgets.dart';
 
 class LeaveScreen extends StatefulWidget {
   const LeaveScreen({super.key, this.session});
@@ -37,6 +38,14 @@ class _LeaveScreenState extends State<LeaveScreen> {
       if (mounted) setState(() => error = '無法讀取快取');
     } finally {
       if (mounted) setState(() => loading = false);
+    }
+    if (mounted && snapshots.isEmpty && error == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted || ModalRoute.of(context)?.isCurrent != true) return;
+        await open(keyName: 'statistics');
+        if (!mounted || !snapshots.containsKey('statistics')) return;
+        await open(keyName: 'list');
+      });
     }
   }
 
@@ -74,6 +83,7 @@ class _LeaveScreenState extends State<LeaveScreen> {
             session: session,
             navigationScript: leaveMenuNavigation(
               application || keyName == 'statistics',
+              agreeForStatistics: keyName == 'statistics',
             ),
             extractScript: application
                 ? null
@@ -228,25 +238,27 @@ class _LeaveScreenState extends State<LeaveScreen> {
                           '${total ?? '-'} 節',
                           style: Theme.of(context).textTheme.headlineMedium,
                         ),
+                        const SizedBox(height: NiuSpacing.xs),
+                        Text(
+                          '本學期累計請假',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        const SizedBox(height: NiuSpacing.sm),
                         if (stats is Map)
                           RelativeUpdateText(
                             updatedAt: DateTime.tryParse(
                               '${stats['updatedAt']}',
                             ),
                           ),
-                        Wrap(
-                          spacing: NiuSpacing.lg,
-                          runSpacing: NiuSpacing.sm,
-                          children: [
-                            for (final e in periods.entries)
-                              Text('${e.key} ${e.value}'),
-                          ],
-                        ),
-                        TextButton(
+                        const SizedBox(height: NiuSpacing.xl),
+                        LeaveTypeStatistics(periods: periods),
+                        const SizedBox(height: NiuSpacing.md),
+                        TextButton.icon(
                           onPressed: busy
                               ? null
                               : () => open(keyName: 'statistics'),
-                          child: const Text('更新統計'),
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('更新統計'),
                         ),
                       ],
                     ),
@@ -301,7 +313,16 @@ class _LeaveScreenState extends State<LeaveScreen> {
                       ],
                     ),
                   ],
-                  if (records.isEmpty) Text(list == null ? '尚未同步' : '目前沒有紀錄'),
+                  if (records.isEmpty)
+                    NiuEmptyState(
+                      title: list == null ? '尚未同步請假紀錄' : '目前沒有請假紀錄',
+                      message: list == null ? '更新後即可查看請假申請與狀態。' : '可更新查看最新紀錄。',
+                      icon: Icons.event_note_outlined,
+                      action: TextButton(
+                        onPressed: busy ? null : () => open(keyName: 'list'),
+                        child: const Text('更新紀錄'),
+                      ),
+                    ),
                   for (final raw in records)
                     Padding(
                       padding: const EdgeInsets.only(bottom: NiuSpacing.md),
@@ -329,17 +350,7 @@ class _LeaveScreenState extends State<LeaveScreen> {
                             ),
                           );
                         },
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '${raw['請假類別']} · ${raw['審核結果']}',
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                            Text('${raw['請假起日']}–${raw['請假訖日']}'),
-                            Text('${raw['請假總節數']} 節'),
-                          ],
-                        ),
+                        child: LeaveRecordContent(record: raw),
                       ),
                     ),
                 ],

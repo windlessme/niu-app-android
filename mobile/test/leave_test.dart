@@ -1,13 +1,68 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:niu_mobile/core/session/campus_session.dart';
 import 'package:niu_mobile/features/leave/leave_repository.dart';
 import 'package:niu_mobile/features/leave/leave_screen.dart';
+import 'package:niu_mobile/features/leave/leave_widgets.dart';
 import 'package:niu_mobile/shared/shared.dart';
 import 'features/authentication_session_test.dart' show MemoryVault;
 
 void main() {
+  test('statistics agrees once; application still requires interaction', () {
+    final result = Process.runSync('node', [
+      '-e',
+      '''
+const assert=require('node:assert/strict');let clicks=0;
+const button={value:'同意',disabled:false,click:()=>clicks++};
+const doc={location:{href:'https://acade.niu.edu.tw/NIU/Application/SEC/SEC20/SEC2010_02.aspx'},getElementById:()=>button};
+global.window={document:doc,frames:[]};
+assert.equal(eval(${jsonEncode(leaveMenuNavigation(true))}), 'interaction-required');
+assert.equal(clicks,0);
+const script=${jsonEncode(leaveMenuNavigation(true, agreeForStatistics: true))};
+assert.equal(eval(script),null);eval(script);assert.equal(clicks,1);
+''',
+    ]);
+    expect(result.exitCode, 0, reason: result.stderr.toString());
+  });
+  for (final dark in [false, true]) {
+    testWidgets('long leave categories wrap with semantic counts dark=$dark', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(320, 700);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final semantics = tester.ensureSemantics();
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: dark ? NiuTheme.dark : NiuTheme.light,
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: const TextScaler.linear(2)),
+            child: child!,
+          ),
+          home: const Scaffold(
+            body: SingleChildScrollView(
+              child: Padding(
+                padding: EdgeInsets.all(NiuSpacing.xl),
+                child: LeaveTypeStatistics(
+                  periods: {'公假': '1', '產假（產前假／陪產假／流產假／哺乳假）': '0', '病假': '0'},
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(find.bySemanticsLabel('公假 1 節'), findsOneWidget);
+      expect(find.text('0'), findsNWidgets(2));
+      expect(tester.takeException(), isNull);
+      semantics.dispose();
+      await tester.pumpWidget(const SizedBox());
+    });
+  }
   final snapshots = <String, dynamic>{
     'statistics': {
       'updatedAt': '2026-09-29T00:00:00Z',

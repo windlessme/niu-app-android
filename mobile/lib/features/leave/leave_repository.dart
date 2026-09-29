@@ -115,14 +115,26 @@ final leaveQuery = Uri.parse(
   'https://acade.niu.edu.tw/NIU/Application/SEC/SEC40/SEC4030_01.aspx',
 );
 
-String leaveMenuNavigation(bool application) =>
+String leaveMenuNavigation(
+  bool application, {
+  bool agreeForStatistics = false,
+}) =>
     '''
 (() => {
  const docs=[];function collect(w){try{docs.push(w.document);for(let i=0;i<w.frames.length;i++)collect(w.frames[i]);}catch(_){}}collect(window);
  for(const d of docs){
   const path=new URL(d.location.href).pathname;
   if(path.includes('/SEC/')) {
-   if(path.endsWith('/SEC2010_02.aspx'))return 'interaction-required';
+   if(path.endsWith('/SEC2010_02.aspx')) {
+     if(${agreeForStatistics ? 'true' : 'false'}) {
+       const button=d.getElementById('SAVE_BTN2');
+       if(button && button.value==='同意' && !button.disabled && !d.__niuLeaveAgreed) {
+         d.__niuLeaveAgreed=true;button.click();
+       }
+       return null;
+     }
+     return 'interaction-required';
+   }
    if(!${application ? 'true' : 'false'} && path.endsWith('/SEC4030_01.aspx'))return 'ready';
    return 'ready';
   }
