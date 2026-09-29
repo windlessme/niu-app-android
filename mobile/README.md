@@ -3,7 +3,7 @@
 Flutter SDK: **3.47.5**, Java **17**, Android SDK **36**.
 Android build: AGP **8.11.1**, Gradle **8.14.3**, Kotlin **2.2.20**.
 AGP 9 is not yet compatible with the selected InAppWebView Android package;
-see the build decision in `../docs/android-development-progress.md`.
+see the build decision in `../docs/android-flutter-architecture.md`.
 Flutter currently accepts this combination but prints future-support warnings.
 
 ## Run
@@ -79,5 +79,4 @@ currently authenticated student's enrollment certificate. Certificate bytes must
 pass PDF validation before preview/export; private documents never enter the
 public APK download directory.
 
-See `../docs/android-flutter-architecture.md` and
-`../docs/android-flutter-roadmap.md` for the implementation plan.
+See [architecture and maintenance notes](../docs/android-flutter-architecture.md).
