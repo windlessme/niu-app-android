@@ -22,7 +22,7 @@ class RegistrationData {
 
   static String display(dynamic value) {
     final text = value?.toString().trim() ?? '';
-    return text.isEmpty || text.toLowerCase() == 'null' ? '校方未提供' : text;
+    return text.isEmpty || text.toLowerCase() == 'null' ? '-' : text;
   }
 }
 

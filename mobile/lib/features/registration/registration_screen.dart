@@ -104,13 +104,11 @@ class RegistrationDashboard extends StatelessWidget {
   Widget build(BuildContext context) => ListView(
     padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
     children: [
-      const SectionHeader(title: '在學證明', subtitle: '由校方產生目前登入帳號的 PDF'),
+      const SectionHeader(title: '在學證明'),
       AppCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('瀏覽會以手機上的 PDF 閱讀程式開啟；下載可自行選擇儲存位置。'),
-            const SizedBox(height: 12),
             Wrap(
               spacing: 12,
               runSpacing: 8,
@@ -138,7 +136,7 @@ class RegistrationDashboard extends StatelessWidget {
                   ],
                 ),
               ),
-            if (!data.printable) const Text('校方目前未提供可用的在學證明列印資格。'),
+            if (!data.printable) const Text('暫無可用證明'),
           ],
         ),
       ),
@@ -180,10 +178,6 @@ class RegistrationDashboard extends StatelessWidget {
           ),
         ),
       ],
-      const Padding(
-        padding: EdgeInsets.only(top: 16),
-        child: Text('資訊依校方頁面原文顯示。未提供的明細不代表已繳清或已完成；如有疑問，請查看資料來源或洽註冊組。'),
-      ),
     ],
   );
 }
