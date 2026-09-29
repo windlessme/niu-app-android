@@ -1,0 +1,10 @@
+{
+  "metadata": {
+    "observedDate": "2026-09-29",
+    "observationWindowUTC": "06:37–06:38",
+    "method": "functions.webfetch(format=text)",
+    "verification": "tool-observed; not direct authenticated verification",
+    "url": "https://tdx.transportdata.tw/api/basic/v2/Bus/Route/City/YilanCounty?$filter=RouteName/Zh_tw%20eq%20'1786'%20or%20RouteName/Zh_tw%20eq%20'751'%20or%20RouteName/Zh_tw%20eq%20'753'%20or%20RouteName/Zh_tw%20eq%20'771'&$select=RouteUID,RouteName,BusRouteType&$format=JSON"
+  },
+  "response": [{"RouteUID":"ILA0751","HasSubRoutes":true,"BusRouteType":11,"RouteName":{"Zh_tw":"751","En":"751"},"UpdateTime":"2026-09-29T09:58:11+08:00","VersionID":7740},{"RouteUID":"ILA0753","HasSubRoutes":true,"BusRouteType":11,"RouteName":{"Zh_tw":"753","En":"753"},"UpdateTime":"2026-09-29T09:58:11+08:00","VersionID":7740},{"RouteUID":"ILA0771","HasSubRoutes":true,"BusRouteType":11,"RouteName":{"Zh_tw":"771","En":"771"},"UpdateTime":"2026-09-29T09:58:11+08:00","VersionID":7740},{"RouteUID":"ILA0786","HasSubRoutes":true,"BusRouteType":11,"RouteName":{"Zh_tw":"1786","En":"1786"},"UpdateTime":"2026-09-29T09:58:11+08:00","VersionID":7740}]
+}

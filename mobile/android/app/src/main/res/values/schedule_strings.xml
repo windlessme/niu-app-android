@@ -1,0 +1,5 @@
+<resources>
+    <string name="shortcut_attendance">出缺席</string>
+    <string name="shortcut_library">圖書館</string>
+    <string name="widget_description">宜大今日課表，點一下開啟完整課表</string>
+</resources>

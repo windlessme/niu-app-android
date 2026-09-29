@@ -1,0 +1,22 @@
+<!doctype html>
+<meta charset="utf-8">
+<!-- Minimal DOM reconstructed from public Angular chunk 460.9af1b342e1d754d8.js.
+     See docs/sso-login-capture-findings.md. All values are synthetic. -->
+<form class="login-form">
+  <input type="text" id="username" formControlName="username" required>
+  <input type="password" id="password" formControlName="password" required>
+  <button type="button" id="show-password">Show password</button>
+  <app-turnstile-widget></app-turnstile-widget>
+  <button type="submit" class="btn btn-primary btn-login w-100" disabled>
+    <span id="login-label">登 入</span>
+  </button>
+</form>
+<input id="fido2-account">
+<input type="password" id="cert-pin">
+<script>
+  // Local-only fixture: never sends a request or simulates a CAPTCHA solution.
+  document.querySelector('form').addEventListener('submit', e => e.preventDefault());
+  document.querySelector('#show-password').onclick = () => {
+    document.querySelector('#password').type = 'text';
+  };
+</script>
