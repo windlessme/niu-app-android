@@ -38,13 +38,19 @@ jobs:
         with:
           script: |
             const repo = context.repo;
-            const numbers = context.eventName === 'push'
-              ? (await github.paginate(github.rest.pulls.list, {...repo, state: 'open', base: 'main', per_page: 100})).map(pr => pr.number)
-              : [Number(process.env.PR_NUMBER)];
-            for (const number of numbers) {
-              if (!Number.isSafeInteger(number) || number <= 0) throw new Error('Invalid PR number');
-              await verify(number);
+            // Concurrency can replace queued runs. Every surviving event must
+            // reconcile all open PRs, not only the event's own PR.
+            if (context.eventName === 'workflow_dispatch' &&
+                (!Number.isSafeInteger(Number(process.env.PR_NUMBER)) || Number(process.env.PR_NUMBER) <= 0)) {
+              throw new Error('Invalid PR number');
             }
+            const numbers = (await github.paginate(github.rest.pulls.list, {...repo, state: 'open', base: 'main', per_page: 100})).map(pr => pr.number);
+            const failures = [];
+            for (const number of numbers) {
+              try { await verify(number); }
+              catch (error) { failures.push(number); core.error(`Review reconciliation failed for PR ${number}: ${error.message}`); }
+            }
+            if (failures.length) core.setFailed(`Unable to reconcile PRs: ${failures.join(', ')}`);
             async function verify(number) {
             const {data: pr} = await github.rest.pulls.get({...repo, pull_number: number});
             if (pr.state !== 'open' || pr.base.ref !== 'main') return;
