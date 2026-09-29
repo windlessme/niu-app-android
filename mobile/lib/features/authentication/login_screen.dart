@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:collection';
 import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+
 import '../../core/session/campus_session.dart';
 import '../../core/web/portal_policy.dart';
 import '../../shared/shared.dart';
@@ -168,26 +170,33 @@ class _LoginScreenState extends State<LoginScreen> {
           if (mounted) setState(() => error = '已登入，但無法安全記住帳密。');
         }
         if (mounted) setState(() => connectingServices = true);
-        try {
-          await MoodleLoginService(session).establish(
-            account: credentials.account,
-            password: credentials.password,
-            epoch: epoch,
-          );
-        } catch (_) {
-          // SSO remains valid when Moodle requires its own visible challenge.
-          // No raw password is retained for a background retry.
-        }
-        try {
-          await EventLoginService().establish(
-            credentials.account,
-            credentials.password,
-            session,
-            epoch,
-          );
-        } catch (_) {
-          // Keep verified SSO usable; the event page exposes reconnect if needed.
-        }
+        // Independent services can connect concurrently after SSO verification.
+        // Each failure remains local; neither invalidates the verified SSO login.
+        await Future.wait<void>([
+          () async {
+            try {
+              await MoodleLoginService(session).establish(
+                account: credentials.account,
+                password: credentials.password,
+                epoch: epoch,
+              );
+            } catch (_) {
+              // The visible Moodle flow handles any required interaction.
+            }
+          }(),
+          () async {
+            try {
+              await EventLoginService().establish(
+                credentials.account,
+                credentials.password,
+                session,
+                epoch,
+              );
+            } catch (_) {
+              // The event page exposes reconnect if needed.
+            }
+          }(),
+        ]);
       }
       session.coordinator.requireCurrent(epoch);
       if (!mounted) return;

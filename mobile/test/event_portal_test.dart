@@ -4,8 +4,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart' as web;
 import 'package:html/parser.dart' as html;
 import 'package:niu_mobile/core/web/event_cookie_store.dart';
+import 'package:niu_mobile/core/session/campus_session.dart';
 import 'package:niu_mobile/features/events/event_login_service.dart';
 import 'package:niu_mobile/features/events/event_portal.dart';
+import 'features/authentication_session_test.dart' show MemoryVault;
 
 void node(String source) {
   final result = Process.runSync('node', ['-e', source]);
@@ -13,6 +15,26 @@ void node(String source) {
 }
 
 void main() {
+  test(
+    'restored event entry goes directly to the requested protected page',
+    () async {
+      final session = CampusSession(vault: MemoryVault())..account = 'b123';
+      expect(
+        await eventPortalEntry(session, target: eventVerificationUri),
+        eventVerificationUri,
+      );
+      final action = Uri.parse(
+        'https://ccsys.niu.edu.tw/MvcTeam/Act/Apply/fixture',
+      );
+      expect(await eventPortalEntry(session, target: action), action);
+      await expectLater(
+        eventPortalEntry(session, target: Uri.parse('https://example.com/')),
+        throwsArgumentError,
+      );
+      session.dispose();
+    },
+  );
+
   test(
     'public form contract preserves CSRF, encoding and protected return URL',
     () {
@@ -76,6 +98,9 @@ const script = ${jsonEncode(script)};
 const detail = ${jsonEncode(detail)};
 global.document = {readyState: 'complete', body: {innerText: '活動列表'}, querySelector: () => null};
 global.location = {href: 'https://ccsys.niu.edu.tw/MvcTeam/Account/Login?GUID=old-speculation'};
+document.location = location;
+document.querySelectorAll = () => [];
+global.window = {document, frames: []};
 assert.equal(eval(script), 'login-required');
 location.href = 'https://ccsys.niu.edu.tw/MvcTeam/Act';
 assert.equal(eval(script), 'https://ccsys.niu.edu.tw/MvcTeam/Act/ApplyMe');

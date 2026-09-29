@@ -1,13 +1,16 @@
 import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
 import '../network/school_clients.dart';
 import '../platform/schedule_gateway.dart';
 import '../storage/credential_vault.dart';
 import 'session_coordinator.dart';
 import 'cached_schedule.dart';
+import 'cached_graduation.dart';
 
 /// One owner for all school WebViews, credentials, and logout generations.
 class CampusSession extends ChangeNotifier {
@@ -30,10 +33,37 @@ class CampusSession extends ChangeNotifier {
   Future<void>? _revalidation;
   bool cleanupPending = false;
   CachedSchedule? cachedSchedule;
+  CachedGraduation? cachedGraduation;
   Future<void>? _cacheWrite;
+  Future<void>? _graduationWrite;
+  int _graduationRevision = 0;
   final Set<Future<void> Function()> _cleanup = {};
   String? account;
   String? _token;
+  int? _academicEpoch;
+  String? _academicAccount;
+
+  /// A successful protected-page read permits reusing the shared WebView cookies.
+  /// This is only a routing hint: an expired page still requires a fresh bridge.
+  bool get hasAcademicSession =>
+      isSignedIn &&
+      !cleanupPending &&
+      _academicEpoch == coordinator.epoch &&
+      _academicAccount == account;
+
+  void confirmAcademicSession(int epoch) {
+    coordinator.requireCurrent(epoch);
+    if (!isSignedIn) return;
+    _academicEpoch = epoch;
+    _academicAccount = account;
+  }
+
+  void invalidateAcademicSession(int epoch) {
+    coordinator.requireCurrent(epoch);
+    _academicEpoch = null;
+    _academicAccount = null;
+  }
+
   Map<String, dynamic> profile = {};
   Future<void>? _restore;
   Future<void>? _persist;
@@ -58,6 +88,7 @@ class CampusSession extends ChangeNotifier {
     await recoverCleanup();
     final epoch = coordinator.epoch;
     final identityGeneration = _identityGeneration;
+    final graduationRevision = _graduationRevision;
     final savedAccount = await vault.read('ssoAccount');
     final savedToken = await vault.read('ssoToken');
     if (savedAccount == null || savedToken == null) return;
@@ -73,6 +104,20 @@ class CampusSession extends ChangeNotifier {
         );
       }
     } catch (_) {}
+    CachedGraduation? graduation;
+    try {
+      final raw = await vault.read('graduationCache');
+      if (raw != null && raw.isNotEmpty) {
+        final restored = CachedGraduation.fromJson(
+          jsonDecode(raw) as Map<String, dynamic>,
+        );
+        if (restored.account == savedAccount) graduation = restored;
+      }
+    } catch (_) {
+      // A damaged optional cache must not block restoration of other services.
+    }
+    coordinator.requireCurrent(epoch);
+    if (identityGeneration != _identityGeneration) return;
     try {
       final verified = await sso.verifyIdentity(savedToken, savedAccount);
       coordinator.requireCurrent(epoch);
@@ -83,6 +128,9 @@ class CampusSession extends ChangeNotifier {
       isOffline = false;
       ssoNeedsReauthentication = false;
       cachedSchedule = schedule?.account == savedAccount ? schedule : null;
+      if (graduationRevision == _graduationRevision) {
+        cachedGraduation = graduation;
+      }
       notifyListeners();
     } catch (error) {
       coordinator.requireCurrent(epoch);
@@ -104,6 +152,9 @@ class CampusSession extends ChangeNotifier {
         profile = {};
       }
       cachedSchedule = schedule?.account == savedAccount ? schedule : null;
+      if (graduationRevision == _graduationRevision) {
+        cachedGraduation = graduation;
+      }
       notifyListeners();
     }
   }
@@ -240,6 +291,38 @@ class CampusSession extends ChangeNotifier {
     }
   }
 
+  Future<void> cacheGraduationData(
+    Map<String, dynamic> data, {
+    required int epoch,
+    required String owner,
+  }) async {
+    void guard() {
+      coordinator.requireCurrent(epoch);
+      if (!isSignedIn || account != owner) throw SessionChanged();
+    }
+
+    guard();
+    final cached = CachedGraduation(
+      account: owner,
+      fetchedAt: DateTime.now(),
+      data: data,
+    );
+    final previous = _graduationWrite;
+    final task = () async {
+      try {
+        await previous;
+      } catch (_) {}
+      guard();
+      await vault.write('graduationCache', jsonEncode(cached.toJson()));
+      guard();
+      cachedGraduation = cached;
+      _graduationRevision++;
+      notifyListeners();
+    }();
+    _graduationWrite = task;
+    await task;
+  }
+
   Future<void> logout() => coordinator.logout(() async {
     cleanupPending = true;
     _identityGeneration++;
@@ -248,6 +331,7 @@ class CampusSession extends ChangeNotifier {
     profile = {};
     _restore = null;
     cachedSchedule = null;
+    cachedGraduation = null;
     isOffline = false;
     ssoNeedsReauthentication = false;
     notifyListeners();
@@ -273,6 +357,9 @@ class CampusSession extends ChangeNotifier {
     }
     try {
       await _cacheWrite;
+    } catch (_) {}
+    try {
+      await _graduationWrite;
     } catch (_) {}
     for (final cleanup in List.of(_cleanup)) {
       await attempt(cleanup);

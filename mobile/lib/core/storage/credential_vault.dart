@@ -19,6 +19,7 @@ class DeviceCredentialVault implements CredentialVault {
     'moodleSession',
     'eventSession',
     'scheduleCache',
+    'graduationCache',
     'rememberedSchoolLogin',
     'pendingCleanup',
   ];
