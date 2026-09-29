@@ -11,7 +11,7 @@ class LeaveTypeStatistics extends StatelessWidget {
       final colors = NiuColors.of(context);
       // Measure a readable label width using the actual theme and text scale.
       final measure = TextPainter(
-        text: TextSpan(text: '期中、期末考試假', style: text.bodyMedium),
+        text: TextSpan(text: '期中、期末', style: text.bodySmall),
         textDirection: Directionality.of(context),
         textScaler: MediaQuery.textScalerOf(context),
       )..layout();
@@ -20,12 +20,12 @@ class LeaveTypeStatistics extends StatelessWidget {
       final columns =
           ((constraints.maxWidth + NiuSpacing.lg) / (minimum + NiuSpacing.lg))
               .floor()
-              .clamp(1, 3);
+              .clamp(1, 2);
       final width =
           (constraints.maxWidth - (columns - 1) * NiuSpacing.lg) / columns;
       return Wrap(
         spacing: NiuSpacing.lg,
-        runSpacing: NiuSpacing.lg,
+        runSpacing: NiuSpacing.sm,
         children: [
           for (final entry in periods.entries)
             SizedBox(
@@ -36,14 +36,21 @@ class LeaveTypeStatistics extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      entry.key,
-                      style: text.bodyMedium?.copyWith(color: colors.secondary),
+                    Tooltip(
+                      message: entry.key,
+                      child: Text(
+                        entry.key,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: text.bodySmall?.copyWith(
+                          color: colors.secondary,
+                        ),
+                      ),
                     ),
                     const SizedBox(height: NiuSpacing.xs),
                     Text(
                       '${entry.value}',
-                      style: text.titleLarge?.copyWith(
+                      style: text.titleMedium?.copyWith(
                         color: (int.tryParse('${entry.value}') ?? 0) > 0
                             ? colors.accent
                             : colors.secondary,

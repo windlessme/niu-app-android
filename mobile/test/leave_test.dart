@@ -96,6 +96,80 @@ assert.equal(eval(script),null);eval(script);assert.equal(clicks,1);
     );
   });
   for (final dark in [false, true]) {
+    for (final inset in [24.0, 48.0]) {
+      testWidgets('pagination clears system inset $inset dark=$dark', (
+        tester,
+      ) async {
+        tester.view.physicalSize = const Size(320, 568);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final vault = MemoryVault()
+          ..values['leaveCache'] = jsonEncode({
+            'version': 1,
+            'account': 'b123',
+            'snapshots': {
+              ...snapshots,
+              'list': {
+                'updatedAt': '2026-09-29T00:00:00Z',
+                'data': {
+                  'records': [],
+                  'page': '1',
+                  'pages': '1',
+                  'total': '0',
+                },
+              },
+            },
+          });
+        final session = CampusSession(vault: vault)..account = 'b123';
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: dark ? NiuTheme.dark : NiuTheme.light,
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(
+                textScaler: const TextScaler.linear(2),
+                padding: EdgeInsets.only(bottom: inset),
+                viewPadding: EdgeInsets.only(bottom: inset),
+                systemGestureInsets: EdgeInsets.only(bottom: inset),
+              ),
+              child: child!,
+            ),
+            home: LeaveScreen(session: session),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final scroll = find.byType(Scrollable).first;
+        await tester.scrollUntilVisible(
+          find.text('下一頁'),
+          100,
+          scrollable: scroll,
+        );
+        expect(
+          tester
+              .widget<TextButton>(find.widgetWithText(TextButton, '上一頁'))
+              .onPressed,
+          isNull,
+        );
+        expect(
+          tester
+              .widget<TextButton>(find.widgetWithText(TextButton, '下一頁'))
+              .onPressed,
+          isNull,
+        );
+        final position = tester.state<ScrollableState>(scroll).position;
+        position.jumpTo(position.maxScrollExtent);
+        await tester.pump();
+        final last = find.widgetWithText(TextButton, '更新紀錄');
+        expect(
+          tester.getBottomRight(last).dy,
+          lessThanOrEqualTo(568 - inset - NiuSpacing.xxl),
+        );
+        expect(tester.getSize(last).height, greaterThanOrEqualTo(48));
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+        session.dispose();
+      });
+    }
     testWidgets('cached leave dashboard fits small screen dark=$dark', (
       tester,
     ) async {
