@@ -332,6 +332,7 @@ class CampusHomeScreen extends StatelessWidget {
                           CupertinoIcons.doc_text,
                           '/registration',
                         ),
+                        ('學生請假', '申請・紀錄', CupertinoIcons.calendar, '/leave'),
                       ])
                         SizedBox(
                           width: width,
