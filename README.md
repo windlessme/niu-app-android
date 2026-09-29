@@ -4,6 +4,13 @@
 
 本專案以 [qian403/NIU-app](https://github.com/qian403/NIU-app) 的 iOS 開源實作、功能與 Design System 為參考，採獨立 Android repository 維護。與國立宜蘭大學並無隸屬、合作或授權關係；校務資訊及操作結果以學校系統為準。
 
+## 維護文件
+
+- [架構與維護](docs/android-flutter-architecture.md)
+- [Android 隱私政策](docs/android-privacy-policy.md)
+- [校務登入頁來源與測試](docs/sso-login-capture-findings.md)
+- [在學證明裝置驗收](docs/registration-device-checks.md)
+
 ## 功能
 
 - 課表與離線快取、逐節顯示、桌面小工具、提醒與行事曆匯出。
