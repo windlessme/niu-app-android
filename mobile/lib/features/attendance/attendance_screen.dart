@@ -217,20 +217,11 @@ class _AttendanceRecordsState extends State<AttendanceRecords> {
   }
 
   Color statusColor(AttendanceStatus status) => switch (status) {
-    AttendanceStatus.present =>
-      Theme.of(context).brightness == Brightness.dark
-          ? Colors.green.shade300
-          : Colors.green.shade800,
-    AttendanceStatus.late =>
-      Theme.of(context).brightness == Brightness.dark
-          ? Colors.amber.shade300
-          : Colors.brown.shade700,
-    AttendanceStatus.absent => Theme.of(context).colorScheme.error,
-    AttendanceStatus.leave =>
-      Theme.of(context).brightness == Brightness.dark
-          ? Colors.blue.shade300
-          : Colors.blue.shade800,
-    AttendanceStatus.pending => Theme.of(context).colorScheme.onSurfaceVariant,
+    AttendanceStatus.present => NiuColors.of(context).success,
+    AttendanceStatus.late => NiuColors.of(context).warning,
+    AttendanceStatus.absent => NiuColors.of(context).error,
+    AttendanceStatus.leave => NiuColors.of(context).info,
+    AttendanceStatus.pending => NiuColors.of(context).secondary,
   };
   String statusText(AttendanceStatus status) => switch (status) {
     AttendanceStatus.present => '出席',
@@ -274,10 +265,9 @@ class _AttendanceRecordsState extends State<AttendanceRecords> {
         onRefresh: retry,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(NiuSpacing.xl),
           children: [
             FilledButton.icon(
-              style: FilledButton.styleFrom(minimumSize: const Size(48, 48)),
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
                   builder: (_) =>
@@ -293,12 +283,10 @@ class _AttendanceRecordsState extends State<AttendanceRecords> {
                 child: Text('這門課尚未提供點名活動。'),
               ),
             for (final section in snapshot.data!)
-              Card(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
+              Padding(
+                padding: const EdgeInsets.only(top: NiuSpacing.lg),
+                child: AppCard(
+                  padding: const EdgeInsets.all(NiuSpacing.xl),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -307,15 +295,16 @@ class _AttendanceRecordsState extends State<AttendanceRecords> {
                         style: Theme.of(context).textTheme.titleMedium,
                       ),
                       if (section.records.isNotEmpty) ...[
-                        const SizedBox(height: 12),
+                        const SizedBox(height: NiuSpacing.lg),
                         Wrap(
-                          spacing: 12,
-                          runSpacing: 8,
+                          spacing: NiuSpacing.lg,
+                          runSpacing: NiuSpacing.md,
                           children: [
                             for (final status in AttendanceStatus.values)
                               Text(
                                 '${statusText(status)} ${section.records.where((r) => r.status == status).length}',
-                                style: TextStyle(color: statusColor(status)),
+                                style: Theme.of(context).textTheme.labelLarge
+                                    ?.copyWith(color: statusColor(status)),
                               ),
                           ],
                         ),
@@ -337,7 +326,7 @@ class _AttendanceRecordsState extends State<AttendanceRecords> {
                         const Text('目前所有上課時段皆尚未點名，可查看校方完整紀錄確認。'),
                       TextButton(
                         style: TextButton.styleFrom(
-                          minimumSize: const Size(48, 48),
+                          foregroundColor: NiuColors.of(context).secondary,
                         ),
                         onPressed: () async {
                           await Navigator.of(context).push(
@@ -358,22 +347,59 @@ class _AttendanceRecordsState extends State<AttendanceRecords> {
                         child: const Text('查看校方完整紀錄'),
                       ),
                       for (final record in section.records)
-                        ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(record.date),
-                          subtitle: Text(
-                            '${statusText(record.status)}${record.label != statusText(record.status) ? '（${record.label}）' : ''}\n${record.description}\n${record.remarks}'
-                                .trim(),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: NiuSpacing.md,
                           ),
-                          leading: Icon(switch (record.status) {
-                            AttendanceStatus.present =>
-                              Icons.check_circle_outline,
-                            AttendanceStatus.late => Icons.watch_later_outlined,
-                            AttendanceStatus.absent => Icons.cancel_outlined,
-                            AttendanceStatus.leave =>
-                              Icons.event_available_outlined,
-                            AttendanceStatus.pending => Icons.schedule,
-                          }, color: statusColor(record.status)),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${statusText(record.status)}${record.label != statusText(record.status) ? '（${record.label}）' : ''}',
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(
+                                      color: statusColor(record.status),
+                                    ),
+                              ),
+                              const SizedBox(height: NiuSpacing.sm),
+                              ...attendanceDateLines(record.date).indexed.map(
+                                (line) => Text(
+                                  line.$2,
+                                  style: line.$1 == 0
+                                      ? Theme.of(context).textTheme.bodyLarge
+                                      : Theme.of(
+                                          context,
+                                        ).textTheme.bodyMedium?.copyWith(
+                                          color: NiuColors.of(
+                                            context,
+                                          ).secondary,
+                                        ),
+                                ),
+                              ),
+                              if (record.description.trim().isNotEmpty) ...[
+                                const SizedBox(height: NiuSpacing.xs),
+                                Text(
+                                  record.description.replaceAll(
+                                    RegExp(r'QR code', caseSensitive: false),
+                                    'QR Code',
+                                  ),
+                                  style: Theme.of(context).textTheme.bodyMedium,
+                                ),
+                              ],
+                              if (record.remarks.trim().isNotEmpty) ...[
+                                const SizedBox(height: NiuSpacing.sm),
+                                Text(
+                                  record.remarks.trim() == '自行紀錄的'
+                                      ? '來源：自行記錄'
+                                      : record.remarks,
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        color: NiuColors.of(context).secondary,
+                                      ),
+                                ),
+                              ],
+                            ],
+                          ),
                         ),
                     ],
                   ),
@@ -384,4 +410,24 @@ class _AttendanceRecordsState extends State<AttendanceRecords> {
       );
     },
   );
+}
+
+/// Presentation only; preserve unfamiliar school date strings verbatim.
+List<String> attendanceDateLines(String source) {
+  final match = RegExp(
+    r'^(\d{4})[/-](\d{1,2})[/-](\d{1,2})\s+(\d{1,2}:\d{2}(?:\s*[-–~]\s*\d{1,2}:\d{2})?)$',
+  ).firstMatch(source.trim());
+  if (match == null) return [source];
+  final year = int.parse(match[1]!);
+  final month = int.parse(match[2]!);
+  final day = int.parse(match[3]!);
+  final date = DateTime.utc(year, month, day);
+  if (date.year != year || date.month != month || date.day != day) {
+    return [source];
+  }
+  const weekdays = ['一', '二', '三', '四', '五', '六', '日'];
+  return [
+    '$year/${month.toString().padLeft(2, '0')}/${day.toString().padLeft(2, '0')}（週${weekdays[date.weekday - 1]}）',
+    match[4]!.replaceAll(RegExp(r'\s*[-–~]\s*'), '–'),
+  ];
 }
