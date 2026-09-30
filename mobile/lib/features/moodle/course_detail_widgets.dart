@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../shared/shared.dart';
 import 'moodle_repository.dart';
+import '../../shared/app_tab_button.dart';
 
 /// Each visited tab remains mounted, including its future and scroll position.
 class CourseDetailTabs extends StatefulWidget {
@@ -16,7 +17,6 @@ class _CourseDetailTabsState extends State<CourseDetailTabs> {
   static const labels = ['公告', '教材', '作業', '討論', '成績', '出席'];
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
     return Column(
       children: [
         SingleChildScrollView(
@@ -32,29 +32,21 @@ class _CourseDetailTabsState extends State<CourseDetailTabs> {
               for (final (index, label) in labels.indexed)
                 Padding(
                   padding: const EdgeInsets.only(right: NiuSpacing.sm),
-                  child: Semantics(
+                  child: AppTabButton(
                     selected: selected == index,
-                    child: TextButton(
-                      style: TextButton.styleFrom(
-                        minimumSize: const Size(64, 48),
-                        foregroundColor: selected == index
-                            ? colors.onPrimary
-                            : colors.onSurfaceVariant,
-                        backgroundColor: selected == index
-                            ? colors.primary
-                            : NiuColors.of(context).surface,
-                        textStyle: TextStyle(
-                          fontWeight: selected == index
-                              ? FontWeight.w700
-                              : FontWeight.w400,
-                        ),
-                      ),
-                      onPressed: () => setState(() {
-                        selected = index;
-                        visited.add(index);
-                      }),
-                      child: Text(label),
-                    ),
+                    label: label,
+                    icon: const [
+                      Icons.campaign_outlined,
+                      Icons.folder_outlined,
+                      Icons.assignment_outlined,
+                      Icons.forum_outlined,
+                      Icons.bar_chart,
+                      Icons.fact_check_outlined,
+                    ][index],
+                    onPressed: () => setState(() {
+                      selected = index;
+                      visited.add(index);
+                    }),
                   ),
                 ),
             ],

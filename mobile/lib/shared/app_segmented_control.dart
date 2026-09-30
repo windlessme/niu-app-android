@@ -20,7 +20,7 @@ class AppSegmentedControl<T extends Object> extends StatelessWidget {
   Widget build(BuildContext context) => CupertinoSlidingSegmentedControl<T>(
     groupValue: value,
     backgroundColor: NiuColors.of(context).surfaceSecondary,
-    thumbColor: NiuColors.of(context).selectedControlSurface,
+    thumbColor: NiuColors.of(context).accentSoft,
     children: segments.map(
       (key, child) => MapEntry(
         key,

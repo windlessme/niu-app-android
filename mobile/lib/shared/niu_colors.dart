@@ -53,7 +53,7 @@ class NiuColors extends ThemeExtension<NiuColors> {
     background: Color(0xffe8edf3),
     surface: Colors.white,
     elevated: Color(0xffcdd7e3),
-    controlSurface: Color(0xffd9e2ed),
+    controlSurface: Color(0xffe1e7ee),
     navSurface: Colors.white,
     softAccent: Color(0xffdbeaff),
     selectedControl: Colors.white,
@@ -67,6 +67,7 @@ class NiuColors extends ThemeExtension<NiuColors> {
     error: Color(0xffc83332),
   );
   static const dark = NiuColors(
+    controlSurface: Color(0xff242426),
     background: Colors.black,
     surface: Color(0xff1c1c1e),
     elevated: Color(0xff242426),
@@ -170,5 +171,12 @@ abstract final class NiuRadius {
       xlarge = 24,
       xxlarge = 32,
       pill = 999;
-  static const double card = xlarge, hero = xxlarge, control = medium;
+  static const double card = xlarge,
+      hero = 28,
+      compact = large,
+      control = medium;
+}
+
+abstract final class NiuSize {
+  static const double touchTarget = 48;
 }

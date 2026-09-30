@@ -89,10 +89,12 @@ class _MoodleAttachmentScreenState extends State<MoodleAttachmentScreen> {
         future: bytes,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return const Center(child: Text('無法下載附件，請返回後重試或重新登入。'));
+            return const SingleChildScrollView(
+              child: AppErrorState(message: '無法下載附件，請返回後重試或重新登入。'),
+            );
           }
           if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(child: AppLoadingState(message: '正在讀取附件…'));
           }
           final data = snapshot.data!;
           final path = Uri.parse(widget.url).path.toLowerCase();

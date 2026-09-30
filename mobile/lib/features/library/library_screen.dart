@@ -263,7 +263,7 @@ class _LibraryScreenState extends State<LibraryScreen>
     body: SafeArea(
       top: false,
       child: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(NiuSpacing.page),
         children: [
           AppSegmentedControl<LibraryCodeKind>(
             segments: const {
@@ -301,7 +301,7 @@ class _LibraryScreenState extends State<LibraryScreen>
                     key: const ValueKey('library-code-surface'),
                     color: Colors.white,
                     child: Padding(
-                      padding: const EdgeInsets.all(20),
+                      padding: const EdgeInsets.all(NiuSpacing.page),
                       child: Center(
                         child: Image.memory(
                           image!,
@@ -330,7 +330,7 @@ class _LibraryScreenState extends State<LibraryScreen>
             ),
           if (error != null)
             Padding(
-              padding: const EdgeInsets.only(top: 16),
+              padding: const EdgeInsets.only(top: NiuSpacing.lg),
               child: Semantics(
                 liveRegion: true,
                 child: Text(error!, textAlign: TextAlign.center),
@@ -338,7 +338,7 @@ class _LibraryScreenState extends State<LibraryScreen>
             ),
           if (updated != null)
             Padding(
-              padding: const EdgeInsets.only(top: 16),
+              padding: const EdgeInsets.only(top: NiuSpacing.lg),
               child: Text(
                 '最後更新：${formatTaipeiClock(updated!)}',
                 textAlign: TextAlign.center,

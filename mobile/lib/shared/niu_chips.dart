@@ -27,7 +27,7 @@ class NiuStatusChip extends StatelessWidget {
       excludeSemantics: true,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: color.withValues(alpha: .12),
+          color: palette.surfaceSecondary,
           borderRadius: BorderRadius.circular(NiuRadius.pill),
         ),
         child: Padding(

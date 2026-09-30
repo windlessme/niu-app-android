@@ -21,9 +21,9 @@ class CircleIconButton extends StatelessWidget {
     tooltip: tooltip,
     onPressed: onPressed,
     style: IconButton.styleFrom(
-      minimumSize: const Size(50, 50),
-      backgroundColor: NiuColors.of(context).accentSoft,
-      foregroundColor: NiuColors.of(context).accent,
+      minimumSize: const Size(NiuSize.touchTarget, NiuSize.touchTarget),
+      backgroundColor: NiuColors.of(context).surfaceSecondary,
+      foregroundColor: NiuColors.of(context).text,
     ),
     icon: Icon(icon, size: 21),
   );

@@ -73,7 +73,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       if (!data.belongsTo(session.account)) {
         return const Center(
           child: Padding(
-            padding: EdgeInsets.all(24),
+            padding: EdgeInsets.all(NiuSpacing.section),
             child: Text('查無可確認為本人的註冊資料，請重新整理或查看校方資料來源。'),
           ),
         );
@@ -102,7 +102,12 @@ class RegistrationDashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListView(
-    padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+    padding: const EdgeInsets.fromLTRB(
+      NiuSpacing.page,
+      NiuSpacing.sm,
+      NiuSpacing.page,
+      NiuSpacing.large,
+    ),
     children: [
       const SectionHeader(title: '在學證明'),
       AppCard(
@@ -127,7 +132,7 @@ class RegistrationDashboard extends StatelessWidget {
             ),
             if (busy)
               const Padding(
-                padding: EdgeInsets.only(top: 12),
+                padding: EdgeInsets.only(top: NiuSpacing.md),
                 child: Row(
                   children: [
                     CupertinoActivityIndicator(),
@@ -159,7 +164,7 @@ class RegistrationDashboard extends StatelessWidget {
                 '備註',
               ])
                 Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  padding: const EdgeInsets.symmetric(vertical: NiuSpacing.sm),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [

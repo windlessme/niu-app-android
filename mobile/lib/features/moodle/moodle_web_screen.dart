@@ -96,10 +96,12 @@ class _MoodleWebScreenState extends State<MoodleWebScreen> {
         future: entry,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return const Center(child: Text('無法建立 M 園區網頁登入，請返回重新登入。'));
+            return const SingleChildScrollView(
+              child: AppErrorState(message: '無法建立 M 園區網頁登入，請返回重新登入。'),
+            );
           }
           if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(child: AppLoadingState(message: '連線中…'));
           }
           return Column(
             children: [

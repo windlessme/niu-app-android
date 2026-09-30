@@ -150,7 +150,7 @@ class _AttendanceScannerScreenState extends State<AttendanceScannerScreen>
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(NiuSpacing.page),
             child: Column(
               children: [
                 if (error != null)
@@ -279,7 +279,7 @@ class _AttendanceRecordsState extends State<AttendanceRecords> {
             ),
             if (snapshot.data!.isEmpty)
               const Padding(
-                padding: EdgeInsets.all(24),
+                padding: EdgeInsets.all(NiuSpacing.section),
                 child: Text('這門課尚未提供點名活動。'),
               ),
             for (final section in snapshot.data!)
