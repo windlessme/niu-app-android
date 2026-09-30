@@ -74,6 +74,7 @@ class EventListCard extends StatelessWidget {
             (NiuIcons.time, event.time),
             (NiuIcons.location, event.location),
             (NiuIcons.person, event.people),
+            (Icons.check_rounded, event.credits.map((c) => c.label).join('、')),
           ])
             if (fact.$2.trim().isNotEmpty)
               Padding(
@@ -92,10 +93,6 @@ class EventListCard extends StatelessWidget {
                   ],
                 ),
               ),
-          if (event.hours.trim().isNotEmpty) ...[
-            const SizedBox(height: NiuSpacing.sm),
-            NiuTag(label: '認證 ${event.hours}', icon: Icons.verified_outlined),
-          ],
         ],
       ),
     );

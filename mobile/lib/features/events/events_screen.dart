@@ -9,6 +9,47 @@ import 'event_portal.dart';
 import 'event_actions.dart';
 import 'event_widgets.dart';
 
+/// One 多元認證 entry, e.g. 「專業進取（已認證，3 小時）」.
+class EventCredit {
+  const EventCredit(this.category, this.hours);
+  final String category;
+
+  /// 「3 小時」, or empty when the school gives no hours.
+  final String hours;
+
+  String get label =>
+      [category, hours].where((part) => part.isNotEmpty).join('　');
+
+  static final _entry = RegExp(r'([^（(、，,；;\n]*?)\s*[（(]([^）)]*)[）)]');
+  static final _hours = RegExp(r'(\d+(?:\.\d+)?)\s*(?:小時|hrs?|h)');
+
+  static String _hoursIn(String text) {
+    final match = _hours.firstMatch(text);
+    return match == null ? '' : '${match[1]} 小時';
+  }
+
+  static List<EventCredit> parse(String raw) {
+    final text = raw.trim();
+    if (text.isEmpty || text == '-' || text == '無') return const [];
+    final entries = _entry.allMatches(text).toList();
+    if (entries.isEmpty) {
+      final hours = _hoursIn(text);
+      final category = text
+          .replaceAll(_hours, '')
+          .replaceAll(RegExp(r'^認證\s*|[：:、，,\s]+$'), '')
+          .trim();
+      return [EventCredit(category, hours)];
+    }
+    return [
+      for (final m in entries)
+        EventCredit(
+          m[1]!.replaceAll(RegExp(r'^[\s、，,；;]+|^認證\s*'), '').trim(),
+          _hoursIn(m[2]!),
+        ),
+    ];
+  }
+}
+
 class CampusEvent {
   CampusEvent.fromJson(Map<String, dynamic> json)
     : id = json['id']?.toString() ?? '',
@@ -26,6 +67,9 @@ class CampusEvent {
       targets = json['targets']?.toString() ?? '',
       people = json['people']?.toString() ?? '';
   final String action, targets;
+
+  /// Parsed 多元認證 categories and hours.
+  late final List<EventCredit> credits = EventCredit.parse(hours);
   bool get canApply =>
       id.isNotEmpty &&
       !status.contains('已結束') &&
@@ -182,6 +226,9 @@ class _EventsScreenState extends State<EventsScreen> {
     );
   }
 
+  /// Selected 多元認證 category per tab; null shows every event.
+  final credits = <bool, String?>{};
+
   final queries = {
     false: TextEditingController(),
     true: TextEditingController(),
@@ -266,9 +313,24 @@ class _EventsScreenState extends State<EventsScreen> {
   Widget build(BuildContext context) {
     final events = snapshots[applied];
     final query = queries[applied]!.text.trim().toLowerCase();
-    final filtered = events
+    final visible = events
         ?.where((event) => applied || !registered(event))
-        .where((event) => event.matches(query))
+        .toList();
+    // Categories in the order the school lists them.
+    final categories = <String>{
+      for (final event in visible ?? const <CampusEvent>[])
+        for (final credit in event.credits)
+          if (credit.category.isNotEmpty) credit.category,
+    }.toList();
+    final credit = categories.contains(credits[applied])
+        ? credits[applied]
+        : null;
+    final filtered = visible
+        ?.where((event) => event.matches(query))
+        .where(
+          (event) =>
+              credit == null || event.credits.any((c) => c.category == credit),
+        )
         .toList();
     return NiuScrollPage(
       key: PageStorageKey('events-$applied'),
@@ -297,6 +359,17 @@ class _EventsScreenState extends State<EventsScreen> {
           hint: '搜尋活動名稱、編號、主辦單位或地點',
           onChanged: (_) => setState(() {}),
         ),
+        if (categories.isNotEmpty) ...[
+          const SizedBox(height: NiuSpacing.md),
+          NiuFilterBar<String?>(
+            options: [
+              (null, '全部認證'),
+              for (final category in categories) (category, category),
+            ],
+            value: credit,
+            onChanged: (value) => setState(() => credits[applied] = value),
+          ),
+        ],
         if (notices[applied] case final notice?) ...[
           const SizedBox(height: NiuSpacing.md),
           NiuBanner(tone: NiuTone.warning, message: notice),
@@ -306,7 +379,7 @@ class _EventsScreenState extends State<EventsScreen> {
           Padding(
             padding: const EdgeInsets.only(bottom: NiuSpacing.sm),
             child: Text(
-              query.isEmpty
+              query.isEmpty && credit == null
                   ? '${filtered.length} 個活動'
                   : '找到 ${filtered.length} 個活動',
               style: Theme.of(context).textTheme.labelMedium,
@@ -327,13 +400,17 @@ class _EventsScreenState extends State<EventsScreen> {
                 ),
         if (filtered != null && filtered.isEmpty)
           NiuEmpty(
-            icon: query.isNotEmpty ? NiuIcons.search : NiuIcons.events,
-            title: query.isNotEmpty
+            icon: query.isNotEmpty || credit != null
+                ? NiuIcons.search
+                : NiuIcons.events,
+            title: query.isNotEmpty || credit != null
                 ? '找不到符合的活動'
                 : applied
                 ? '目前沒有報名紀錄'
                 : '目前沒有開放的活動',
-            message: query.isNotEmpty
+            message: credit != null && query.isEmpty
+                ? '目前沒有「$credit」的活動。'
+                : query.isNotEmpty
                 ? '換個活動名稱、編號、主辦單位或地點試試。'
                 : applied
                 ? '在學校網頁報名後，同步一下就會出現。'
@@ -573,7 +650,12 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                 ('主辦單位', event.department),
                 ('活動時間', event.time),
                 ('活動地點', event.location),
-                ('認證時數', event.hours),
+                (
+                  '多元認證',
+                  event.credits.isEmpty
+                      ? event.hours
+                      : event.credits.map((c) => c.label).join('\n'),
+                ),
               ],
             ),
           ),
