@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/web/academic_portal_screen.dart';
 import '../../shared/shared.dart';
 import 'event_portal.dart';
+import 'event_actions.dart';
 import 'event_widgets.dart';
 
 class CampusEvent {
@@ -87,9 +89,19 @@ typedef EventActionBuilder =
     Widget Function(BuildContext context, CampusEvent event, bool applied);
 
 class EventsScreen extends StatefulWidget {
-  const EventsScreen({super.key, this.loaderBuilder, this.actionBuilder});
+  const EventsScreen({
+    super.key,
+    this.loaderBuilder,
+    this.actionBuilder,
+    this.actions,
+  });
   final EventLoaderBuilder? loaderBuilder;
+
+  /// School-page fallback for register / modify / cancel.
   final EventActionBuilder? actionBuilder;
+
+  /// Native register / modify / cancel; defaults to the hidden school page.
+  final EventActions? actions;
   @override
   State<EventsScreen> createState() => _EventsScreenState();
 }
@@ -167,6 +179,7 @@ class _EventsScreenState extends State<EventsScreen> {
           event: event,
           applied: applied,
           actionBuilder: widget.actionBuilder,
+          actions: widget.actions,
         ),
       ),
     );
@@ -298,18 +311,87 @@ class EventDetailScreen extends StatefulWidget {
     required this.event,
     this.applied = false,
     this.actionBuilder,
+    this.actions,
   });
   final CampusEvent event;
   final bool applied;
   final EventActionBuilder? actionBuilder;
+  final EventActions? actions;
   @override
   State<EventDetailScreen> createState() => _EventDetailScreenState();
 }
 
 class _EventDetailScreenState extends State<EventDetailScreen> {
   bool changed = false;
+  bool busy = false;
+  bool cancelled = false;
+  String? busyText;
+  EventActionResult? result;
+  late final EventActions actions = widget.actions ?? WebEventActions();
   CampusEvent get event => widget.event;
   bool get applied => widget.applied;
+
+  Future<void> perform(
+    String progress,
+    Future<EventActionResult> Function() action,
+  ) async {
+    if (busy) return;
+    setState(() {
+      busy = true;
+      busyText = progress;
+      result = null;
+    });
+    final outcome = await action();
+    if (!mounted) return;
+    setState(() {
+      busy = false;
+      result = outcome;
+      if (outcome.success) changed = true;
+    });
+    outcome.success
+        ? HapticFeedback.mediumImpact()
+        : HapticFeedback.heavyImpact();
+  }
+
+  Future<void> register() async {
+    final ok = await confirmNiuAction(
+      context,
+      title: '報名這個活動？',
+      message: '「${event.name}」\n報名後可以在「我的報名」修改或取消。',
+      confirmLabel: '報名',
+    );
+    if (ok) await perform('正在報名', () => actions.register(event));
+  }
+
+  Future<void> cancelRegistration() async {
+    final ok = await confirmNiuAction(
+      context,
+      title: '取消報名？',
+      message: '「${event.name}」的報名會被取消，名額可能無法保留。',
+      confirmLabel: '取消報名',
+      destructive: true,
+    );
+    if (!ok) return;
+    await perform('正在取消報名', () => actions.cancel(event));
+    if (mounted && (result?.success ?? false)) setState(() => cancelled = true);
+  }
+
+  Future<void> edit() async {
+    final saved = await Navigator.of(context).push<EventActionResult>(
+      MaterialPageRoute(
+        builder: (_) => EventRegistrationEditScreen(
+          event: event,
+          actions: actions,
+          onOpenWeb: openAction,
+        ),
+      ),
+    );
+    if (!mounted || saved == null) return;
+    setState(() {
+      result = saved;
+      if (saved.success) changed = true;
+    });
+  }
 
   Future<void> openAction() async {
     final result = await Navigator.of(context).push<bool>(
@@ -363,24 +445,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       },
       child: NiuScrollPage(
         title: '活動詳情',
-        bottomBar: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            FilledButton(
-              onPressed: event.id.isEmpty || (!applied && !event.canApply)
-                  ? null
-                  : openAction,
-              child: Text(applied ? '修改或取消報名' : '前往報名'),
-            ),
-            const SizedBox(height: NiuSpacing.sm),
-            Text(
-              '報名與變更在學校網頁送出，結果以學校為準。',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.labelMedium,
-            ),
-          ],
-        ),
+        bottomBar: _actionBar(context),
         children: [
           NiuCard(
             padding: const EdgeInsets.all(NiuSpacing.xl),
@@ -398,6 +463,16 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               ],
             ),
           ),
+          if (result != null) ...[
+            const SizedBox(height: NiuSpacing.lg),
+            NiuBanner(
+              tone: result!.success ? NiuTone.success : NiuTone.warning,
+              title: result!.success ? '完成' : '沒有完成',
+              message: result!.message,
+              actionLabel: result!.needsWeb ? '在學校網頁操作' : null,
+              onAction: result!.needsWeb ? openAction : null,
+            ),
+          ],
           NiuSection(
             title: '活動資訊',
             child: EventFactGroup(
@@ -442,4 +517,274 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       ),
     );
   }
+
+  Widget _actionBar(BuildContext context) {
+    final theme = Theme.of(context);
+    if (busy) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const SizedBox.square(
+            dimension: 20,
+            child: CircularProgressIndicator(strokeWidth: 2.5),
+          ),
+          const SizedBox(width: NiuSpacing.md),
+          Text(busyText ?? '處理中', style: theme.textTheme.titleSmall),
+        ],
+      );
+    }
+    final unavailable = event.id.isEmpty || (!applied && !event.canApply);
+    final registeredNow = !applied && (result?.success ?? false);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (!applied)
+          FilledButton(
+            onPressed: unavailable || registeredNow ? null : register,
+            child: Text(registeredNow ? '已報名' : '報名'),
+          )
+        else if (!cancelled)
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: NiuColors.of(context).error,
+                  ),
+                  onPressed: unavailable ? null : cancelRegistration,
+                  child: const Text('取消報名'),
+                ),
+              ),
+              const SizedBox(width: NiuSpacing.md),
+              Expanded(
+                child: FilledButton(
+                  onPressed: unavailable ? null : edit,
+                  child: const Text('修改資料'),
+                ),
+              ),
+            ],
+          ),
+        const SizedBox(height: NiuSpacing.sm),
+        Text(
+          unavailable && !applied ? '這個活動目前不開放報名。' : '送出後以學校報名系統的紀錄為準。',
+          textAlign: TextAlign.center,
+          style: theme.textTheme.labelMedium,
+        ),
+      ],
+    );
+  }
+}
+
+/// Native form for the school's RegData page (contact, meal, certificate).
+class EventRegistrationEditScreen extends StatefulWidget {
+  const EventRegistrationEditScreen({
+    super.key,
+    required this.event,
+    required this.actions,
+    this.onOpenWeb,
+  });
+  final CampusEvent event;
+  final EventActions actions;
+  final VoidCallback? onOpenWeb;
+  @override
+  State<EventRegistrationEditScreen> createState() =>
+      _EventRegistrationEditScreenState();
+}
+
+class _EventRegistrationEditScreenState
+    extends State<EventRegistrationEditScreen> {
+  late Future<EventRegistrationForm> future = widget.actions.loadForm(
+    widget.event,
+  );
+  final tel = TextEditingController();
+  final email = TextEditingController();
+  final memo = TextEditingController();
+  String? food, proof;
+  bool filled = false, saving = false;
+  EventActionResult? failure;
+
+  @override
+  void dispose() {
+    tel.dispose();
+    email.dispose();
+    memo.dispose();
+    super.dispose();
+  }
+
+  void fill(EventRegistrationForm form) {
+    if (filled) return;
+    filled = true;
+    tel.text = form.tel;
+    email.text = form.email;
+    memo.text = form.memo;
+    food = form.food.where((c) => c.checked).firstOrNull?.value;
+    proof = form.proof.where((c) => c.checked).firstOrNull?.value;
+  }
+
+  Future<void> save() async {
+    setState(() {
+      saving = true;
+      failure = null;
+    });
+    final result = await widget.actions.save(
+      widget.event,
+      tel: tel.text.trim(),
+      email: email.text.trim(),
+      memo: memo.text.trim(),
+      food: food,
+      proof: proof,
+    );
+    if (!mounted) return;
+    if (result.success) {
+      Navigator.of(context).pop(result);
+      return;
+    }
+    setState(() {
+      saving = false;
+      failure = result;
+    });
+  }
+
+  Widget choices(
+    String title,
+    List<EventChoice> options,
+    String? value,
+    ValueChanged<String> onChanged,
+  ) => NiuSection(
+    title: title,
+    child: NiuGroup(
+      insetDividers: NiuSpacing.lg,
+      children: [
+        for (final option in options)
+          Semantics(
+            selected: option.value == value,
+            inMutuallyExclusiveGroup: true,
+            child: NiuRow(
+              title: option.label,
+              chevron: false,
+              onTap: saving
+                  ? null
+                  : () => setState(() => onChanged(option.value)),
+              trailing: Icon(
+                option.value == value
+                    ? Icons.radio_button_checked_rounded
+                    : Icons.radio_button_unchecked_rounded,
+                color: option.value == value
+                    ? NiuColors.of(context).accent
+                    : NiuColors.of(context).inkTertiary,
+              ),
+            ),
+          ),
+      ],
+    ),
+  );
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<EventRegistrationForm>(
+    future: future,
+    builder: (context, snapshot) {
+      if (snapshot.hasError) {
+        final message = snapshot.error is EventFormUnavailable
+            ? (snapshot.error as EventFormUnavailable).message
+            : '無法讀取報名資料，請稍後再試。';
+        return NiuScrollPage(
+          title: '修改報名資料',
+          children: [
+            NiuError(
+              title: '無法讀取報名資料',
+              message: message,
+              onRetry: () => setState(
+                () => future = widget.actions.loadForm(widget.event),
+              ),
+              secondaryAction: widget.onOpenWeb == null
+                  ? null
+                  : TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        widget.onOpenWeb!();
+                      },
+                      child: const Text('在學校網頁操作'),
+                    ),
+            ),
+          ],
+        );
+      }
+      if (!snapshot.hasData) {
+        return const NiuScrollPage(
+          title: '修改報名資料',
+          children: [NiuLoading(message: '正在讀取報名資料')],
+        );
+      }
+      final form = snapshot.data!;
+      fill(form);
+      return NiuScrollPage(
+        title: '修改報名資料',
+        bottomBar: FilledButton(
+          onPressed: saving ? null : save,
+          child: Text(saving ? '正在儲存' : '儲存修改'),
+        ),
+        children: [
+          Text(
+            widget.event.name,
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+          if (failure != null) ...[
+            const SizedBox(height: NiuSpacing.lg),
+            NiuBanner(tone: NiuTone.warning, message: failure!.message),
+          ],
+          if (form.info.isNotEmpty)
+            NiuSection(
+              title: '基本資料',
+              child: NiuCard(
+                child: Column(
+                  children: [
+                    for (final (label, value) in form.info)
+                      NiuKeyValue(label: label, value: value),
+                  ],
+                ),
+              ),
+            ),
+          NiuSection(
+            title: '聯絡資訊',
+            child: NiuCard(
+              child: Column(
+                children: [
+                  TextField(
+                    controller: tel,
+                    enabled: !saving,
+                    keyboardType: TextInputType.phone,
+                    decoration: const InputDecoration(labelText: '電話'),
+                  ),
+                  const SizedBox(height: NiuSpacing.md),
+                  TextField(
+                    controller: email,
+                    enabled: !saving,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: const InputDecoration(labelText: '信箱'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (form.food.isNotEmpty)
+            choices('飲食', form.food, food, (v) => food = v),
+          if (form.proof.isNotEmpty)
+            choices('活動認證', form.proof, proof, (v) => proof = v),
+          NiuSection(
+            title: '備註',
+            child: NiuCard(
+              child: TextField(
+                controller: memo,
+                enabled: !saving,
+                minLines: 2,
+                maxLines: 5,
+                decoration: const InputDecoration(hintText: '選填'),
+              ),
+            ),
+          ),
+        ],
+      );
+    },
+  );
 }
