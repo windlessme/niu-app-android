@@ -132,6 +132,23 @@ class WebEventActions implements EventActions {
     ),
     success: const ['修改成功', '更新成功', '已更新', '儲存成功'],
     successMessage: '已儲存修改',
+    // Authoritative: reopen the registration and compare what was saved.
+    verify: (page) async {
+      await page.go(event.actionUri(applied: true));
+      final raw = await page.eval(eventFormReadScript);
+      final data = raw is String ? jsonDecode(raw) : null;
+      if (data is! Map || data['ok'] != true) return null;
+      final form = EventRegistrationForm.fromJson(
+        Map<String, dynamic>.from(data),
+      );
+      String? checked(List<EventChoice> c) =>
+          c.where((x) => x.checked).firstOrNull?.value;
+      return form.tel.trim() == tel.trim() &&
+          form.email.trim() == email.trim() &&
+          form.memo.trim() == memo.trim() &&
+          (food == null || checked(form.food) == food) &&
+          (proof == null || checked(form.proof) == proof);
+    },
   );
 
   @override
@@ -155,6 +172,7 @@ class WebEventActions implements EventActions {
     bool leftRegData = false,
     CampusEvent? event,
     bool? expectRegistered,
+    Future<bool?> Function(_EventPage page)? verify,
   }) async {
     _EventPage? page;
     try {
@@ -187,6 +205,15 @@ class WebEventActions implements EventActions {
         if (listed == expectRegistered) {
           return EventActionResult(true, successMessage);
         }
+      }
+      if (verify != null) {
+        bool? verified;
+        try {
+          verified = await verify(page);
+        } catch (_) {
+          verified = null; // Fall back to the school's own reply below.
+        }
+        if (verified == true) return EventActionResult(true, successMessage);
       }
       if (success.any(text.contains) ||
           (leftRegData &&
@@ -340,13 +367,17 @@ class _EventPage {
   }
 
   /// Whether [event] appears in 「我的報名」; null when the list is unreadable.
-  Future<bool?> isListed(CampusEvent event) async {
+  /// Loads [uri] in this page and returns where it ended up.
+  Future<Uri> go(Uri uri) async {
     _load = Completer<Uri>();
-    await web?.loadUrl(
-      urlRequest: URLRequest(url: WebUri('$eventVerificationUri')),
-    );
+    await web?.loadUrl(urlRequest: URLRequest(url: WebUri('$uri')));
     final url = await _load!.future.timeout(const Duration(seconds: 20));
     session.coordinator.requireCurrent(epoch);
+    return url;
+  }
+
+  Future<bool?> isListed(CampusEvent event) async {
+    final url = await go(eventVerificationUri);
     if (url.path.toLowerCase() != '/mvcteam/act/applyme') return null;
     final raw = await eval(eventListedScript(event.id, event.name));
     if (raw is! String) return null;
