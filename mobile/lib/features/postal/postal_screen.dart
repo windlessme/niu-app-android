@@ -5,8 +5,8 @@ import '../../shared/shared.dart';
 import 'postal_models.dart';
 import 'postal_service.dart';
 
-/// Campus mail and parcel lookup. Opens with the student's own name and
-/// 未領取 already searched, so the common question is answered at once.
+/// Campus mail and parcel lookup. One search covers every status (the school
+/// form takes one at a time); the status chips then filter locally.
 class PostalScreen extends StatefulWidget {
   const PostalScreen({super.key, this.session, this.service});
   final CampusSession? session;
@@ -21,42 +21,58 @@ class _PostalScreenState extends State<PostalScreen> {
   final phone = TextEditingController();
   final tracking = TextEditingController();
 
-  /// Null searches every status at once (the school form takes only one).
+  /// Null shows every status.
   PostalStatus? filter;
   final clients = <PostalStatus, PostalService>{};
   final pages = <PostalStatus, PostalPage>{};
-  bool searched = false, loading = false, more = false;
+  bool loading = false, more = false;
   String? error;
   int generation = 0;
 
-  List<PostalStatus> get statuses =>
-      filter == null ? PostalStatus.values : [filter!];
+  /// Criteria of the results on screen, to flag edits made since.
+  PostalQuery? searched;
 
   PostalQuery query(PostalStatus status) => PostalQuery(
     name: name.text,
     phone: phone.text,
     trackingNumber: tracking.text,
     status: status,
-  );
+  ).normalized;
 
   bool get canSearch => query(PostalStatus.waiting).canSearch;
 
+  bool get stale {
+    final last = searched, now = query(PostalStatus.waiting);
+    return last != null &&
+        (last.name != now.name ||
+            last.phone != now.phone ||
+            last.trackingNumber != now.trackingNumber);
+  }
+
+  static const order = [
+    PostalStatus.waiting,
+    PostalStatus.returned,
+    PostalStatus.collected,
+  ];
+
   /// 未領取 first, then 退件, then 已領取; newest first within each.
-  List<PostalRecord> get records {
-    const order = [
-      PostalStatus.waiting,
-      PostalStatus.returned,
-      PostalStatus.collected,
-    ];
-    final all = [for (final status in order) ...?pages[status]?.records];
-    all.sort((a, b) {
+  List<PostalRecord> get all {
+    final list = [for (final status in order) ...?pages[status]?.records];
+    list.sort((a, b) {
       final byStatus = order.indexOf(a.status) - order.indexOf(b.status);
       return byStatus != 0
           ? byStatus
           : b.receivedDate.compareTo(a.receivedDate);
     });
-    return all;
+    return list;
   }
+
+  List<PostalRecord> get records => [
+    for (final r in all)
+      if (filter == null || r.status == filter) r,
+  ];
+
+  int count(PostalStatus status) => pages[status]?.records.length ?? 0;
 
   bool get hasMore => pages.values.any((p) => p.nextForm != null);
 
@@ -84,11 +100,9 @@ class _PostalScreenState extends State<PostalScreen> {
 
   Future<void> search() async {
     FocusScope.of(context).unfocus();
-    if (!canSearch) {
-      setState(() => error = '請填寫收件人、手機號碼或郵件號碼其中一項。');
-      return;
-    }
+    if (!canSearch) return;
     final current = ++generation;
+    final criteria = query(PostalStatus.waiting);
     _closeClients();
     setState(() {
       loading = true;
@@ -99,7 +113,7 @@ class _PostalScreenState extends State<PostalScreen> {
     var failed = 0;
     String? message;
     await Future.wait([
-      for (final status in statuses)
+      for (final status in PostalStatus.values)
         () async {
           final client = clients[status] =
               (widget.service ?? PostalService.new)();
@@ -115,8 +129,8 @@ class _PostalScreenState extends State<PostalScreen> {
     if (!mounted || current != generation) return;
     setState(() {
       loading = false;
-      searched = true;
-      if (failed == statuses.length) {
+      searched = criteria;
+      if (failed == PostalStatus.values.length) {
         error = message ?? '無法取得郵件資料，稍後再試一次。';
       } else if (failed > 0) {
         error = '部分狀態沒有查到，結果可能不完整。';
@@ -160,22 +174,12 @@ class _PostalScreenState extends State<PostalScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final fillName =
+        ownName.isNotEmpty && name.text.trim() != ownName && !loading;
     return NiuScrollPage(
       title: '郵件包裹',
-      onRefresh: search,
+      onRefresh: canSearch ? search : null,
       children: [
-        NiuSegmented<PostalStatus?>(
-          segments: [
-            (null, '全部'),
-            for (final s in PostalStatus.values) (s, s.label),
-          ],
-          value: filter,
-          onChanged: (value) {
-            setState(() => filter = value);
-            if (canSearch) search();
-          },
-        ),
-        const SizedBox(height: NiuSpacing.md),
         NiuCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -185,21 +189,22 @@ class _PostalScreenState extends State<PostalScreen> {
                 textInputAction: TextInputAction.search,
                 onSubmitted: (_) => search(),
                 onChanged: (_) => setState(() {}),
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: '收件人',
-                  prefixIcon: Icon(NiuIcons.person),
+                  hintText: '輸入收件人姓名',
+                  prefixIcon: const Icon(NiuIcons.person),
+                  suffixIcon: fillName
+                      ? Padding(
+                          padding: const EdgeInsets.only(right: NiuSpacing.xs),
+                          child: TextButton(
+                            onPressed: () =>
+                                setState(() => name.text = ownName),
+                            child: const Text('帶入我的姓名'),
+                          ),
+                        )
+                      : null,
                 ),
               ),
-              if (ownName.isNotEmpty && name.text.trim() != ownName)
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton.icon(
-                    style: TextButton.styleFrom(padding: EdgeInsets.zero),
-                    onPressed: () => setState(() => name.text = ownName),
-                    icon: const Icon(Icons.person_add_alt_1_outlined, size: 18),
-                    label: const Text('帶入我的姓名'),
-                  ),
-                ),
               Theme(
                 data: theme.copyWith(dividerColor: Colors.transparent),
                 child: ExpansionTile(
@@ -212,6 +217,7 @@ class _PostalScreenState extends State<PostalScreen> {
                       keyboardType: TextInputType.phone,
                       textInputAction: TextInputAction.search,
                       onSubmitted: (_) => search(),
+                      onChanged: (_) => setState(() {}),
                       decoration: const InputDecoration(labelText: '手機號碼'),
                     ),
                     const SizedBox(height: NiuSpacing.md),
@@ -219,15 +225,22 @@ class _PostalScreenState extends State<PostalScreen> {
                       controller: tracking,
                       textInputAction: TextInputAction.search,
                       onSubmitted: (_) => search(),
+                      onChanged: (_) => setState(() {}),
                       decoration: const InputDecoration(labelText: '郵件號碼'),
                     ),
                     const SizedBox(height: NiuSpacing.md),
                   ],
                 ),
               ),
-              FilledButton.tonal(
-                onPressed: loading ? null : search,
-                child: const Text('查詢'),
+              FilledButton.icon(
+                onPressed: loading || !canSearch ? null : search,
+                icon: loading
+                    ? const SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.search_rounded),
+                label: Text(loading ? '查詢中' : '查詢'),
               ),
             ],
           ),
@@ -237,19 +250,34 @@ class _PostalScreenState extends State<PostalScreen> {
           NiuBanner(
             tone: NiuTone.warning,
             message: error!,
-            actionLabel: canSearch ? '再試一次' : null,
-            onAction: canSearch ? search : null,
+            actionLabel: canSearch && !loading ? '再試一次' : null,
+            onAction: canSearch && !loading ? search : null,
           ),
         ],
-        if (loading)
-          const NiuLoading(message: '正在查詢郵件')
-        else if (searched)
+        if (searched != null && !(loading && pages.isEmpty))
           NiuSection(
-            title: records.isEmpty
-                ? '查詢結果'
-                : '${records.length} 件${filter?.label ?? ''}',
-            child: records.isEmpty
-                ? NiuCard(
+            title: '查詢結果',
+            subtitle: stale ? '條件已變更，重新查詢以更新結果' : null,
+            action: Text(
+              '${all.length} 筆',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontFeatures: tabularFigures,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                NiuFilterBar<PostalStatus?>(
+                  options: [
+                    (null, '全部'),
+                    for (final s in order) (s, '${s.label} ${count(s)}'),
+                  ],
+                  value: filter,
+                  onChanged: (value) => setState(() => filter = value),
+                ),
+                const SizedBox(height: NiuSpacing.md),
+                if (records.isEmpty)
+                  NiuCard(
                     child: NiuEmpty(
                       padding: const EdgeInsets.symmetric(
                         vertical: NiuSpacing.xl,
@@ -263,22 +291,22 @@ class _PostalScreenState extends State<PostalScreen> {
                       },
                     ),
                   )
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      for (final record in records)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: NiuSpacing.md),
-                          child: _RecordCard(record: record),
-                        ),
-                      if (hasMore)
-                        OutlinedButton(
-                          onPressed: more ? null : loadMore,
-                          child: Text(more ? '載入中' : '載入更多'),
-                        ),
-                    ],
+                else
+                  for (final record in records)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: NiuSpacing.md),
+                      child: _RecordCard(record: record),
+                    ),
+                if (hasMore)
+                  OutlinedButton(
+                    onPressed: more || loading ? null : loadMore,
+                    child: Text(more ? '載入中' : '載入更多'),
                   ),
-          ),
+              ],
+            ),
+          )
+        else if (loading)
+          const NiuLoading(message: '正在查詢郵件'),
       ],
     );
   }
@@ -290,10 +318,22 @@ class _RecordCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final (tone, icon) = switch (record.status) {
-      PostalStatus.waiting => (NiuTone.accent, Icons.inventory_2_outlined),
-      PostalStatus.collected => (NiuTone.success, NiuIcons.success),
-      PostalStatus.returned => (NiuTone.warning, Icons.undo_rounded),
+    final (tone, hue, icon) = switch (record.status) {
+      PostalStatus.waiting => (
+        NiuTone.accent,
+        NiuHue.amber,
+        Icons.inventory_2_outlined,
+      ),
+      PostalStatus.collected => (
+        NiuTone.success,
+        NiuHue.green,
+        NiuIcons.success,
+      ),
+      PostalStatus.returned => (
+        NiuTone.warning,
+        NiuHue.orange,
+        Icons.undo_rounded,
+      ),
     };
     return NiuCard(
       child: Column(
@@ -301,7 +341,7 @@ class _RecordCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              NiuIconTile(icon: icon, hue: NiuHue.amber),
+              NiuIconTile(icon: icon, hue: hue),
               const SizedBox(width: NiuSpacing.md),
               Expanded(
                 child: Column(
@@ -331,6 +371,8 @@ class _RecordCard extends StatelessWidget {
             NiuKeyValue(label: '收件單位', value: record.unit),
           if (record.quantity.isNotEmpty && record.quantity != '1')
             NiuKeyValue(label: '數量', value: record.quantity),
+          if (record.signature.isNotEmpty)
+            NiuKeyValue(label: '簽收資訊', value: record.signature),
           if (record.completedDate.isNotEmpty)
             NiuKeyValue(
               label: record.status == PostalStatus.returned ? '退件日期' : '簽收日期',
