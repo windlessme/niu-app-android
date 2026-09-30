@@ -123,6 +123,37 @@ void main() {
     expect(sections.single.records.single.status, AttendanceStatus.late);
     expect(sections.single.error, isNull);
   });
+  test('first visit signs into the website instead of failing', () async {
+    for (final first in [
+      () async => loginHtml,
+      () async => throw const FormatException('redirected to login'),
+    ]) {
+      var signIns = 0;
+      final sections = await AttendanceRepository(
+        AttendanceMoodle()..response = const FormatException('API unavailable'),
+        loadHtml: (_) => first(),
+        signInAndLoad: (uri) async {
+          signIns++;
+          expect(uri.path, '/mod/attendance/view.php');
+          return recordHtml;
+        },
+      ).course(1);
+      expect(signIns, 1);
+      expect(sections.single.error, isNull);
+      expect(sections.single.records.single.status, AttendanceStatus.late);
+    }
+    // With a website session already present, no sign-in happens.
+    var signIns = 0;
+    await AttendanceRepository(
+      AttendanceMoodle()..response = const FormatException('API unavailable'),
+      loadHtml: (_) async => recordHtml,
+      signInAndLoad: (_) async {
+        signIns++;
+        return recordHtml;
+      },
+    ).course(1);
+    expect(signIns, 0);
+  });
   test('URL module lookup failure still uses attendance cmid HTML', () async {
     final moodle = AttendanceMoodle()
       ..modules = [
@@ -150,6 +181,8 @@ void main() {
         final sections = await AttendanceRepository(
           AttendanceMoodle()..response = pendingApi,
           loadHtml: (_) async => source,
+          // Website sign-in is unavailable in this case, too.
+          signInAndLoad: (_) async => source,
         ).course(1);
         expect(sections.single.records, hasLength(1));
         expect(
@@ -173,6 +206,7 @@ void main() {
         final sections = await AttendanceRepository(
           AttendanceMoodle()..response = const FormatException(),
           loadHtml: (_) async => source,
+          signInAndLoad: (_) async => source,
         ).course(1);
         expect(sections.single.error, isNotNull);
         expect(sections.single.records, isEmpty);

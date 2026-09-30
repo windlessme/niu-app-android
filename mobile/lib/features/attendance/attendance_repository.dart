@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:html/parser.dart' as html;
 import '../moodle/moodle_repository.dart';
+import '../moodle/moodle_web_session.dart';
 
 enum AttendanceStatus { present, late, absent, leave, pending }
 
@@ -78,11 +79,38 @@ class AttendanceSection {
 }
 
 class AttendanceRepository {
-  AttendanceRepository(this.moodle, {this.loadHtml});
+  AttendanceRepository(this.moodle, {this.loadHtml, this.signInAndLoad});
   final MoodleRepository moodle;
 
   /// Optional school-session HTML loader; foreground WebView remains available.
   final Future<String> Function(Uri uri)? loadHtml;
+
+  /// Signs the WebView into the M 園區 website and returns the page. Used
+  /// only when the cookie-based read lands on the login page (first visit).
+  final Future<String> Function(Uri uri)? signInAndLoad;
+
+  static bool isLoginPage(String source) =>
+      html
+          .parse(source)
+          .querySelector(
+            'input[name="username"], input[name="password"], #page-login-index, form[action*="/login/"]',
+          ) !=
+      null;
+
+  /// Cookie read first; on a login redirect or page, sign in once and retry
+  /// through the website itself. The resulting cookies serve later reads.
+  Future<String> _page(Uri uri) async {
+    final read = loadHtml ?? _readHtml;
+    String? source;
+    try {
+      source = await read(uri);
+    } on FormatException {
+      source = null;
+    }
+    if (source != null && !isLoginPage(source)) return source;
+    moodle.requireCurrent();
+    return (signInAndLoad ?? (u) => MoodleWebSession.load(moodle, u))(uri);
+  }
 
   /// REST tokens do not authenticate ordinary Moodle pages. Reuse only the
   /// school's WebView cookies, never append a token or execute a marking URL.
@@ -108,7 +136,7 @@ class AttendanceRepository {
         .timeout(const Duration(seconds: 20));
     moodle.requireCurrent();
     if (response.statusCode != 200) {
-      throw const FormatException('請先開啟校方紀錄登入 M 園區，再返回重試。');
+      throw const FormatException('M 園區網站尚未登入');
     }
     return response.data ?? '';
   }
@@ -162,7 +190,7 @@ class AttendanceRepository {
               records.every((r) => r.status == AttendanceStatus.pending)) {
             try {
               final parsed = parseHtml(
-                await (loadHtml ?? _readHtml)(
+                await _page(
                   Uri.https('euni.niu.edu.tw', '/mod/attendance/view.php', {
                     'id': '$cmid',
                     'view': '5',
@@ -235,11 +263,8 @@ class AttendanceRepository {
 
   static List<AttendanceRecord> parseHtml(String source) {
     final doc = html.parse(source);
-    if (doc.querySelector(
-          'input[name="username"], input[name="password"], #page-login-index, form[action*="/login/"]',
-        ) !=
-        null) {
-      throw const FormatException('請先開啟校方紀錄登入 M 園區，再返回重試。');
+    if (isLoginPage(source)) {
+      throw const FormatException('無法自動登入 M 園區網站，請開啟校方紀錄登入一次。');
     }
     final result = <AttendanceRecord>[];
     for (final row
