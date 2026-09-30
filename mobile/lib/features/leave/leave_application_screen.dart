@@ -386,9 +386,13 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen>
           title: '申請請假',
           actions: [
             if (web != null && result == null)
-              TextButton(
+              // Same control as the other school-backed screens.
+              NiuIconButton(
+                tooltip: showWeb ? '回到 App 檢視' : '查看學校網頁',
+                icon: showWeb
+                    ? Icons.dashboard_rounded
+                    : Icons.language_rounded,
                 onPressed: busy ? null : openSchool,
-                child: Text(showWeb ? '返回 App' : '學校網頁'),
               ),
           ],
         ),
