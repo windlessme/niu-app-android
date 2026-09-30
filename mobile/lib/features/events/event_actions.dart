@@ -72,6 +72,9 @@ abstract class EventActions {
     String? proof,
   });
   Future<EventActionResult> cancel(CampusEvent event);
+
+  /// The student's 「我的報名」 list, read without showing the school page.
+  Future<List<CampusEvent>> registrations();
 }
 
 class EventFormUnavailable implements Exception {
@@ -162,6 +165,21 @@ class WebEventActions implements EventActions {
     // As on iOS: after cancelling, the school leaves RegData for a list page.
     leftRegData: true,
   );
+
+  @override
+  Future<List<CampusEvent>> registrations() async {
+    final page = await _EventPage.open(session, eventVerificationUri);
+    try {
+      final raw = await page.eval(eventsExtractScript);
+      if (raw is! String) throw const EventFormUnavailable('無法讀取我的報名');
+      return [
+        for (final e in (jsonDecode(raw) as List).whereType<Map>())
+          CampusEvent.fromJson(Map<String, dynamic>.from(e)),
+      ];
+    } finally {
+      await page.dispose();
+    }
+  }
 
   Future<EventActionResult> _run(
     Uri target, {
