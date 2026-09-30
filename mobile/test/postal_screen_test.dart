@@ -124,4 +124,34 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+  testWidgets('更多條件 stays open while typing', (tester) async {
+    final queries = <PostalQuery>[];
+    final session = CampusSession(vault: MemoryVault(), platformCleanup: [])
+      ..account = 'b123';
+    addTearDown(session.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: NiuTheme.light,
+        home: PostalScreen(
+          session: session,
+          service: () => FakePostal(queries),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('更多條件'));
+    await tester.pumpAndSettle();
+    final phone = find.widgetWithText(TextField, '手機號碼');
+    await tester.tap(phone);
+    await tester.enterText(phone, '0912');
+    await tester.pumpAndSettle();
+    expect(phone, findsOneWidget);
+    await tester.enterText(find.widgetWithText(TextField, '郵件號碼'), 'RR1');
+    await tester.pumpAndSettle();
+    expect(find.text('0912'), findsOneWidget);
+    expect(find.text('RR1'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, '查詢'));
+    await tester.pumpAndSettle();
+    expect(queries.first.phone, '0912');
+  });
 }
