@@ -81,7 +81,7 @@ class FakeEventActions implements EventActions {
 
 void main() {
   final event = CampusEvent.fromJson({
-    'id': '1',
+    'id': '11205',
     'name': '永續校園工作坊',
     'department': '學務處',
     'location': '圖書館',
@@ -134,8 +134,9 @@ void main() {
         expect(calls, [false]);
         expect(find.byType(NiuScrollPage), findsOneWidget);
         expect(find.text('-'), findsOneWidget);
+        expect(find.text('編號 11205'), findsOneWidget);
         expect(tester.takeException(), isNull);
-        for (final query in ['學務處', '圖書館', '永續']) {
+        for (final query in ['學務處', '圖書館', '永續', '11205', '#112', 'No.11205']) {
           await tester.enterText(find.byType(TextField), query);
           await tester.pumpAndSettle();
           expect(find.byType(EventListCard), findsOneWidget);
@@ -196,7 +197,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
-      find.text('人數'),
+      find.text('報名人數'),
       200,
       scrollable: find.byType(Scrollable).first,
     );

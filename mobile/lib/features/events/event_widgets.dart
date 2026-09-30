@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../shared/shared.dart';
 import 'events_screen.dart';
 
@@ -56,11 +57,23 @@ class EventListCard extends StatelessWidget {
               EventStatusPill(status: event.status),
             ],
           ),
+          if (event.id.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                '編號 ${event.id}',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: colors.inkTertiary,
+                  fontFeatures: tabularFigures,
+                ),
+              ),
+            ),
           const SizedBox(height: NiuSpacing.sm),
           for (final fact in [
+            (Icons.apartment_rounded, event.department),
             (NiuIcons.time, event.time),
             (NiuIcons.location, event.location),
-            (Icons.apartment_rounded, event.department),
+            (NiuIcons.person, event.people),
           ])
             if (fact.$2.trim().isNotEmpty)
               Padding(
@@ -87,6 +100,27 @@ class EventListCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The school's event number; tap to copy.
+class EventNumberChip extends StatelessWidget {
+  const EventNumberChip({super.key, required this.id});
+  final String id;
+  @override
+  Widget build(BuildContext context) => Tooltip(
+    message: '複製活動編號',
+    child: ActionChip(
+      avatar: const Icon(NiuIcons.copy, size: 16),
+      label: Text(
+        '編號 $id',
+        style: const TextStyle(fontFeatures: tabularFigures),
+      ),
+      onPressed: () async {
+        await Clipboard.setData(ClipboardData(text: id));
+        if (context.mounted) showNiuMessage(context, '已複製活動編號');
+      },
+    ),
+  );
 }
 
 class EventFactGroup extends StatelessWidget {

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../core/web/academic_portal_screen.dart';
 import '../../shared/shared.dart';
@@ -42,6 +43,44 @@ class CampusEvent {
       remark,
       hours,
       people;
+
+  /// Search across the number and the visible text. 「#123」 or 「No.123」
+  /// match the number too.
+  bool matches(String query) {
+    final q = query.trim().toLowerCase();
+    if (q.isEmpty) return true;
+    final number = q.replaceFirst(RegExp(r'^(#|no\.?\s*|編號\s*)'), '');
+    if (id.isNotEmpty &&
+        number.isNotEmpty &&
+        id.toLowerCase().contains(number)) {
+      return true;
+    }
+    return [
+      name,
+      department,
+      location,
+      details,
+    ].any((value) => value.toLowerCase().contains(q));
+  }
+
+  /// Only public event fields, never the student's registration data.
+  String get shareText {
+    final lines = [name];
+    for (final (label, value) in [
+      ('活動編號', id),
+      ('主辦單位', department),
+      ('活動時間', time),
+      ('活動地點', location),
+      ('報名時間', registration),
+    ]) {
+      if (value.trim().isNotEmpty) lines.add('$label：${value.trim()}');
+    }
+    if (RegExp(r'^\d+$').hasMatch(id)) {
+      lines.add('活動連結：https://ccsys.niu.edu.tw/MvcTeam/Act/Apply/$id');
+    }
+    return lines.join('\n');
+  }
+
   Uri actionUri({required bool applied}) {
     final link = Uri.tryParse(action);
     if (link != null &&
@@ -72,9 +111,11 @@ const eventsExtractScript = r'''
     const table = row.querySelector('.table');
     const cell = n => clean(table?.querySelectorAll('tr')[n]?.querySelectorAll('td')[1]);
     const iconText = selector => clean(row.querySelector(selector)?.parentElement);
-    const serial = clean(row.querySelector('p')).match(/[：:]\s*(\S+)/);
-    return {id: serial?.[1] || '', name: clean(row.querySelector('h3')),
-      action: row.querySelector('a[href*="/Act/RegData/"],a[href*="/Act/Apply/"]')?.href || '', targets: iconText('.fa-id-badge'),
+    const link = row.querySelector('a[href*="/Act/RegData/"],a[href*="/Act/Apply/"]')?.href || '';
+    const serial = clean(row.querySelector('p')).match(/[：:]\s*([A-Za-z0-9-]+)/)?.[1]
+      || link.match(/\/Act\/(?:RegData|Apply)\/(\d+)/)?.[1];
+    return {id: serial || '', name: clean(row.querySelector('h3')),
+      action: link, targets: iconText('.fa-id-badge'),
       department: (row.querySelector('.enr-list-dep-nam')?.title || '').replace(/^.*?[：:]/, '').trim(),
       status: clean(states[i]?.querySelector('.text-danger.text-shadow')) || clean(row.querySelector('.badge.alert-danger')) || clean(row.querySelector('.btn.btn-danger')),
       time: iconText('.fa-calendar'), location: iconText('.fa-map-marker'),
@@ -227,13 +268,7 @@ class _EventsScreenState extends State<EventsScreen> {
     final query = queries[applied]!.text.trim().toLowerCase();
     final filtered = events
         ?.where((event) => applied || !registered(event))
-        .where(
-          (event) => [
-            event.name,
-            event.department,
-            event.location,
-          ].any((value) => value.toLowerCase().contains(query)),
-        )
+        .where((event) => event.matches(query))
         .toList();
     return NiuScrollPage(
       key: PageStorageKey('events-$applied'),
@@ -259,7 +294,7 @@ class _EventsScreenState extends State<EventsScreen> {
         const SizedBox(height: NiuSpacing.md),
         NiuSearchField(
           controller: queries[applied],
-          hint: '搜尋活動、主辦單位或地點',
+          hint: '搜尋活動名稱、編號、主辦單位或地點',
           onChanged: (_) => setState(() {}),
         ),
         if (notices[applied] case final notice?) ...[
@@ -267,6 +302,16 @@ class _EventsScreenState extends State<EventsScreen> {
           NiuBanner(tone: NiuTone.warning, message: notice),
         ],
         const SizedBox(height: NiuSpacing.lg),
+        if (filtered != null && filtered.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: NiuSpacing.sm),
+            child: Text(
+              query.isEmpty
+                  ? '${filtered.length} 個活動'
+                  : '找到 ${filtered.length} 個活動',
+              style: Theme.of(context).textTheme.labelMedium,
+            ),
+          ),
         if (events == null)
           syncing
               ? const NiuLoading(message: '正在同步活動')
@@ -289,7 +334,7 @@ class _EventsScreenState extends State<EventsScreen> {
                 ? '目前沒有報名紀錄'
                 : '目前沒有開放的活動',
             message: query.isNotEmpty
-                ? '換個活動名稱、主辦單位或地點試試。'
+                ? '換個活動名稱、編號、主辦單位或地點試試。'
                 : applied
                 ? '在學校網頁報名後，同步一下就會出現。'
                 : '稍後再同步看看。',
@@ -477,6 +522,14 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       },
       child: NiuScrollPage(
         title: '活動詳情',
+        actions: [
+          NiuIconButton(
+            tooltip: '分享活動',
+            icon: NiuIcons.share,
+            onPressed: () =>
+                SharePlus.instance.share(ShareParams(text: event.shareText)),
+          ),
+        ],
         bottomBar: _actionBar(context),
         children: [
           NiuCard(
@@ -491,7 +544,15 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
                   style: theme.textTheme.headlineSmall,
                 ),
                 const SizedBox(height: NiuSpacing.md),
-                EventStatusPill(status: event.status),
+                Wrap(
+                  spacing: NiuSpacing.sm,
+                  runSpacing: NiuSpacing.sm,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    EventStatusPill(status: event.status),
+                    if (event.id.isNotEmpty) EventNumberChip(id: event.id),
+                  ],
+                ),
               ],
             ),
           ),
@@ -509,9 +570,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
             title: '活動資訊',
             child: EventFactGroup(
               facts: [
-                ('時間', event.time),
-                ('地點', event.location),
                 ('主辦單位', event.department),
+                ('活動時間', event.time),
+                ('活動地點', event.location),
                 ('認證時數', event.hours),
               ],
             ),
@@ -531,7 +592,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
               facts: [
                 ('報名時間', event.registration),
                 ('參加對象', event.targets),
-                ('人數', event.people),
+                ('報名人數', event.people),
               ],
             ),
           ),
