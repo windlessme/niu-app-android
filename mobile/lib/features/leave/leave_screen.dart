@@ -90,7 +90,7 @@ class _LeaveScreenState extends State<LeaveScreen> {
                 : keyName == 'statistics'
                 ? leaveStatisticsExtract
                 : record != null
-                ? leaveDetailExtract
+                ? leaveDetailWithWorkflowExtract()
                 : leaveInFrames(leaveListExtract),
             prepareScript: application || keyName == 'statistics'
                 ? null
@@ -111,31 +111,6 @@ class _LeaveScreenState extends State<LeaveScreen> {
       if (value == null) return;
       repository.guard(epoch, owner);
       if (record != null && mounted) {
-        final uri = Uri.tryParse('${value['workflowUrl'] ?? ''}');
-        if (uri != null && isLeaveWorkflowUri(uri)) {
-          final workflow = await Navigator.of(context)
-              .push<Map<String, dynamic>>(
-                MaterialPageRoute(
-                  builder: (context) => AcademicPortalScreen(
-                    title: '簽核流程',
-                    session: session,
-                    bridge: false,
-                    target: uri,
-                    extractScript: leaveWorkflowExtract,
-                    onSnapshot: (data, _) async {
-                      if (context.mounted) {
-                        Navigator.pop(
-                          context,
-                          Map<String, dynamic>.from(data as Map),
-                        );
-                      }
-                    },
-                  ),
-                ),
-              );
-          repository.guard(epoch, owner);
-          if (workflow != null) value.addAll(workflow);
-        }
         if (!value.containsKey('workflow')) {
           final previous = snapshots['detail:${record['假單序號']}'];
           if (previous is Map &&
