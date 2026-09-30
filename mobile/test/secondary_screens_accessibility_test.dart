@@ -93,8 +93,11 @@ void main() {
         tester,
         AttendanceScannerScreen(repository: UnusedMoodleRepository()),
       );
+      await tester.tap(find.text('改用點名網址'));
+      await tester.pumpAndSettle();
       tester.view.viewInsets = const FakeViewPadding(bottom: 300);
       addTearDown(tester.view.resetViewInsets);
+      await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField), 'invalid');
       await tester.pumpAndSettle();
       final button = find.widgetWithText(FilledButton, '開啟點名');
@@ -102,7 +105,8 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(button);
       await tester.pumpAndSettle();
-      expect(find.textContaining('無法開啟點名'), findsOneWidget);
+      expect(find.text('這不是 M 園區點名 QR Code'), findsOneWidget);
+      expect(find.byType(TextField), findsNothing);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
       await tester.pump();

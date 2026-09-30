@@ -12,6 +12,7 @@ import '../../core/network/school_clients.dart';
 import '../../core/session/campus_session.dart';
 import '../authentication/login_screen.dart';
 import '../attendance/attendance_screen.dart';
+import '../attendance/attendance_result_screen.dart';
 import '../attendance/attendance_repository.dart' show attendanceQr;
 import 'moodle_repository.dart';
 import 'moodle_web_screen.dart';
@@ -523,6 +524,14 @@ Future<void> openMoodleUrl(
           confirmLabel: '開啟並點名',
         );
         if (!confirmed || !context.mounted) return;
+        pushMoodle(
+          context,
+          AttendanceResultScreen(
+            repository: repository,
+            target: attendanceQr(raw)!,
+          ),
+        );
+        return;
       }
       pushMoodle(
         context,

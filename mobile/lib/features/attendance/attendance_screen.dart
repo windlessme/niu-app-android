@@ -1,10 +1,13 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../shared/shared.dart';
 import '../moodle/moodle_repository.dart';
 import '../moodle/moodle_web_screen.dart';
 import 'attendance_repository.dart';
 import 'attendance_open_flow.dart';
+import 'attendance_result_screen.dart';
 
 class AttendanceScannerScreen extends StatefulWidget {
   const AttendanceScannerScreen({super.key, required this.repository});
@@ -20,16 +23,20 @@ class _AttendanceScannerScreenState extends State<AttendanceScannerScreen>
     formats: const [BarcodeFormat.qrCode],
     autoStart: false,
   );
-  final input = TextEditingController();
-  final inputFocus = FocusNode();
   final flow = AttendanceOpenFlow();
+
+  /// Codes the school already reported as expired in this scanner session.
+  final expired = <Uri>{};
   bool active = true;
+  String? warning;
+  Timer? warningTimer;
+  double zoomAtPinch = 0;
   Future<void> cameraTask = Future.value();
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    inputFocus.addListener(() => camera(!inputFocus.hasFocus));
     WidgetsBinding.instance.addPostFrameCallback((_) => camera(true));
   }
 
@@ -38,15 +45,13 @@ class _AttendanceScannerScreenState extends State<AttendanceScannerScreen>
         .catchError((Object _) {})
         .then((_) async {
           if (!mounted) return;
-          if (start && active && !flow.busy && !inputFocus.hasFocus) {
+          if (start && active && !flow.busy) {
             await controller.start();
           } else {
             await controller.stop();
           }
         })
-        .catchError((Object _) {
-          if (mounted) setState(() => error = '相機沒有啟動。請確認相機權限，或改用貼上網址。');
-        });
+        .catchError((Object _) {});
     return cameraTask;
   }
 
@@ -56,35 +61,42 @@ class _AttendanceScannerScreenState extends State<AttendanceScannerScreen>
     camera(active);
   }
 
-  String? error;
+  void warn(String message) {
+    HapticFeedback.heavyImpact();
+    warningTimer?.cancel();
+    setState(() => warning = message);
+    warningTimer = Timer(const Duration(milliseconds: 1600), () {
+      if (mounted) setState(() => warning = null);
+    });
+  }
+
   Future<void> open(String raw) async {
-    if (!active || flow.busy) return;
-    setState(() => error = null);
-    FocusScope.of(context).unfocus();
+    if (!active || flow.busy || warning != null) return;
+    final uri = attendanceQr(raw);
+    if (uri == null) {
+      warn('這不是 M 園區點名 QR Code');
+      return;
+    }
+    if (expired.contains(uri)) {
+      warn('這個 QR Code 已過期，請掃描老師目前顯示的最新 QR Code');
+      return;
+    }
+    HapticFeedback.mediumImpact();
     try {
       await flow.open(
         raw,
         pause: () => camera(false),
-        confirm: (uri) async {
-          if (!mounted || !active) return false;
-          return confirmNiuAction(
-            context,
-            title: '要開啟點名嗎？',
-            message:
-                '即將開啟 M 園區第 ${uri.queryParameters['sessid']} 次點名，開啟後可能會直接記錄出席。',
-            confirmLabel: '開啟並點名',
-          );
-        },
+        // Scanning the code is the student's explicit intent, as on iOS.
+        confirm: (_) async => mounted && active,
         navigate: (uri) async {
-          if (!mounted || !active) return;
+          if (!mounted) return;
           widget.repository.requireCurrent();
           await Navigator.of(context).push(
             MaterialPageRoute<void>(
-              builder: (_) => MoodleWebScreen(
+              builder: (_) => AttendanceResultScreen(
                 repository: widget.repository,
                 target: uri,
-                title: '點名',
-                attendance: true,
+                onExpired: () => expired.add(uri),
               ),
             ),
           );
@@ -92,135 +104,250 @@ class _AttendanceScannerScreenState extends State<AttendanceScannerScreen>
         resume: () => camera(true),
       );
     } catch (_) {
-      if (mounted) setState(() => error = '無法開啟點名。請確認已登入 M 園區，並重新掃描 QR Code。');
+      if (mounted) warn('無法開啟點名，請確認已登入 M 園區');
     }
+  }
+
+  Future<void> enterLink() async {
+    // Pause in the background; the sheet must not wait on the camera.
+    unawaited(camera(false));
+    final value = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => const _LinkSheet(),
+    );
+    if (!mounted) return;
+    unawaited(camera(true));
+    if (value != null && value.trim().isNotEmpty) await open(value);
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    warningTimer?.cancel();
     cameraTask.whenComplete(controller.dispose);
-    input.dispose();
-    inputFocus.dispose();
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Scaffold(
-      appBar: const NiuAppBar(title: '點名'),
-      body: SafeArea(
-        top: false,
-        child: ListView(
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          padding: const EdgeInsets.fromLTRB(
-            NiuSpacing.gutter,
-            NiuSpacing.sm,
-            NiuSpacing.gutter,
-            NiuSpacing.huge,
+  Widget build(BuildContext context) => Theme(
+    data: NiuTheme.dark,
+    child: Builder(
+      builder: (context) => Scaffold(
+        backgroundColor: Colors.black,
+        extendBodyBehindAppBar: true,
+        // The link sheet handles the keyboard; the camera view stays put.
+        resizeToAvoidBottomInset: false,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          systemOverlayStyle: NiuTheme.overlay(
+            Brightness.dark,
+            Colors.transparent,
           ),
-          children: [
-            ClipRRect(
-              borderRadius: BorderRadius.circular(NiuRadius.xxl),
-              child: SizedBox(
-                height: MediaQuery.sizeOf(context).height * .42,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    ColoredBox(
-                      color: Colors.black,
-                      child: MobileScanner(
-                        controller: controller,
-                        onDetect: (capture) {
-                          for (final b in capture.barcodes) {
-                            if (b.rawValue != null) {
-                              open(b.rawValue!);
-                              break;
-                            }
-                          }
-                        },
-                        errorBuilder: (_, error) => const _CameraUnavailable(),
-                      ),
-                    ),
-                    const IgnorePointer(child: _Viewfinder()),
-                  ],
-                ),
-              ),
+          automaticallyImplyLeading: false,
+          leading: const NiuBackButton(),
+          titleSpacing: NiuSpacing.xs,
+          title: const Text('快速點名'),
+          actions: [
+            ValueListenableBuilder<MobileScannerState>(
+              valueListenable: controller,
+              builder: (context, state, _) =>
+                  state.isRunning && state.torchState != TorchState.unavailable
+                  ? NiuIconButton(
+                      icon: state.torchState == TorchState.on
+                          ? Icons.flashlight_off_rounded
+                          : NiuIcons.flashlight,
+                      tooltip: state.torchState == TorchState.on
+                          ? '關閉手電筒'
+                          : '開啟手電筒',
+                      onPressed: controller.toggleTorch,
+                    )
+                  : const SizedBox.shrink(),
             ),
-            const SizedBox(height: NiuSpacing.lg),
-            Text(
-              '把老師投影的 QR Code 放進框內，會自動開啟點名。',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodySmall,
-            ),
-            if (error != null) ...[
-              const SizedBox(height: NiuSpacing.lg),
-              NiuBanner(tone: NiuTone.error, message: error!),
-            ],
-            NiuSection(
-              title: '沒辦法掃描？',
-              subtitle: '貼上老師提供的點名網址',
-              child: NiuCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    TextField(
-                      controller: input,
-                      focusNode: inputFocus,
-                      keyboardType: TextInputType.url,
-                      textInputAction: TextInputAction.go,
-                      autocorrect: false,
-                      onSubmitted: open,
-                      decoration: const InputDecoration(
-                        hintText: 'https://euni.niu.edu.tw/…',
-                        prefixIcon: Icon(NiuIcons.link),
-                      ),
-                    ),
-                    const SizedBox(height: NiuSpacing.md),
-                    FilledButton(
-                      onPressed: () => open(input.text),
-                      child: const Text('開啟點名'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            const SizedBox(width: NiuSpacing.xs),
           ],
         ),
+        body: LayoutBuilder(
+          builder: (context, constraints) => GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTapUp: (details) {
+              if (!controller.value.isRunning) return;
+              controller
+                  .setFocusPoint(
+                    Offset(
+                      details.localPosition.dx / constraints.maxWidth,
+                      details.localPosition.dy / constraints.maxHeight,
+                    ),
+                  )
+                  .catchError((Object _) {});
+            },
+            onScaleStart: (_) => zoomAtPinch = controller.value.zoomScale,
+            onScaleUpdate: (details) {
+              if (details.pointerCount < 2 || !controller.value.isRunning) {
+                return;
+              }
+              controller
+                  .setZoomScale(
+                    (zoomAtPinch + (details.scale - 1) * .5).clamp(0.0, 1.0),
+                  )
+                  .catchError((Object _) {});
+            },
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                MobileScanner(
+                  controller: controller,
+                  fit: BoxFit.cover,
+                  onDetect: (capture) {
+                    for (final b in capture.barcodes) {
+                      if (b.rawValue != null) {
+                        open(b.rawValue!);
+                        break;
+                      }
+                    }
+                  },
+                  placeholderBuilder: (context) => const _ScannerMessage(
+                    icon: Icons.photo_camera_outlined,
+                    title: '正在啟動相機',
+                  ),
+                  errorBuilder: (context, error) => _ScannerMessage(
+                    icon: error.errorCode == MobileScannerErrorCode.unsupported
+                        ? Icons.no_photography_outlined
+                        : Icons.photo_camera_outlined,
+                    title: switch (error.errorCode) {
+                      MobileScannerErrorCode.permissionDenied => '需要相機權限',
+                      MobileScannerErrorCode.unsupported => '找不到可用的相機',
+                      _ => '相機啟動失敗',
+                    },
+                    message: switch (error.errorCode) {
+                      MobileScannerErrorCode.permissionDenied =>
+                        '請到系統設定允許 NIU-Life 使用相機，才能掃描點名 QR Code。',
+                      MobileScannerErrorCode.unsupported =>
+                        '這台裝置沒有可用的相機，可以改用輸入點名網址。',
+                      _ => '請關閉其他使用相機的 App 後再試一次。',
+                    },
+                    actionLabel:
+                        error.errorCode == MobileScannerErrorCode.unsupported
+                        ? null
+                        : '再試一次',
+                    onAction: () => camera(true),
+                  ),
+                ),
+                const IgnorePointer(child: _ScannerOverlay()),
+                SafeArea(
+                  child: Column(
+                    children: [
+                      const SizedBox(height: NiuSpacing.lg),
+                      Text(
+                        '對準老師顯示的 QR Code',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(
+                          context,
+                        ).textTheme.titleLarge?.copyWith(color: Colors.white),
+                      ),
+                      const SizedBox(height: NiuSpacing.xs),
+                      Text(
+                        '掃描後會開啟 M 園區點名網址並完成網頁登入',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodySmall?.copyWith(color: Colors.white70),
+                      ),
+                      if (warning != null) ...[
+                        const SizedBox(height: NiuSpacing.lg),
+                        Semantics(
+                          liveRegion: true,
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(
+                              horizontal: NiuSpacing.gutter,
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 18,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xe6d33a33),
+                              borderRadius: BorderRadius.circular(
+                                NiuRadius.pill,
+                              ),
+                            ),
+                            child: Text(
+                              warning!,
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context).textTheme.titleSmall
+                                  ?.copyWith(color: Colors.white),
+                            ),
+                          ),
+                        ),
+                      ],
+                      const Spacer(),
+                      _ScannerControls(
+                        controller: controller,
+                        onEnterLink: enterLink,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
-    );
-  }
+    ),
+  );
 }
 
-class _CameraUnavailable extends StatelessWidget {
-  const _CameraUnavailable();
+/// Manual fallback for a link shared by the teacher.
+class _LinkSheet extends StatefulWidget {
+  const _LinkSheet();
   @override
-  Widget build(BuildContext context) => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(NiuSpacing.xxl),
+  State<_LinkSheet> createState() => _LinkSheetState();
+}
+
+class _LinkSheetState extends State<_LinkSheet> {
+  final text = TextEditingController();
+  @override
+  void dispose() {
+    text.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: EdgeInsets.fromLTRB(
+      NiuSpacing.gutter,
+      0,
+      NiuSpacing.gutter,
+      NiuSpacing.xl + MediaQuery.viewInsetsOf(context).bottom,
+    ),
+    child: SingleChildScrollView(
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Icon(
-            Icons.no_photography_outlined,
-            color: Colors.white70,
-            size: 36,
-          ),
-          const SizedBox(height: NiuSpacing.md),
-          Text(
-            '無法使用相機',
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(color: Colors.white),
-          ),
+          Text('輸入點名網址', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: NiuSpacing.xs),
           Text(
-            '請到系統設定允許相機權限，或在下方貼上點名網址。',
-            textAlign: TextAlign.center,
-            style: Theme.of(
-              context,
-            ).textTheme.bodySmall?.copyWith(color: Colors.white70),
+            '貼上老師提供的 M 園區點名連結。',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: NiuSpacing.lg),
+          TextField(
+            controller: text,
+            autofocus: true,
+            keyboardType: TextInputType.url,
+            textInputAction: TextInputAction.go,
+            autocorrect: false,
+            onSubmitted: (v) => Navigator.pop(context, v),
+            decoration: const InputDecoration(
+              hintText: 'https://euni.niu.edu.tw/…',
+              prefixIcon: Icon(NiuIcons.link),
+            ),
+          ),
+          const SizedBox(height: NiuSpacing.md),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, text.text),
+            child: const Text('開啟點名'),
           ),
         ],
       ),
@@ -228,54 +355,153 @@ class _CameraUnavailable extends StatelessWidget {
   );
 }
 
-/// Corner brackets marking the scan area.
-class _Viewfinder extends StatelessWidget {
-  const _Viewfinder();
+/// Dim everything except a rounded, dashed scan window.
+class _ScannerOverlay extends StatelessWidget {
+  const _ScannerOverlay();
   @override
-  Widget build(BuildContext context) => Center(
-    child: FractionallySizedBox(
-      widthFactor: .62,
-      child: AspectRatio(
-        aspectRatio: 1,
-        child: CustomPaint(painter: _BracketPainter()),
-      ),
-    ),
-  );
+  Widget build(BuildContext context) => CustomPaint(painter: _OverlayPainter());
 }
 
-class _BracketPainter extends CustomPainter {
+class _OverlayPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
+    final side = (size.shortestSide * .72).clamp(0.0, 310.0);
+    final window = RRect.fromRectAndRadius(
+      Rect.fromCenter(
+        center: Offset(size.width / 2, size.height * .46),
+        width: side,
+        height: side,
+      ),
+      const Radius.circular(24),
+    );
+    canvas.drawPath(
+      Path.combine(
+        PathOperation.difference,
+        Path()..addRect(Offset.zero & size),
+        Path()..addRRect(window),
+      ),
+      Paint()..color = const Color(0x8c000000),
+    );
+    final border = Paint()
       ..color = Colors.white
-      ..strokeWidth = 4
-      ..strokeCap = StrokeCap.round
-      ..style = PaintingStyle.stroke;
-    final l = size.width * .18;
-    const r = 18.0;
-    final w = size.width, h = size.height;
-    final path = Path()
-      ..moveTo(0, l)
-      ..lineTo(0, r)
-      ..arcToPoint(const Offset(r, 0), radius: const Radius.circular(r))
-      ..lineTo(l, 0)
-      ..moveTo(w - l, 0)
-      ..lineTo(w - r, 0)
-      ..arcToPoint(Offset(w, r), radius: const Radius.circular(r))
-      ..lineTo(w, l)
-      ..moveTo(w, h - l)
-      ..lineTo(w, h - r)
-      ..arcToPoint(Offset(w - r, h), radius: const Radius.circular(r))
-      ..lineTo(w - l, h)
-      ..moveTo(l, h)
-      ..lineTo(r, h)
-      ..arcToPoint(Offset(0, h - r), radius: const Radius.circular(r))
-      ..lineTo(0, h - l);
-    canvas.drawPath(path, paint);
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3;
+    for (final metric in (Path()..addRRect(window)).computeMetrics()) {
+      for (var d = 0.0; d < metric.length; d += 28) {
+        canvas.drawPath(metric.extractPath(d, d + 20), border);
+      }
+    }
   }
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _ScannerControls extends StatelessWidget {
+  const _ScannerControls({required this.controller, required this.onEnterLink});
+  final MobileScannerController controller;
+  final VoidCallback onEnterLink;
+  @override
+  Widget build(BuildContext context) => Container(
+    margin: const EdgeInsets.fromLTRB(
+      NiuSpacing.gutter,
+      0,
+      NiuSpacing.gutter,
+      NiuSpacing.lg,
+    ),
+    padding: const EdgeInsets.fromLTRB(
+      NiuSpacing.lg,
+      NiuSpacing.sm,
+      NiuSpacing.lg,
+      NiuSpacing.xs,
+    ),
+    decoration: BoxDecoration(
+      color: const Color(0xb3141518),
+      borderRadius: BorderRadius.circular(NiuRadius.xl),
+    ),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ValueListenableBuilder<MobileScannerState>(
+          valueListenable: controller,
+          builder: (context, state, _) => Row(
+            children: [
+              const Icon(Icons.zoom_out_rounded, color: Colors.white70),
+              Expanded(
+                child: Slider(
+                  value: state.zoomScale.clamp(0.0, 1.0),
+                  onChanged: state.isRunning
+                      ? (v) =>
+                            controller.setZoomScale(v).catchError((Object _) {})
+                      : null,
+                  semanticFormatterCallback: (v) => '縮放 ${(v * 100).round()}%',
+                ),
+              ),
+              const Icon(Icons.zoom_in_rounded, color: Colors.white70),
+            ],
+          ),
+        ),
+        TextButton.icon(
+          style: TextButton.styleFrom(foregroundColor: Colors.white),
+          onPressed: onEnterLink,
+          icon: const Icon(NiuIcons.link, size: 18),
+          label: const Text('改用點名網址'),
+        ),
+      ],
+    ),
+  );
+}
+
+class _ScannerMessage extends StatelessWidget {
+  const _ScannerMessage({
+    required this.title,
+    this.icon,
+    this.message,
+    this.actionLabel,
+    this.onAction,
+  });
+  final String title;
+  final IconData? icon;
+  final String? message;
+  final String? actionLabel;
+  final VoidCallback? onAction;
+  @override
+  Widget build(BuildContext context) => ColoredBox(
+    color: Colors.black,
+    child: Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(NiuSpacing.xxl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: Colors.white, size: 42),
+            const SizedBox(height: NiuSpacing.lg),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(color: Colors.white),
+            ),
+            if (message != null) ...[
+              const SizedBox(height: NiuSpacing.sm),
+              Text(
+                message!,
+                textAlign: TextAlign.center,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: Colors.white70),
+              ),
+            ],
+            if (actionLabel != null && onAction != null) ...[
+              const SizedBox(height: NiuSpacing.xl),
+              FilledButton(onPressed: onAction, child: Text(actionLabel!)),
+            ],
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class AttendanceRecords extends StatefulWidget {

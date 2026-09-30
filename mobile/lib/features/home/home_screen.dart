@@ -123,7 +123,7 @@ class CampusHomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: NiuSpacing.md),
               NiuCard(
-                semanticLabel: '點名，掃描課堂 QR Code 簽到',
+                semanticLabel: 'M 園區快速點名，掃描課堂 QR Code 簽到',
                 onTap: () => context.push('/attendance'),
                 child: Row(
                   children: [
@@ -136,7 +136,7 @@ class CampusHomeScreen extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('點名', style: theme.textTheme.titleMedium),
+                          Text('M 園區快速點名', style: theme.textTheme.titleMedium),
                           const SizedBox(height: 2),
                           Text(
                             '掃描課堂 QR Code 簽到',
