@@ -33,7 +33,9 @@ Riverpod 管理校曆資料來源與非同步狀態；CampusSession 使用 Chang
 
 重新授權由 `SchoolReauthorization` 共用同一次進行中的 SSO 恢復請求：僅在已有本機帳號時讀取安全儲存帳密，以暫時 WebView 嘗試登入，最多等待 20 秒。只點擊校方登入按鈕一次，遇到驗證元件、停用的按鈕或失敗則回到可見登入頁；Token 必須經伺服器身分驗證後才能恢復 Session。活動登入失效時也只嘗試一次帳密恢復，不重送報名操作。
 
-`NiuColors` 為 ThemeExtension，區分 page/card/control/navigation surfaces 及狀態色；`NiuSpacing`、`NiuRadius`、`NiuMotion` 為共用 tokens。畫面使用 textTheme 與既有 shared 元件，保留 Android SafeArea、返回與字體縮放。QR 原始影像與白色 quiet zone 是掃描用途的例外。
+`NiuColors` 為 ThemeExtension，採三層表面：canvas（頁面）→ surface（卡片、導覽列）→ fill（卡片內的控制項與區塊），另有 ink 三階文字、accent 與 success/warning/error；`NiuHue` 為各功能的識別色，淺深色皆有可讀前景與淡色底。`NiuSpacing`（4pt，頁面邊距 20）、`NiuRadius`（卡片 20）、`NiuSize`、`NiuMotion` 為共用 tokens，字級見 `NiuTheme`。
+
+元件統一放在 `lib/shared/`：頁面框架 `NiuScrollPage`（主分頁用 large、次頁用 medium 可收合標題列）與 `NiuAppBar`；表面 `NiuCard`、`NiuGroup`/`NiuRow`（分組列表）、`NiuSection`、`NiuWell`；狀態 `NiuLoading`、`NiuEmpty`、`NiuError`、`NiuBanner`、`NiuSyncStatus`；資料 `NiuStat`、`NiuProgressBar`、`NiuKeyValue`、`NiuField`；控制項 `NiuSegmented`、`NiuTabs`、`NiuFilterBar`、`NiuBadge`、`NiuTag`、`NiuSearchField`。圖示只用 `NiuIcons`（Material Rounded）。首頁與校園分頁共用 `features/home/campus_services.dart` 的服務目錄。主分頁不顯示返回鍵，其他頁使用 Android 返回箭頭並支援預測式返回；列表底部保留系統手勢區距離。QR 原始影像與白色 quiet zone 是掃描用途的例外。
 
 ## 驗證
 

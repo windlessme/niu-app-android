@@ -1,8 +1,9 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'niu_icons.dart';
 
-class AppSearchField extends StatefulWidget {
-  const AppSearchField({
+/// Filled pill search field with an inline clear action.
+class NiuSearchField extends StatefulWidget {
+  const NiuSearchField({
     super.key,
     this.controller,
     this.hint = '搜尋',
@@ -12,10 +13,10 @@ class AppSearchField extends StatefulWidget {
   final String hint;
   final ValueChanged<String>? onChanged;
   @override
-  State<AppSearchField> createState() => _AppSearchFieldState();
+  State<NiuSearchField> createState() => _NiuSearchFieldState();
 }
 
-class _AppSearchFieldState extends State<AppSearchField> {
+class _NiuSearchFieldState extends State<NiuSearchField> {
   late final local = TextEditingController();
   TextEditingController get controller => widget.controller ?? local;
   @override
@@ -34,7 +35,22 @@ class _AppSearchFieldState extends State<AppSearchField> {
           textInputAction: TextInputAction.search,
           decoration: InputDecoration(
             hintText: widget.hint,
-            prefixIcon: const Icon(CupertinoIcons.search),
+            prefixIcon: const Icon(NiuIcons.search),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(999),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(999),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(999),
+              borderSide: BorderSide(
+                color: Theme.of(context).colorScheme.primary,
+                width: 1.5,
+              ),
+            ),
             suffixIcon: value.text.isEmpty
                 ? null
                 : IconButton(
@@ -43,19 +59,8 @@ class _AppSearchFieldState extends State<AppSearchField> {
                       controller.clear();
                       widget.onChanged?.call('');
                     },
-                    icon: const Icon(CupertinoIcons.clear_circled_solid),
+                    icon: const Icon(NiuIcons.clear, size: 20),
                   ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(18),
-              borderSide: BorderSide(
-                color: Theme.of(context).colorScheme.primary,
-                width: 1,
-              ),
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 12,
-            ),
           ),
         ),
       );

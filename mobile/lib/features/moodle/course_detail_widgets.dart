@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../shared/shared.dart';
 import 'moodle_repository.dart';
-import '../../shared/app_tab_button.dart';
 
 /// Each visited tab remains mounted, including its future and scroll position.
 class CourseDetailTabs extends StatefulWidget {
@@ -16,59 +15,33 @@ class _CourseDetailTabsState extends State<CourseDetailTabs> {
   final visited = <int>{0};
   static const labels = ['公告', '教材', '作業', '討論', '成績', '出席'];
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.fromLTRB(
-            NiuSpacing.lg,
-            NiuSpacing.xs,
-            NiuSpacing.lg,
-            NiuSpacing.md,
-          ),
-          child: Row(
-            children: [
-              for (final (index, label) in labels.indexed)
-                Padding(
-                  padding: const EdgeInsets.only(right: NiuSpacing.sm),
-                  child: AppTabButton(
-                    selected: selected == index,
-                    label: label,
-                    icon: const [
-                      Icons.campaign_outlined,
-                      Icons.folder_outlined,
-                      Icons.assignment_outlined,
-                      Icons.forum_outlined,
-                      Icons.bar_chart,
-                      Icons.fact_check_outlined,
-                    ][index],
-                    onPressed: () => setState(() {
-                      selected = index;
-                      visited.add(index);
-                    }),
-                  ),
-                ),
-            ],
-          ),
+  Widget build(BuildContext context) => Column(
+    children: [
+      NiuTabs(
+        labels: labels,
+        selected: selected,
+        onChanged: (index) => setState(() {
+          selected = index;
+          visited.add(index);
+        }),
+      ),
+      Divider(height: 1, color: NiuColors.of(context).hairline),
+      Expanded(
+        child: IndexedStack(
+          index: selected,
+          children: [
+            for (var index = 0; index < widget.builders.length; index++)
+              visited.contains(index)
+                  ? TickerMode(
+                      enabled: selected == index,
+                      child: Builder(builder: widget.builders[index]),
+                    )
+                  : const SizedBox.shrink(),
+          ],
         ),
-        Expanded(
-          child: IndexedStack(
-            index: selected,
-            children: [
-              for (var index = 0; index < widget.builders.length; index++)
-                visited.contains(index)
-                    ? TickerMode(
-                        enabled: selected == index,
-                        child: Builder(builder: widget.builders[index]),
-                      )
-                    : const SizedBox.shrink(),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
+      ),
+    ],
+  );
 }
 
 class CourseDetailList extends StatefulWidget {
@@ -78,11 +51,13 @@ class CourseDetailList extends StatefulWidget {
     required this.item,
     required this.emptyTitle,
     required this.emptyMessage,
+    this.emptyIcon = NiuIcons.info,
     this.header,
   });
   final Future<List<Json>> Function() load;
   final Widget Function(Json) item;
   final String emptyTitle, emptyMessage;
+  final IconData emptyIcon;
   final Widget? header;
   @override
   State<CourseDetailList> createState() => _CourseDetailListState();
@@ -120,28 +95,36 @@ class _CourseDetailListState extends State<CourseDetailList> {
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(
+            NiuSpacing.gutter,
             NiuSpacing.lg,
-            NiuSpacing.xs,
-            NiuSpacing.lg,
-            NiuSpacing.xxxl,
+            NiuSpacing.gutter,
+            NiuSpacing.huge,
           ),
           children: [
             if (widget.header != null) widget.header!,
-            if (snapshot.hasError)
-              AppErrorState(
-                message: retained == null ? '請檢查連線後重新讀取。' : '更新失敗，以下保留上次資料。',
-                onRetry: reload,
+            if (snapshot.hasError && retained == null)
+              NiuError(message: '檢查網路連線後再試一次。', onRetry: reload),
+            if (snapshot.hasError && retained != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: NiuSpacing.md),
+                child: NiuBanner(
+                  tone: NiuTone.warning,
+                  message: '更新失敗，先顯示上次的資料。',
+                  actionLabel: '再試一次',
+                  onAction: reload,
+                ),
               ),
             if (retained == null && !snapshot.hasError)
-              const AppLoadingState(message: '正在讀取課程資料…'),
+              const NiuLoading(message: '正在讀取課程資料'),
             if (retained != null) ...[
               if (refreshing)
                 const Padding(
-                  padding: EdgeInsets.all(NiuSpacing.md),
-                  child: Text('正在更新，顯示上次資料…'),
+                  padding: EdgeInsets.only(bottom: NiuSpacing.md),
+                  child: NiuSyncStatus(updatedAt: null, refreshing: true),
                 ),
               if (retained!.isEmpty)
-                NiuEmptyState(
+                NiuEmpty(
+                  icon: widget.emptyIcon,
                   title: widget.emptyTitle,
                   message: widget.emptyMessage,
                 ),
@@ -154,6 +137,7 @@ class _CourseDetailListState extends State<CourseDetailList> {
   );
 }
 
+/// A card for announcements, assignments, discussions and grade items.
 class CourseDetailItem extends StatelessWidget {
   const CourseDetailItem({
     super.key,
@@ -161,38 +145,48 @@ class CourseDetailItem extends StatelessWidget {
     this.metadata,
     this.excerpt,
     this.onTap,
+    this.badge,
     this.children = const [],
   });
   final String title;
   final String? metadata, excerpt;
   final VoidCallback? onTap;
+  final Widget? badge;
   final List<Widget> children;
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: NiuSpacing.md),
-    child: AppCard(
-      onTap: onTap,
-      padding: const EdgeInsets.all(NiuSpacing.lg),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(title, style: Theme.of(context).textTheme.titleMedium),
-          if (metadata != null && metadata!.isNotEmpty) ...[
-            const SizedBox(height: NiuSpacing.sm),
-            Text(
-              metadata!,
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: NiuSpacing.md),
+      child: NiuCard(
+        onTap: onTap,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (badge != null) ...[
+              Align(alignment: Alignment.centerLeft, child: badge),
+              const SizedBox(height: NiuSpacing.sm),
+            ],
+            Text(title, style: theme.textTheme.titleMedium),
+            if (metadata != null && metadata!.isNotEmpty) ...[
+              const SizedBox(height: NiuSpacing.xs),
+              Text(metadata!, style: theme.textTheme.labelMedium),
+            ],
+            if (excerpt != null && excerpt!.isNotEmpty) ...[
+              const SizedBox(height: NiuSpacing.sm),
+              Text(
+                excerpt!,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: NiuColors.of(context).inkSecondary,
+                ),
               ),
-            ),
+            ],
+            ...children,
           ],
-          if (excerpt != null && excerpt!.isNotEmpty) ...[
-            const SizedBox(height: NiuSpacing.md),
-            Text(excerpt!, maxLines: 3, overflow: TextOverflow.ellipsis),
-          ],
-          ...children,
-        ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }

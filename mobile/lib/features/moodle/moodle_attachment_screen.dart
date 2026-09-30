@@ -65,9 +65,7 @@ class _MoodleAttachmentScreenState extends State<MoodleAttachmentScreen> {
       );
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('無法分享附件，請重新下載。')));
+        showNiuMessage(context, '無法分享，請重新下載後再試');
       }
     } finally {
       if (mounted) setState(() => sharing = false);
@@ -82,24 +80,32 @@ class _MoodleAttachmentScreenState extends State<MoodleAttachmentScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: IosPageHeader(title: widget.name),
+    appBar: NiuAppBar(title: widget.name),
     body: SafeArea(
       top: false,
       child: FutureBuilder<Uint8List>(
         future: bytes,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return const SingleChildScrollView(
-              child: AppErrorState(message: '無法下載附件，請返回後重試或重新登入。'),
+            return const Center(
+              child: SingleChildScrollView(
+                child: NiuError(
+                  title: '無法下載檔案',
+                  message: '返回後再試一次；如果仍然失敗，請重新登入 M 園區。',
+                ),
+              ),
             );
           }
           if (!snapshot.hasData) {
-            return const Center(child: AppLoadingState(message: '正在讀取附件…'));
+            return const Center(child: NiuLoading(message: '正在下載檔案'));
           }
           final data = snapshot.data!;
           final path = Uri.parse(widget.url).path.toLowerCase();
           final image = RegExp(r'\.(png|jpg|jpeg|gif|webp)$').hasMatch(path);
           final text = RegExp(r'\.(txt|csv|md|log)$').hasMatch(path);
+          final extension = path.contains('.')
+              ? path.split('.').last.toUpperCase()
+              : '檔案';
           return Column(
             children: [
               Expanded(
@@ -108,54 +114,44 @@ class _MoodleAttachmentScreenState extends State<MoodleAttachmentScreen> {
                         child: Image.memory(
                           data,
                           semanticLabel: widget.name,
-                          errorBuilder: (_, error, stack) =>
-                              const Center(child: Text('無法預覽此圖片，仍可分享檔案。')),
+                          errorBuilder: (_, error, stack) => const Center(
+                            child: NiuEmpty(
+                              icon: Icons.broken_image_outlined,
+                              title: '無法預覽這張圖片',
+                              message: '仍然可以分享或儲存檔案。',
+                            ),
+                          ),
                         ),
                       )
                     : text
                     ? SingleChildScrollView(
-                        padding: const EdgeInsets.all(NiuSpacing.xl),
-                        child: SelectableText(
-                          utf8.decode(data, allowMalformed: true),
+                        padding: const EdgeInsets.all(NiuSpacing.gutter),
+                        child: NiuCard(
+                          child: SelectableText(
+                            utf8.decode(data, allowMalformed: true),
+                          ),
                         ),
                       )
                     : Center(
                         child: SingleChildScrollView(
-                          padding: const EdgeInsets.all(NiuSpacing.xl),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.insert_drive_file_outlined,
-                                size: 64,
-                              ),
-                              const SizedBox(height: NiuSpacing.xl),
-                              Text(
-                                widget.name,
-                                textAlign: TextAlign.center,
-                                style: Theme.of(context).textTheme.titleMedium,
-                              ),
-                              const SizedBox(height: NiuSpacing.sm),
-                              Text(
-                                '${(data.length / 1024).toStringAsFixed(1)} KB',
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                              const SizedBox(height: NiuSpacing.md),
-                              const Text('附件已下載，可分享至支援此格式的 App 檢視。'),
-                            ],
+                          child: NiuEmpty(
+                            icon: NiuIcons.file,
+                            tone: NiuTone.accent,
+                            title: widget.name,
+                            message:
+                                '$extension · ${(data.length / 1024).toStringAsFixed(1)} KB\n已下載完成，可以用其他 App 開啟。',
                           ),
                         ),
                       ),
               ),
-              Padding(
-                padding: const EdgeInsets.all(NiuSpacing.xl),
+              NiuBottomBar(
                 child: FilledButton.icon(
                   style: FilledButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 48),
+                    minimumSize: const Size.fromHeight(NiuSize.buttonHeight),
                   ),
                   onPressed: sharing ? null : () => share(data),
-                  icon: const Icon(Icons.ios_share),
-                  label: const Text('分享／儲存附件'),
+                  icon: const Icon(NiuIcons.share),
+                  label: const Text('分享或儲存'),
                 ),
               ),
             ],

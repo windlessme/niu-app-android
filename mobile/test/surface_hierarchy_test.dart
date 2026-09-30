@@ -3,32 +3,30 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:niu_mobile/shared/shared.dart';
 
 void main() {
-  test(
-    'light surfaces have distinct roles rather than generated M3 near-white',
-    () {
-      final c = NiuColors.light;
-      final t = NiuTheme.light;
-      expect(c.pageBackground, isNot(c.cardSurface));
-      expect(
-        c.cardSurface.computeLuminance() - c.pageBackground.computeLuminance(),
-        greaterThan(.1),
-      );
-      expect(c.surfaceSecondary, isNot(c.pageBackground));
-      expect(c.surfaceTertiary, isNot(c.surfaceSecondary));
-      expect(t.cardTheme.color, c.cardSurface);
-      expect(t.scaffoldBackgroundColor, c.pageBackground);
-      expect(t.colorScheme.surfaceContainerLow, c.surfaceSecondary);
-      expect(c.navigationSurface, c.cardSurface);
-    },
-  );
-  test('dark palette keeps OLED and existing card tone', () {
-    expect(NiuColors.dark.pageBackground, Colors.black);
-    expect(NiuColors.dark.cardSurface, const Color(0xff1c1c1e));
-    expect(NiuColors.dark.navigationSurface, const Color(0xff1c1c1e));
-    expect(NiuColors.dark.surfaceTertiary, const Color(0xff242426));
+  test('light canvas, cards and wells are distinct layers', () {
+    final c = NiuColors.light;
+    final t = NiuTheme.light;
+    expect(c.canvas, isNot(c.surface));
     expect(
-      NiuColors.light.lerp(NiuColors.dark, 1).surfaceSecondary,
-      NiuColors.dark.surfaceSecondary,
+      c.surface.computeLuminance() - c.canvas.computeLuminance(),
+      greaterThan(.08),
     );
+    expect(t.cardTheme.color, c.surface);
+    expect(t.scaffoldBackgroundColor, c.canvas);
+    expect(t.navigationBarTheme.backgroundColor, c.surface);
+    expect(Color.alphaBlend(c.fill, c.surface), isNot(c.surface));
+  });
+  test('dark palette keeps OLED canvas with raised cards', () {
+    final c = NiuColors.dark;
+    expect(c.canvas, Colors.black);
+    expect(
+      c.surface.computeLuminance(),
+      greaterThan(c.canvas.computeLuminance()),
+    );
+    expect(
+      c.raised.computeLuminance(),
+      greaterThan(c.surface.computeLuminance()),
+    );
+    expect(NiuColors.light.lerp(NiuColors.dark, 1).surface, c.surface);
   });
 }

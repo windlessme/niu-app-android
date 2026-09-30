@@ -76,7 +76,7 @@ void main() {
         );
         await tester.pumpAndSettle();
         expect(calls, [false]);
-        expect(find.byType(IosPageHeader), findsOneWidget);
+        expect(find.byType(NiuScrollPage), findsOneWidget);
         expect(find.text('-'), findsOneWidget);
         expect(tester.takeException(), isNull);
         for (final query in ['學務處', '圖書館', '永續']) {
@@ -99,8 +99,8 @@ void main() {
         await tester.pumpAndSettle();
         await tester.tap(find.text(event.name));
         await tester.pumpAndSettle();
-        expect(find.byType(HeroCard), findsOneWidget);
-        final action = find.widgetWithText(FilledButton, '前往校方報名');
+        expect(find.byType(NiuCard), findsWidgets);
+        final action = find.widgetWithText(FilledButton, '前往報名');
         expect(tester.getSize(action).height, greaterThanOrEqualTo(48));
         expect(tester.takeException(), isNull);
         await tester.tap(find.byTooltip('返回'));
@@ -173,12 +173,12 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('尚未同步活動'), findsOneWidget);
       expect(find.byType(EventListCard), findsNothing);
-      await tester.tap(find.widgetWithText(TextButton, '同步活動'));
+      await tester.tap(find.widgetWithText(FilledButton, '同步活動'));
       await tester.pumpAndSettle();
       expect(calls, 2);
       await tester.tap(find.text(event.name));
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(FilledButton, '前往校方報名'));
+      await tester.tap(find.widgetWithText(FilledButton, '前往報名'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('取消操作'));
       await tester.pumpAndSettle();

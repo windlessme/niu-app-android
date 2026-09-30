@@ -89,40 +89,79 @@ class _MoodleWebScreenState extends State<MoodleWebScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: IosPageHeader(title: widget.title),
+    appBar: NiuAppBar(title: widget.title),
     body: SafeArea(
       top: false,
       child: FutureBuilder<Uri>(
         future: entry,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return const SingleChildScrollView(
-              child: AppErrorState(message: '無法建立 M 園區網頁登入，請返回重新登入。'),
+            return const Center(
+              child: SingleChildScrollView(
+                child: NiuError(
+                  title: '無法開啟 M 園區網頁',
+                  message: '返回後重新登入 M 園區，再試一次。',
+                ),
+              ),
             );
           }
           if (!snapshot.hasData) {
-            return const Center(child: AppLoadingState(message: '連線中…'));
+            return const Center(child: NiuLoading(message: '正在連線'));
           }
+          final result = outcome;
           return Column(
             children: [
-              if (progress < 1) LinearProgressIndicator(value: progress),
+              SizedBox(
+                height: 2,
+                child: progress < 1
+                    ? LinearProgressIndicator(
+                        value: progress,
+                        minHeight: 2,
+                        borderRadius: BorderRadius.zero,
+                      )
+                    : null,
+              ),
               if (failed)
                 const Padding(
-                  padding: EdgeInsets.all(NiuSpacing.xl),
-                  child: Text('校方頁面載入失敗，請返回查看紀錄。'),
+                  padding: EdgeInsets.all(NiuSpacing.gutter),
+                  child: NiuBanner(
+                    tone: NiuTone.error,
+                    message: '網頁載入失敗。返回後可以在出席紀錄確認結果。',
+                  ),
                 ),
-              if (outcome != null)
+              if (result != null)
                 Padding(
-                  padding: const EdgeInsets.all(NiuSpacing.xl),
-                  child: Text(switch (outcome!) {
-                    AttendanceOutcome.recorded => '點名成功：M 園區已記錄本次出席。',
-                    AttendanceOutcome.alreadyRecorded => '本次出席已經記錄。',
-                    AttendanceOutcome.expired =>
-                      'QR Code 已過期，這次未完成點名。請重新掃描最新 QR Code。',
-                    AttendanceOutcome.requiresAction => '請在下方校方頁面選擇狀態或送出表單。',
-                    AttendanceOutcome.failed => '本次點名未完成，請查看下方校方說明。',
-                    AttendanceOutcome.unknown => '尚未取得可確認的點名結果，請查看校方頁面或出席紀錄。',
-                  }),
+                  padding: const EdgeInsets.fromLTRB(
+                    NiuSpacing.gutter,
+                    NiuSpacing.md,
+                    NiuSpacing.gutter,
+                    NiuSpacing.md,
+                  ),
+                  child: NiuBanner(
+                    tone: switch (result) {
+                      AttendanceOutcome.recorded ||
+                      AttendanceOutcome.alreadyRecorded => NiuTone.success,
+                      AttendanceOutcome.expired ||
+                      AttendanceOutcome.failed => NiuTone.error,
+                      _ => NiuTone.warning,
+                    },
+                    title: switch (result) {
+                      AttendanceOutcome.recorded => '點名成功',
+                      AttendanceOutcome.alreadyRecorded => '已經點過名了',
+                      AttendanceOutcome.expired => 'QR Code 已過期',
+                      AttendanceOutcome.requiresAction => '還差一步',
+                      AttendanceOutcome.failed => '點名沒有完成',
+                      AttendanceOutcome.unknown => '還無法確認結果',
+                    },
+                    message: switch (result) {
+                      AttendanceOutcome.recorded => 'M 園區已記錄這次出席。',
+                      AttendanceOutcome.alreadyRecorded => '這堂課的出席已經記錄。',
+                      AttendanceOutcome.expired => '這次沒有完成點名，請掃描老師最新的 QR Code。',
+                      AttendanceOutcome.requiresAction => '請在下方網頁選擇出席狀態或送出表單。',
+                      AttendanceOutcome.failed => '請查看下方網頁的說明。',
+                      AttendanceOutcome.unknown => '請查看下方網頁，或到出席紀錄確認。',
+                    },
+                  ),
                 ),
               Expanded(
                 child: InAppWebView(

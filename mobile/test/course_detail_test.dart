@@ -185,7 +185,7 @@ void main() {
       await tester.tap(find.text('第一週講義'));
       await tester.pumpAndSettle();
       expect(find.byType(MoodleModuleScreen), findsOneWidget);
-      await tester.pageBack();
+      await tester.tap(find.byTooltip('返回'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('公告'));
       await tester.pumpAndSettle();
@@ -196,10 +196,10 @@ void main() {
       expect(find.text('繳交狀態未提供'), findsOneWidget);
       await tester.tap(find.text('閱讀作業'));
       await tester.pumpAndSettle();
-      expect(find.text('繳交狀態：繳交狀態未提供'), findsOneWidget);
-      expect(find.text('評分：未提供'), findsOneWidget);
+      expect(find.text('繳交狀態未提供'), findsWidgets);
+      expect(find.text('未提供'), findsWidgets);
       expect(tester.takeException(), isNull);
-      await tester.pageBack();
+      await tester.tap(find.byTooltip('返回'));
       await tester.pumpAndSettle();
       final tabs = find
           .descendant(
@@ -211,7 +211,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text('成績'));
       await tester.pumpAndSettle();
-      expect(find.text('成績：尚未公布'), findsOneWidget);
+      expect(find.text('尚未公布'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   }

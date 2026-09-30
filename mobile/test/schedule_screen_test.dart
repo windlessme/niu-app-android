@@ -157,7 +157,7 @@ void main() {
     await tester.pumpWidget(app());
     await tester.tap(find.byTooltip('更新課表'));
     await tester.pump();
-    await tester.tap(find.text('更新未完成？返回已儲存的課表'));
+    await tester.tap(find.text('先看已保存的課表'));
     await tester.pump();
     expect(find.byType(ScheduleView), findsOneWidget);
     expect(find.byType(AcademicPortalScreen), findsNothing);

@@ -16,16 +16,16 @@ class EventStatusPill extends StatelessWidget {
     final positive =
         text.contains('報名成功') || text.contains('報名中') || text.contains('已報名');
     final tone = closed
-        ? NiuStatusTone.neutral
+        ? NiuTone.neutral
         : waiting
-        ? NiuStatusTone.warning
+        ? NiuTone.warning
         : positive
-        ? NiuStatusTone.success
-        : NiuStatusTone.neutral;
+        ? NiuTone.success
+        : NiuTone.neutral;
     return Semantics(
       label: '活動狀態：${text.isEmpty ? '尚未提供' : text}',
       excludeSemantics: true,
-      child: NiuStatusChip(label: text.isEmpty ? '-' : text, tone: tone),
+      child: NiuBadge(label: text.isEmpty ? '-' : text, tone: tone),
     );
   }
 }
@@ -35,73 +35,73 @@ class EventListCard extends StatelessWidget {
   final CampusEvent event;
   final VoidCallback onTap;
   @override
-  Widget build(BuildContext context) => AppCard(
-    padding: const EdgeInsets.all(NiuSpacing.lg),
-    onTap: onTap,
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          event.name.isEmpty ? '-' : event.name,
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
-        const SizedBox(height: 10),
-        EventStatusPill(status: event.status),
-        for (final fact in [
-          (Icons.schedule, '時間', event.time),
-          (Icons.place_outlined, '地點', event.location),
-          (Icons.groups_outlined, '主辦單位', event.department),
-          (Icons.verified_outlined, '認證時數', event.hours),
-        ])
-          if (fact.$3.trim().isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 10),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    fact.$1,
-                    size: 20,
-                    color: NiuColors.of(context).secondary,
-                  ),
-                  const SizedBox(width: NiuSpacing.sm),
-                  Expanded(
-                    child: Text(
-                      '${fact.$2}：${fact.$3}',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
-                  ),
-                ],
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = NiuColors.of(context);
+    return NiuCard(
+      onTap: onTap,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  event.name.isEmpty ? '-' : event.name,
+                  style: theme.textTheme.titleMedium,
+                ),
               ),
-            ),
-      ],
-    ),
-  );
+              const SizedBox(width: NiuSpacing.sm),
+              EventStatusPill(status: event.status),
+            ],
+          ),
+          const SizedBox(height: NiuSpacing.sm),
+          for (final fact in [
+            (NiuIcons.time, event.time),
+            (NiuIcons.location, event.location),
+            (Icons.apartment_rounded, event.department),
+          ])
+            if (fact.$2.trim().isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(top: 1),
+                      child: Icon(fact.$1, size: 16, color: colors.inkTertiary),
+                    ),
+                    const SizedBox(width: NiuSpacing.sm),
+                    Expanded(
+                      child: Text(fact.$2, style: theme.textTheme.bodySmall),
+                    ),
+                  ],
+                ),
+              ),
+          if (event.hours.trim().isNotEmpty) ...[
+            const SizedBox(height: NiuSpacing.sm),
+            NiuTag(label: '認證 ${event.hours}', icon: Icons.verified_outlined),
+          ],
+        ],
+      ),
+    );
+  }
 }
 
 class EventFactGroup extends StatelessWidget {
   const EventFactGroup({super.key, required this.facts});
   final List<(String, String)> facts;
   @override
-  Widget build(BuildContext context) => CompactCard(
+  Widget build(BuildContext context) => NiuCard(
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         for (var index = 0; index < facts.length; index++) ...[
-          if (index > 0)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: NiuSpacing.md),
-              child: Divider(height: 1),
-            ),
-          Text(
-            facts[index].$1,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: NiuColors.of(context).secondary,
-            ),
-          ),
-          const SizedBox(height: NiuSpacing.xs),
-          SelectableText(
-            facts[index].$2.trim().isEmpty ? '-' : facts[index].$2,
+          if (index > 0) const Divider(),
+          NiuField(
+            label: facts[index].$1,
+            value: facts[index].$2.trim().isEmpty ? '-' : facts[index].$2,
           ),
         ],
       ],

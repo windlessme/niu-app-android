@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../core/session/campus_session.dart';
 import '../../core/web/academic_portal_screen.dart';
@@ -39,18 +38,13 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     try {
       final completed = await certificate.open(data, save: save);
       if (mounted && completed && save && epoch == session.coordinator.epoch) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('在學證明已儲存')));
+        showNiuMessage(context, '在學證明已儲存');
       }
     } catch (_) {
       if (mounted && epoch == session.coordinator.epoch) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              save ? '無法下載在學證明，請確認登入狀態後重試。' : '無法開啟在學證明，請確認登入狀態及已安裝 PDF 閱讀程式。',
-            ),
-          ),
+        showNiuMessage(
+          context,
+          save ? '下載失敗，請確認登入狀態後再試一次' : '無法開啟，請確認登入狀態，以及手機有 PDF 閱讀 App',
         );
       }
     } finally {
@@ -60,7 +54,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
   @override
   Widget build(BuildContext context) => AcademicPortalScreen(
-    title: '註冊資訊',
+    title: '在學證明',
     session: session,
     target: Uri.parse(
       'https://acade.niu.edu.tw/NIU/Application/ENR/ENR50/ENR5020_01.aspx',
@@ -72,9 +66,12 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       );
       if (!data.belongsTo(session.account)) {
         return const Center(
-          child: Padding(
-            padding: EdgeInsets.all(NiuSpacing.section),
-            child: Text('查無可確認為本人的註冊資料，請重新整理或查看校方資料來源。'),
+          child: SingleChildScrollView(
+            child: NiuEmpty(
+              icon: NiuIcons.registration,
+              title: '找不到你的註冊資料',
+              message: '無法確認這份資料屬於你本人。請重新整理，或查看學校網頁。',
+            ),
           ),
         );
       }
@@ -100,94 +97,125 @@ class RegistrationDashboard extends StatelessWidget {
   final bool busy;
   final VoidCallback? onView, onSave;
 
+  static const _details = [
+    '註冊日期',
+    '學雜費',
+    '前學期學分費',
+    '就學貸款',
+    '請註冊假應註冊日期',
+    '欠書欠款',
+    '超商繳費收據',
+    '收據上傳日期',
+    '備註',
+  ];
+
   @override
-  Widget build(BuildContext context) => ListView(
-    padding: const EdgeInsets.fromLTRB(
-      NiuSpacing.page,
-      NiuSpacing.sm,
-      NiuSpacing.page,
-      NiuSpacing.large,
-    ),
-    children: [
-      const SectionHeader(title: '在學證明'),
-      AppCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Wrap(
-              spacing: 12,
-              runSpacing: 8,
-              children: [
-                FilledButton.icon(
-                  onPressed: busy ? null : onView,
-                  icon: const Icon(CupertinoIcons.doc_text),
-                  label: const Text('瀏覽 PDF'),
-                ),
-                OutlinedButton.icon(
-                  onPressed: busy ? null : onSave,
-                  icon: const Icon(CupertinoIcons.arrow_down_doc),
-                  label: const Text('下載 PDF'),
-                ),
-              ],
-            ),
-            if (busy)
-              const Padding(
-                padding: EdgeInsets.only(top: NiuSpacing.md),
-                child: Row(
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(
+        NiuSpacing.gutter,
+        NiuSpacing.sm,
+        NiuSpacing.gutter,
+        NiuSpacing.huge,
+      ),
+      children: [
+        NiuCard(
+          padding: const EdgeInsets.all(NiuSpacing.xl),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  const NiuIconTile(
+                    icon: NiuIcons.document,
+                    hue: NiuHue.cyan,
+                    size: NiuSize.iconTileLarge,
+                  ),
+                  const SizedBox(width: NiuSpacing.lg),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('在學證明', style: theme.textTheme.titleLarge),
+                        const SizedBox(height: 2),
+                        Text(
+                          '學校核發的 PDF，可以直接開啟或存到手機',
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: NiuSpacing.xl),
+              if (!data.printable)
+                const NiuBanner(tone: NiuTone.neutral, message: '目前沒有可以列印的在學證明')
+              else
+                Row(
                   children: [
-                    CupertinoActivityIndicator(),
-                    SizedBox(width: 8),
-                    Expanded(child: Text('正在取得在學證明…')),
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: busy ? null : onView,
+                        icon: const Icon(NiuIcons.document, size: 18),
+                        label: const Text('瀏覽 PDF'),
+                      ),
+                    ),
+                    const SizedBox(width: NiuSpacing.md),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: busy ? null : onSave,
+                        icon: const Icon(NiuIcons.download, size: 18),
+                        label: const Text('下載 PDF'),
+                      ),
+                    ),
                   ],
                 ),
-              ),
-            if (!data.printable) const Text('暫無可用證明'),
-          ],
-        ),
-      ),
-      for (final row in data.rows) ...[
-        SectionHeader(title: '註冊學年期 ${RegistrationData.display(row['註冊學年期'])}'),
-        AppCard(
-          child: Column(
-            children: [
-              for (final label in [
-                '在學狀態',
-                '註冊狀態',
-                '註冊日期',
-                '學雜費',
-                '前學期學分費',
-                '就學貸款',
-                '請註冊假應註冊日期',
-                '欠書欠款',
-                '超商繳費收據',
-                '收據上傳日期',
-                '備註',
-              ])
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: NiuSpacing.sm),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          label,
-                          style: Theme.of(context).textTheme.labelMedium,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Text(
-                          RegistrationData.display(row[label]),
-                          textAlign: TextAlign.end,
-                        ),
-                      ),
-                    ],
-                  ),
+              if (busy)
+                const Padding(
+                  padding: EdgeInsets.only(top: NiuSpacing.md),
+                  child: LinearProgressIndicator(),
                 ),
             ],
           ),
         ),
+        for (final row in data.rows)
+          NiuSection(
+            title: '${RegistrationData.display(row['註冊學年期'])} 學期註冊',
+            child: NiuCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: NiuStat(
+                          label: '在學狀態',
+                          value: RegistrationData.display(row['在學狀態']),
+                        ),
+                      ),
+                      Expanded(
+                        child: NiuStat(
+                          label: '註冊狀態',
+                          value: RegistrationData.display(row['註冊狀態']),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: NiuSpacing.md),
+                  const Divider(),
+                  const SizedBox(height: NiuSpacing.md),
+                  for (final label in _details)
+                    NiuKeyValue(
+                      label: label,
+                      value: RegistrationData.display(row[label]),
+                    ),
+                ],
+              ),
+            ),
+          ),
       ],
-    ],
-  );
+    );
+  }
 }

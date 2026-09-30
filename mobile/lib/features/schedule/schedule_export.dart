@@ -108,8 +108,8 @@ class _ScheduleExportBarState extends State<ScheduleExportBar> {
       context: context,
       firstDate: DateTime(2020),
       lastDate: DateTime(2100),
-      helpText: '選擇實際學期起訖日期',
-      saveText: '確認學期日期',
+      helpText: '選擇學期的第一天與最後一天',
+      saveText: '完成',
     );
     if (dates == null || !mounted) return;
     if (dates.end.difference(dates.start).inDays > 366) {
@@ -134,74 +134,66 @@ class _ScheduleExportBarState extends State<ScheduleExportBar> {
       await action();
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('操作未完成，請確認登入、學期日期與通知權限後重試。')),
-        );
+        showNiuMessage(context, '沒有完成，請確認登入狀態、學期日期與通知權限');
       }
     } finally {
       if (mounted) setState(() => busy = false);
     }
   }
 
+  Future<void> export() => run(() async {
+    if (snapshot == null) await configure();
+    if (snapshot == null) return;
+    current();
+    await gateway.shareCalendar(exportScheduleIcs(snapshot!));
+  });
+
+  Future<void> toggleReminders(bool enabled) => run(() async {
+    if (enabled && snapshot == null) await configure();
+    if (enabled && snapshot == null) return;
+    current();
+    if (enabled && !await gateway.requestNotificationPermission()) {
+      throw StateError('通知權限未開啟');
+    }
+    current();
+    final accepted = await gateway.setReminders(enabled: enabled);
+    current();
+    if (enabled && !accepted) throw StateError('通知不可用');
+    if (mounted) setState(() => reminders = enabled);
+  });
+
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: NiuSpacing.md, vertical: 6),
-    child: Column(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: TextButton.icon(
-                onPressed: busy ? null : () => run(configure),
-                icon: const Icon(Icons.date_range),
-                label: Text(
-                  snapshot == null
-                      ? '設定學期・桌面課表'
-                      : '${snapshot!.semesterStart} — ${snapshot!.semesterEnd}',
-                ),
-              ),
-            ),
-            IconButton(
-              tooltip: '匯出行事曆',
-              icon: const Icon(Icons.ios_share),
-              onPressed: busy
-                  ? null
-                  : () => run(() async {
-                      if (snapshot == null) await configure();
-                      if (snapshot == null) return;
-                      current();
-                      await gateway.shareCalendar(exportScheduleIcs(snapshot!));
-                    }),
-            ),
-          ],
+  Widget build(BuildContext context) => NiuGroup(
+    children: [
+      NiuRow(
+        icon: Icons.date_range_rounded,
+        title: '學期日期',
+        subtitle: snapshot == null
+            ? '設定後會同步到桌面小工具'
+            : '${snapshot!.semesterStart} – ${snapshot!.semesterEnd}',
+        onTap: busy ? null : () => run(configure),
+      ),
+      Tooltip(
+        message: '匯出行事曆',
+        child: NiuRow(
+          icon: NiuIcons.share,
+          hue: NiuHue.red,
+          title: '匯出到行事曆',
+          subtitle: '產生 .ics 檔，分享到 Google 日曆等 App',
+          onTap: busy ? null : export,
         ),
-        SwitchListTile(
-          dense: true,
-          contentPadding: EdgeInsets.zero,
-          title: const Text('上課前 10 分鐘提醒'),
-          subtitle: Text(
-            '依每週課表提醒；假日與停課需自行調整。',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
+      ),
+      NiuRow(
+        icon: NiuIcons.notifications,
+        hue: NiuHue.orange,
+        title: '上課前 10 分鐘提醒',
+        subtitle: '依每週課表提醒，放假或停課不會自動略過',
+        maxSubtitleLines: 3,
+        trailing: Switch(
           value: reminders,
-          onChanged: busy
-              ? null
-              : (enabled) => run(() async {
-                  if (enabled && snapshot == null) await configure();
-                  if (enabled && snapshot == null) return;
-                  current();
-                  if (enabled &&
-                      !await gateway.requestNotificationPermission()) {
-                    throw StateError('通知權限未開啟');
-                  }
-                  current();
-                  final accepted = await gateway.setReminders(enabled: enabled);
-                  current();
-                  if (enabled && !accepted) throw StateError('通知不可用');
-                  if (mounted) setState(() => reminders = enabled);
-                }),
+          onChanged: busy ? null : toggleReminders,
         ),
-      ],
-    ),
+      ),
+    ],
   );
 }

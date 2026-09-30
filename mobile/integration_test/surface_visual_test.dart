@@ -21,7 +21,7 @@ void main() {
         MaterialApp(
           theme: dark ? NiuTheme.dark : NiuTheme.light,
           home: Scaffold(
-            appBar: const IosPageHeader(title: '我的課表'),
+            appBar: const NiuAppBar(title: '我的課表'),
             body: ScheduleView(schedule: schedule, initialWeekday: 2),
           ),
         ),

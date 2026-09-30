@@ -1,146 +1,173 @@
 import 'package:flutter/material.dart';
 
+/// Semantic palette. Surfaces follow a three-layer model shared with iOS:
+/// canvas (page) → surface (card) → fill (controls and wells inside a card).
 @immutable
 class NiuColors extends ThemeExtension<NiuColors> {
   const NiuColors({
-    required this.background,
+    required this.canvas,
     required this.surface,
-    required this.elevated,
-    required this.text,
-    required this.secondary,
-    required this.tertiary,
-    required this.separator,
+    required this.raised,
+    required this.ink,
+    required this.inkSecondary,
+    required this.inkTertiary,
+    required this.hairline,
     required this.accent,
-    required this.warning,
+    required this.onAccent,
+    required this.accentSoft,
     required this.success,
+    required this.warning,
     required this.error,
-    this.controlSurface,
-    this.navSurface,
-    this.softAccent,
-    this.selectedControl,
+    required this.fill,
+    required this.fillStrong,
+    required this.shadow,
   });
-  final Color background,
-      surface,
-      elevated,
-      text,
-      secondary,
-      tertiary,
-      separator,
-      accent,
-      warning,
-      success,
-      error;
-  final Color? controlSurface, navSurface, softAccent, selectedControl;
-  Color get selectedControlSurface => selectedControl ?? elevated;
-  Color get pageBackground => background;
-  Color get cardSurface => surface;
-  Color get navigationSurface => navSurface ?? surface;
-  // Compatibility aliases preserve existing feature code and palette roles.
-  Color get groupedBackground => background;
-  Color get surfaceSecondary => controlSurface ?? surface;
-  Color get surfaceTertiary => elevated;
-  Color get label => text;
-  Color get secondaryLabel => secondary;
-  Color get tertiaryLabel => tertiary;
-  Color get fill => text.withValues(alpha: .12);
-  Color get secondaryFill => text.withValues(alpha: .08);
-  Color get tertiaryFill => text.withValues(alpha: .05);
-  Color get accentSoft => softAccent ?? accent.withValues(alpha: .12);
-  Color get infoSoft => accentSoft;
-  Color get accentMedium => accent.withValues(alpha: .25);
-  Color get info => accent;
+
+  /// Page background behind cards.
+  final Color canvas;
+
+  /// Cards, grouped lists, navigation bar.
+  final Color surface;
+
+  /// Sheets, menus and selected thumbs that sit above a surface.
+  final Color raised;
+  final Color ink, inkSecondary, inkTertiary;
+  final Color hairline;
+  final Color accent, onAccent, accentSoft;
+  final Color success, warning, error;
+
+  /// Translucent wells; readable on both canvas and surface.
+  final Color fill, fillStrong;
+  final Color shadow;
+
   static const light = NiuColors(
-    background: Color(0xffe8edf3),
+    canvas: Color(0xfff2f3f7),
     surface: Colors.white,
-    elevated: Color(0xffcdd7e3),
-    controlSurface: Color(0xffe1e7ee),
-    navSurface: Colors.white,
-    softAccent: Color(0xffdbeaff),
-    selectedControl: Colors.white,
-    text: Color(0xff1c1c1e),
-    secondary: Color(0xff606069),
-    tertiary: Color(0xff73737d),
-    separator: Color(0xffd9d9df),
-    accent: Color(0xff0066cc),
-    warning: Color(0xff9c5700),
-    success: Color(0xff208044),
-    error: Color(0xffc83332),
+    raised: Colors.white,
+    ink: Color(0xff15171c),
+    inkSecondary: Color(0xff5a5f6b),
+    inkTertiary: Color(0xff737885),
+    hairline: Color(0xffe2e4ea),
+    accent: Color(0xff0a62d0),
+    onAccent: Colors.white,
+    accentSoft: Color(0xffe5eefc),
+    success: Color(0xff1b7f45),
+    warning: Color(0xff9a5400),
+    error: Color(0xffc9302a),
+    fill: Color(0x0d15171c),
+    fillStrong: Color(0x1a15171c),
+    shadow: Color(0x0f0c1830),
   );
+
   static const dark = NiuColors(
-    controlSurface: Color(0xff242426),
-    background: Colors.black,
-    surface: Color(0xff1c1c1e),
-    elevated: Color(0xff242426),
-    text: Color(0xfff5f5f7),
-    secondary: Color(0xffb8b8c0),
-    tertiary: Color(0xff9898a2),
-    separator: Color(0xff38383a),
-    accent: Color(0xff69adff),
-    warning: Color(0xffffbd62),
-    success: Color(0xff72d694),
-    error: Color(0xffff8580),
+    canvas: Colors.black,
+    surface: Color(0xff17181c),
+    raised: Color(0xff232429),
+    ink: Color(0xfff3f4f7),
+    inkSecondary: Color(0xffabafba),
+    inkTertiary: Color(0xff8c909b),
+    hairline: Color(0xff2d2f35),
+    accent: Color(0xff62a3ff),
+    onAccent: Color(0xff04142c),
+    accentSoft: Color(0xff15284a),
+    success: Color(0xff5fd38c),
+    warning: Color(0xfff4b04e),
+    error: Color(0xffff7b72),
+    fill: Color(0x14f3f4f7),
+    fillStrong: Color(0x24f3f4f7),
+    shadow: Color(0x00000000),
   );
+
   static NiuColors of(BuildContext context) =>
       Theme.of(context).extension<NiuColors>() ??
       (Theme.of(context).brightness == Brightness.dark ? dark : light);
+
   @override
   NiuColors copyWith({
-    Color? controlSurface,
-    Color? navSurface,
-    Color? softAccent,
-    Color? selectedControl,
-    Color? background,
+    Color? canvas,
     Color? surface,
-    Color? elevated,
-    Color? text,
-    Color? secondary,
-    Color? tertiary,
-    Color? separator,
+    Color? raised,
+    Color? ink,
+    Color? inkSecondary,
+    Color? inkTertiary,
+    Color? hairline,
     Color? accent,
-    Color? warning,
+    Color? onAccent,
+    Color? accentSoft,
     Color? success,
+    Color? warning,
     Color? error,
+    Color? fill,
+    Color? fillStrong,
+    Color? shadow,
   }) => NiuColors(
-    controlSurface: controlSurface ?? this.controlSurface,
-    navSurface: navSurface ?? this.navSurface,
-    softAccent: softAccent ?? this.softAccent,
-    selectedControl: selectedControl ?? this.selectedControl,
-    background: background ?? this.background,
+    canvas: canvas ?? this.canvas,
     surface: surface ?? this.surface,
-    elevated: elevated ?? this.elevated,
-    text: text ?? this.text,
-    secondary: secondary ?? this.secondary,
-    tertiary: tertiary ?? this.tertiary,
-    separator: separator ?? this.separator,
+    raised: raised ?? this.raised,
+    ink: ink ?? this.ink,
+    inkSecondary: inkSecondary ?? this.inkSecondary,
+    inkTertiary: inkTertiary ?? this.inkTertiary,
+    hairline: hairline ?? this.hairline,
     accent: accent ?? this.accent,
-    warning: warning ?? this.warning,
+    onAccent: onAccent ?? this.onAccent,
+    accentSoft: accentSoft ?? this.accentSoft,
     success: success ?? this.success,
+    warning: warning ?? this.warning,
     error: error ?? this.error,
+    fill: fill ?? this.fill,
+    fillStrong: fillStrong ?? this.fillStrong,
+    shadow: shadow ?? this.shadow,
   );
+
   @override
   NiuColors lerp(covariant NiuColors? other, double t) {
     if (other == null) return this;
     Color mix(Color a, Color b) => Color.lerp(a, b, t)!;
     return NiuColors(
-      controlSurface: mix(surfaceSecondary, other.surfaceSecondary),
-      navSurface: mix(navigationSurface, other.navigationSurface),
-      softAccent: mix(accentSoft, other.accentSoft),
-      selectedControl: mix(
-        selectedControlSurface,
-        other.selectedControlSurface,
-      ),
-      background: mix(background, other.background),
+      canvas: mix(canvas, other.canvas),
       surface: mix(surface, other.surface),
-      elevated: mix(elevated, other.elevated),
-      text: mix(text, other.text),
-      secondary: mix(secondary, other.secondary),
-      tertiary: mix(tertiary, other.tertiary),
-      separator: mix(separator, other.separator),
+      raised: mix(raised, other.raised),
+      ink: mix(ink, other.ink),
+      inkSecondary: mix(inkSecondary, other.inkSecondary),
+      inkTertiary: mix(inkTertiary, other.inkTertiary),
+      hairline: mix(hairline, other.hairline),
       accent: mix(accent, other.accent),
-      warning: mix(warning, other.warning),
+      onAccent: mix(onAccent, other.onAccent),
+      accentSoft: mix(accentSoft, other.accentSoft),
       success: mix(success, other.success),
+      warning: mix(warning, other.warning),
       error: mix(error, other.error),
+      fill: mix(fill, other.fill),
+      fillStrong: mix(fillStrong, other.fillStrong),
+      shadow: mix(shadow, other.shadow),
     );
+  }
+}
+
+/// Feature identity hues, mirroring the per-feature colours used on iOS.
+/// Each hue resolves to a readable foreground and a quiet tinted background.
+enum NiuHue {
+  blue(Color(0xff0a62d0), Color(0xff62a3ff)),
+  indigo(Color(0xff4f46c8), Color(0xff9d97ff)),
+  purple(Color(0xff8a3fc4), Color(0xffcf96ff)),
+  pink(Color(0xffc2336f), Color(0xffff8fbb)),
+  orange(Color(0xffb85300), Color(0xffffa45c)),
+  amber(Color(0xff8f6500), Color(0xffffc94d)),
+  green(Color(0xff1b7f45), Color(0xff5fd38c)),
+  teal(Color(0xff00786f), Color(0xff4fd6c8)),
+  cyan(Color(0xff00729a), Color(0xff5ccff5)),
+  red(Color(0xffc9302a), Color(0xffff7b72)),
+  gray(Color(0xff5a5f6b), Color(0xffabafba));
+
+  const NiuHue(this.light, this.dark);
+  final Color light, dark;
+
+  Color foreground(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? dark : light;
+
+  Color background(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return foreground(context).withValues(alpha: dark ? .18 : .11);
   }
 }
 
@@ -152,32 +179,40 @@ abstract final class NiuSpacing {
       xl = 20,
       xxl = 24,
       xxxl = 32,
-      x4l = 48;
-  // Semantic cross-platform roles. page=20 is the established Android gutter.
-  static const double inline = sm,
-      compact = md,
-      content = lg,
-      section = xxl,
-      large = xxxl,
-      spacious = x4l,
-      page = xl;
+      huge = 48;
+
+  /// Horizontal page gutter.
+  static const double gutter = xl;
+
+  /// Vertical rhythm between page sections.
+  static const double section = 28;
 }
 
 abstract final class NiuRadius {
-  static const double xsmall = 6,
-      small = 10,
-      medium = 14,
-      large = 18,
-      xlarge = 24,
-      xxlarge = 32,
+  static const double xs = 6,
+      sm = 8,
+      md = 12,
+      lg = 16,
+      xl = 20,
+      xxl = 28,
       pill = 999;
-  static const double card = xlarge,
-      hero = 28,
-      compact = large,
-      control = medium;
+
+  static const double card = xl, tile = md, control = 14, sheet = xxl;
 }
 
 abstract final class NiuSize {
   static const double touchTarget = 48;
-  static const double toolbar = 64, toolbarIcon = 20, tabIcon = 18;
+  static const double iconTile = 40, iconTileLarge = 52;
+  static const double buttonHeight = 52, buttonHeightCompact = 44;
+  static const double navigationBar = 72;
+}
+
+abstract final class NiuShadow {
+  static List<BoxShadow> card(BuildContext context) {
+    final color = NiuColors.of(context).shadow;
+    if (color.a == 0) return const [];
+    return [
+      BoxShadow(color: color, blurRadius: 12, offset: const Offset(0, 2)),
+    ];
+  }
 }

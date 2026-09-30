@@ -19,8 +19,8 @@ void main() {
     addTearDown(router.dispose);
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
     expect(find.text('登入校務系統'), findsOneWidget);
-    await tester.ensureVisible(find.text('快速點名'));
-    await tester.tap(find.text('快速點名'));
+    await tester.ensureVisible(find.text('點名'));
+    await tester.tap(find.text('點名'));
     await tester.pumpAndSettle();
     expect(find.text('掃描入口'), findsOneWidget);
   });

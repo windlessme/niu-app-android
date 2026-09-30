@@ -30,7 +30,7 @@ void main() {
           MaterialApp(
             theme: theme,
             home: Scaffold(
-              appBar: const IosPageHeader(title: '我的課表'),
+              appBar: const NiuAppBar(title: '我的課表'),
               body: ScheduleView(
                 schedule: schedule,
                 initialWeekday: 2,
@@ -46,7 +46,7 @@ void main() {
           MaterialApp(
             theme: theme,
             home: Scaffold(
-              appBar: const IosPageHeader(title: '畢業門檻'),
+              appBar: const NiuAppBar(title: '畢業門檻'),
               body: GraduationDashboard(data: graduation),
             ),
           ),
@@ -61,7 +61,7 @@ void main() {
           MaterialApp(
             theme: theme,
             home: Scaffold(
-              appBar: const IosPageHeader(title: 'M 園區'),
+              appBar: const NiuAppBar(title: 'M 園區'),
               body: ListView(
                 padding: const EdgeInsets.all(20),
                 children: [

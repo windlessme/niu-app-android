@@ -78,7 +78,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('星期日'));
       await tester.pumpAndSettle();
-      expect(find.text('沒有安排課程'), findsOneWidget);
+      expect(find.text('沒有課'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   }

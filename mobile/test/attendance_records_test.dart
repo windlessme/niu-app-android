@@ -99,7 +99,7 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
-        expect(find.byType(AppCard), findsOneWidget);
+        expect(find.byType(NiuCard), findsWidgets);
         expect(find.text('QR Code 點名'), findsOneWidget);
         expect(find.text('來源：自行記錄'), findsOneWidget);
         expect(tester.takeException(), isNull);

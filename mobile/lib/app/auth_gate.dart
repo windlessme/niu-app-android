@@ -39,7 +39,7 @@ class _AuthGateState extends State<AuthGate> {
         }
         if (result.connectionState != ConnectionState.done) {
           return const Scaffold(
-            body: Center(child: AppLoadingState(message: '恢復登入中…')),
+            body: Center(child: NiuLoading(message: '正在恢復登入')),
           );
         }
         completingLogin = true;

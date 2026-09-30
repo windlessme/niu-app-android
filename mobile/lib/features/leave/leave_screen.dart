@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../core/session/campus_session.dart';
 import '../../core/web/academic_portal_screen.dart';
 import '../../shared/shared.dart';
-import '../../shared/app_fact.dart';
 import 'leave_repository.dart';
 import 'leave_widgets.dart';
 
@@ -36,7 +35,7 @@ class _LeaveScreenState extends State<LeaveScreen> {
       final data = await repository.restore();
       if (mounted) setState(() => snapshots = data);
     } catch (_) {
-      if (mounted) setState(() => error = '無法讀取快取');
+      if (mounted) setState(() => error = '讀不到保存的請假資料');
     } finally {
       if (mounted) setState(() => loading = false);
     }
@@ -75,9 +74,9 @@ class _LeaveScreenState extends State<LeaveScreen> {
         MaterialPageRoute(
           builder: (context) => AcademicPortalScreen(
             title: application
-                ? '請假申請'
+                ? '申請請假'
                 : keyName == 'statistics'
-                ? '本學期統計'
+                ? '請假統計'
                 : record != null
                 ? '請假明細'
                 : '請假紀錄',
@@ -138,7 +137,7 @@ class _LeaveScreenState extends State<LeaveScreen> {
       await repository.save(next, epoch, owner);
       if (mounted) setState(() => snapshots = next);
     } catch (_) {
-      if (mounted) setState(() => error = '更新未完成');
+      if (mounted) setState(() => error = '更新沒有完成，顯示上次的資料');
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -149,102 +148,136 @@ class _LeaveScreenState extends State<LeaveScreen> {
     StateSetter updateDetail,
     BuildContext detailContext,
   ) {
+    final theme = Theme.of(context);
     final cached = snapshots['detail:${record['假單序號']}'];
     final data = cached is Map ? cached['data'] : null;
     final fields = data is Map && data['fields'] is Map
         ? Map<String, dynamic>.from(data['fields'] as Map)
         : <String, dynamic>{};
-    return Scaffold(
-      appBar: const IosPageHeader(title: '請假明細'),
-      body: SafeArea(
-        top: false,
-        child: ListView(
+    final status = '${record['審核結果'] ?? '-'}';
+    Future<void> update() async {
+      await open(record: record);
+      if (mounted && detailContext.mounted) updateDetail(() {});
+    }
+
+    return NiuScrollPage(
+      title: '請假明細',
+      actions: [
+        NiuIconButton(
+          icon: NiuIcons.refresh,
+          tooltip: '更新明細',
+          onPressed: busy ? null : update,
+        ),
+      ],
+      children: [
+        NiuCard(
           padding: const EdgeInsets.all(NiuSpacing.xl),
-          children: [
-            AppCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  for (final key in [
-                    '請假類別',
-                    '審核結果',
-                    '申請日期',
-                    '請假起日',
-                    '請假訖日',
-                    '起始節次',
-                    '迄止節次',
-                    '請假總節數',
-                  ])
-                    fact(key, record[key]),
-                  for (final entry in fields.entries)
-                    fact(entry.key, entry.value),
-                  if (data is Map && data['periods'] is List)
-                    for (final table in data['periods'] as List)
-                      for (final row in table as List)
-                        Text((row as List).join(' · ')),
-                ],
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              NiuBadge(label: status, tone: leaveStatusTone(status)),
+              const SizedBox(height: NiuSpacing.sm),
+              Text(
+                '${record['請假類別'] ?? '-'}',
+                style: theme.textTheme.headlineSmall,
               ),
-            ),
-            TextButton(
-              onPressed: busy
-                  ? null
-                  : () async {
-                      await open(record: record);
-                      if (mounted && detailContext.mounted) updateDetail(() {});
-                    },
-              child: const Text('更新明細'),
-            ),
-            const SectionHeader(title: '簽核流程'),
-            if (data is Map && data['workflowUpdatedAt'] != null)
-              RelativeUpdateText(
-                updatedAt: DateTime.tryParse('${data['workflowUpdatedAt']}'),
+              const SizedBox(height: NiuSpacing.xs),
+              Text(
+                '${record['請假起日'] ?? '-'} – ${record['請假訖日'] ?? '-'} · ${record['請假總節數'] ?? '-'} 節',
+                style: theme.textTheme.bodySmall,
               ),
-            if (data is Map && data['workflowStale'] == true)
-              const Text('流程尚未更新'),
-            if (data is! Map || data['workflow'] is! List)
-              const NiuEmptyState(title: '尚未讀取簽核流程', message: '更新明細即可讀取。'),
-            if (data is Map && data['workflow'] is List) ...[
-              if ((data['workflow'] as List).isEmpty)
-                const NiuEmptyState(title: '目前沒有簽核紀錄', message: '校方尚未列出流程紀錄。'),
-              for (final step in data['workflow'] as List)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: NiuSpacing.md),
-                  child: AppCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${step['關卡說明'] ?? '-'}',
-                          style: Theme.of(context).textTheme.titleMedium,
+            ],
+          ),
+        ),
+        NiuSection(
+          title: '申請內容',
+          child: NiuCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final key in [
+                  '申請日期',
+                  '請假起日',
+                  '請假訖日',
+                  '起始節次',
+                  '迄止節次',
+                  '請假總節數',
+                ])
+                  fact(key, record[key]),
+                for (final entry in fields.entries)
+                  fact(entry.key, entry.value),
+                if (data is Map && data['periods'] is List)
+                  for (final table in data['periods'] as List)
+                    for (final row in table as List)
+                      Padding(
+                        padding: const EdgeInsets.only(top: NiuSpacing.xs),
+                        child: Text(
+                          (row as List).join(' · '),
+                          style: theme.textTheme.bodySmall,
                         ),
-                        const SizedBox(height: NiuSpacing.sm),
-                        for (final key in ['簽核狀況', '簽核日期', '簽核單位'])
-                          fact(key, step[key]),
-                      ],
-                    ),
+                      ),
+              ],
+            ),
+          ),
+        ),
+        NiuSection(
+          title: '簽核流程',
+          action: data is Map && data['workflowUpdatedAt'] != null
+              ? RelativeUpdateText(
+                  updatedAt: DateTime.tryParse('${data['workflowUpdatedAt']}'),
+                  style: theme.textTheme.labelMedium,
+                )
+              : null,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (data is Map && data['workflowStale'] == true)
+                const Padding(
+                  padding: EdgeInsets.only(bottom: NiuSpacing.md),
+                  child: NiuBanner(
+                    tone: NiuTone.warning,
+                    message: '這次沒有讀到最新流程，顯示上次的紀錄。',
                   ),
                 ),
+              if (data is! Map || data['workflow'] is! List)
+                NiuCard(
+                  child: NiuEmpty(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: NiuSpacing.lg,
+                    ),
+                    icon: NiuIcons.pending,
+                    title: '還沒有讀取簽核流程',
+                    message: '更新明細後就會顯示。',
+                    action: FilledButton.tonal(
+                      onPressed: busy ? null : update,
+                      child: const Text('更新明細'),
+                    ),
+                  ),
+                )
+              else if ((data['workflow'] as List).isEmpty)
+                const NiuCard(
+                  child: NiuEmpty(
+                    padding: EdgeInsets.symmetric(vertical: NiuSpacing.lg),
+                    icon: NiuIcons.pending,
+                    title: '還沒有簽核紀錄',
+                    message: '學校尚未列出流程。',
+                  ),
+                )
+              else
+                LeaveWorkflow(steps: data['workflow'] as List),
             ],
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 
   Widget fact(String label, Object? value) =>
-      AppFact(label: label, value: value == null ? '-' : '$value');
+      NiuKeyValue(label: label, value: value == null ? '-' : '$value');
 
   @override
   Widget build(BuildContext context) {
-    final media = MediaQuery.of(context);
-    final bottomInset = [
-      media.padding.bottom,
-      media.viewPadding.bottom,
-      media.systemGestureInsets.bottom,
-    ].reduce((a, b) => a > b ? a : b);
-    final metadataStyle = Theme.of(
-      context,
-    ).textTheme.bodySmall?.copyWith(color: NiuColors.of(context).tertiary);
+    final theme = Theme.of(context);
     final stats = snapshots['statistics'];
     final list = snapshots['list'];
     final periods =
@@ -260,163 +293,164 @@ class _LeaveScreenState extends State<LeaveScreen> {
         list is Map && list['data'] is Map && list['data']['records'] is List
         ? list['data']['records'] as List
         : [];
-    return Scaffold(
-      appBar: const IosPageHeader(title: '學生請假'),
-      body: SafeArea(
-        top: false,
-        bottom: false,
-        maintainBottomViewPadding: true,
-        child: loading
-            ? const AppLoadingState()
-            : ListView(
-                padding: EdgeInsets.fromLTRB(
-                  NiuSpacing.xl,
-                  NiuSpacing.xl,
-                  NiuSpacing.xl,
-                  NiuSpacing.xxl + bottomInset,
-                ),
+    final page = list is Map ? int.tryParse('${list['data']['page']}') ?? 1 : 1;
+    final pages = list is Map
+        ? int.tryParse('${list['data']['pages']}') ?? 1
+        : 1;
+    if (loading) {
+      return const NiuScrollPage(
+        title: '請假',
+        children: [NiuLoading(message: '正在讀取請假資料')],
+      );
+    }
+    return NiuScrollPage(
+      title: '請假',
+      children: [
+        if (error != null) ...[
+          NiuBanner(tone: NiuTone.warning, message: error!),
+          const SizedBox(height: NiuSpacing.lg),
+        ],
+        NiuCard(
+          padding: const EdgeInsets.all(NiuSpacing.xl),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  FilledButton.icon(
-                    onPressed: busy ? null : () => open(application: true),
-                    icon: const Icon(Icons.edit_calendar_outlined),
-                    label: const Text('申請請假'),
-                  ),
-                  if (error != null) Text(error!),
-                  const SectionHeader(title: '本學期請假'),
-                  HeroCard(
-                    padding: const EdgeInsets.all(NiuSpacing.xl),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${total ?? '-'} 節',
-                          style: Theme.of(context).textTheme.headlineMedium,
-                        ),
-                        const SizedBox(height: NiuSpacing.xs),
-                        Text(
-                          '本學期累計請假',
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                color: NiuColors.of(context).secondary,
-                              ),
-                        ),
-                        const SizedBox(height: NiuSpacing.sm),
-                        if (stats is Map)
-                          RelativeUpdateText(
-                            style: metadataStyle,
-                            updatedAt: DateTime.tryParse(
-                              '${stats['updatedAt']}',
-                            ),
-                          ),
-                        const SizedBox(height: NiuSpacing.md),
-                        LeaveTypeStatistics(periods: periods),
-                        const SizedBox(height: NiuSpacing.sm),
-                        TextButton.icon(
-                          onPressed: busy
-                              ? null
-                              : () => open(keyName: 'statistics'),
-                          icon: const Icon(Icons.refresh),
-                          label: const Text('更新統計'),
-                        ),
-                      ],
+                  Expanded(
+                    child: NiuStat(
+                      label: '本學期累計請假',
+                      value: '${total ?? '-'}',
+                      unit: '節',
+                      large: true,
                     ),
                   ),
-                  SectionHeader(
-                    title: '請假紀錄',
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    trailing: TextButton(
-                      onPressed: busy ? null : () => open(keyName: 'list'),
-                      child: const Text('更新'),
-                    ),
+                  NiuIconButton(
+                    icon: NiuIcons.refresh,
+                    tooltip: '更新統計',
+                    tonal: true,
+                    onPressed: busy ? null : () => open(keyName: 'statistics'),
                   ),
-                  if (list is Map) ...[
-                    RelativeUpdateText(
-                      style: metadataStyle,
-                      updatedAt: DateTime.tryParse('${list['updatedAt']}'),
-                    ),
-                    Text(
-                      '第 ${list['data']['page']}／${list['data']['pages']} 頁',
-                      style: metadataStyle,
-                    ),
-                    Wrap(
-                      children: [
-                        TextButton(
-                          onPressed:
-                              busy ||
-                                  (int.tryParse('${list['data']['page']}') ??
-                                          1) <=
-                                      1
-                              ? null
-                              : () => open(
-                                  keyName: 'list',
-                                  page:
-                                      int.parse('${list['data']['page']}') - 1,
-                                ),
-                          child: const Text('上一頁'),
-                        ),
-                        TextButton(
-                          onPressed:
-                              busy ||
-                                  (int.tryParse('${list['data']['page']}') ??
-                                          1) >=
-                                      (int.tryParse(
-                                            '${list['data']['pages']}',
-                                          ) ??
-                                          1)
-                              ? null
-                              : () => open(
-                                  keyName: 'list',
-                                  page:
-                                      int.parse('${list['data']['page']}') + 1,
-                                ),
-                          child: const Text('下一頁'),
-                        ),
-                      ],
-                    ),
-                  ],
-                  if (records.isEmpty)
-                    NiuEmptyState(
-                      title: list == null ? '尚未同步請假紀錄' : '目前沒有請假紀錄',
-                      message: list == null ? '更新後即可查看請假申請與狀態。' : '可更新查看最新紀錄。',
-                      icon: Icons.event_note_outlined,
-                      action: TextButton(
-                        onPressed: busy ? null : () => open(keyName: 'list'),
-                        child: const Text('更新紀錄'),
-                      ),
-                    ),
-                  for (final raw in records)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: NiuSpacing.md),
-                      child: AppCard(
-                        onTap: () {
-                          final record = Map<String, dynamic>.from(raw as Map);
-                          record['_page'] = list['data']['page'];
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => ListenableBuilder(
-                                listenable: session,
-                                builder: (_, _) => !session.hasLocalAccount
-                                    ? const Scaffold(
-                                        body: Center(child: Text('已登出')),
-                                      )
-                                    : StatefulBuilder(
-                                        builder: (context, setDetailState) =>
-                                            detail(
-                                              record,
-                                              setDetailState,
-                                              context,
-                                            ),
-                                      ),
-                              ),
-                            ),
-                          );
-                        },
-                        child: LeaveRecordContent(record: raw),
-                      ),
-                    ),
                 ],
               ),
-      ),
+              if (stats is Map) ...[
+                const SizedBox(height: NiuSpacing.xs),
+                NiuSyncStatus(
+                  updatedAt: DateTime.tryParse('${stats['updatedAt']}'),
+                ),
+              ],
+              if (periods.isNotEmpty) ...[
+                const SizedBox(height: NiuSpacing.lg),
+                LeaveTypeStatistics(periods: periods),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: NiuSpacing.md),
+        FilledButton.icon(
+          onPressed: busy ? null : () => open(application: true),
+          icon: const Icon(Icons.edit_calendar_rounded),
+          label: const Text('申請請假'),
+        ),
+        NiuSection(
+          title: '請假紀錄',
+          action: TextButton(
+            onPressed: busy ? null : () => open(keyName: 'list'),
+            child: const Text('更新'),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (list is Map)
+                Padding(
+                  padding: const EdgeInsets.only(
+                    left: NiuSpacing.xs,
+                    bottom: NiuSpacing.md,
+                  ),
+                  child: RelativeUpdateText(
+                    style: theme.textTheme.labelMedium,
+                    updatedAt: DateTime.tryParse('${list['updatedAt']}'),
+                  ),
+                ),
+              if (records.isEmpty)
+                NiuCard(
+                  child: NiuEmpty(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: NiuSpacing.lg,
+                    ),
+                    title: list == null ? '還沒有同步請假紀錄' : '沒有請假紀錄',
+                    message: list == null
+                        ? '更新後可以查看每筆假單的審核狀態。'
+                        : '有新的假單時，更新一下就會出現。',
+                    icon: NiuIcons.leave,
+                    action: TextButton(
+                      onPressed: busy ? null : () => open(keyName: 'list'),
+                      child: const Text('更新紀錄'),
+                    ),
+                  ),
+                ),
+              for (final raw in records)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: NiuSpacing.md),
+                  child: NiuCard(
+                    onTap: () {
+                      final record = Map<String, dynamic>.from(raw as Map);
+                      record['_page'] = list['data']['page'];
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => ListenableBuilder(
+                            listenable: session,
+                            builder: (_, _) => !session.hasLocalAccount
+                                ? const Scaffold(
+                                    body: Center(
+                                      child: NiuEmpty(
+                                        icon: NiuIcons.logout,
+                                        title: '已登出',
+                                      ),
+                                    ),
+                                  )
+                                : StatefulBuilder(
+                                    builder: (context, setDetailState) =>
+                                        detail(record, setDetailState, context),
+                                  ),
+                          ),
+                        ),
+                      );
+                    },
+                    child: LeaveRecordContent(record: raw),
+                  ),
+                ),
+              if (list is Map)
+                Row(
+                  children: [
+                    TextButton(
+                      onPressed: busy || page <= 1
+                          ? null
+                          : () => open(keyName: 'list', page: page - 1),
+                      child: const Text('上一頁'),
+                    ),
+                    Expanded(
+                      child: Text(
+                        '$page / $pages',
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          fontFeatures: tabularFigures,
+                        ),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: busy || page >= pages
+                          ? null
+                          : () => open(keyName: 'list', page: page + 1),
+                      child: const Text('下一頁'),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

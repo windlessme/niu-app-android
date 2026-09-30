@@ -56,9 +56,8 @@ void main() {
         SettingsScreen(onThemeModeChanged: (value) => selected = value),
       );
       expect(tester.takeException(), isNull);
-      await tester.tap(find.byType(DropdownButton<ThemeMode>));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('深色').last);
+      await tester.ensureVisible(find.text('深色'));
+      await tester.tap(find.text('深色'));
       await tester.pumpAndSettle();
       expect(selected, ThemeMode.dark);
       expect(tester.takeException(), isNull);

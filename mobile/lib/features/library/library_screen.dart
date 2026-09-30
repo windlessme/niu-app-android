@@ -182,7 +182,7 @@ class _LibraryScreenState extends State<LibraryScreen>
       if (!mounted || request != generation || !active) return;
       setState(() {
         if (!valid) clearImage();
-        error = image == null ? '暫時無法取得圖碼，請檢查網路後再試一次。' : '更新失敗，目前的圖碼仍有效，請稍後再試。';
+        error = image == null ? '暫時無法取得圖碼，檢查網路後再試一次。' : '更新失敗，目前的圖碼仍有效。';
       });
     } finally {
       if (mounted) {
@@ -258,110 +258,141 @@ class _LibraryScreenState extends State<LibraryScreen>
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: const IosPageHeader(title: '圖書館通行碼'),
-    body: SafeArea(
-      top: false,
-      child: ListView(
-        padding: const EdgeInsets.all(NiuSpacing.page),
-        children: [
-          AppSegmentedControl<LibraryCodeKind>(
-            segments: const {
-              LibraryCodeKind.entrance: Text(
-                '門禁碼',
-                textAlign: TextAlign.center,
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = NiuColors.of(context);
+    final entrance = kind == LibraryCodeKind.entrance;
+    final account = widget.account;
+    return NiuScrollPage(
+      title: '圖書館',
+      children: [
+        NiuSegmented<LibraryCodeKind>(
+          segments: const [
+            (LibraryCodeKind.entrance, '入館 QR Code'),
+            (LibraryCodeKind.borrowing, '借書條碼'),
+          ],
+          value: kind,
+          onChanged: (value) {
+            if (kind == value) return;
+            kind = value;
+            invalidate();
+          },
+        ),
+        const SizedBox(height: NiuSpacing.xxl),
+        NiuCard(
+          padding: const EdgeInsets.all(NiuSpacing.xl),
+          child: Column(
+            children: [
+              Text(
+                entrance ? '入館 QR Code' : '借書條碼',
+                style: theme.textTheme.titleLarge,
               ),
-              LibraryCodeKind.borrowing: Text(
-                '借書條碼',
+              const SizedBox(height: NiuSpacing.xs),
+              Text(
+                entrance ? '對準入口閘門的掃描器，只限今天使用' : '借書時出示給櫃台人員',
                 textAlign: TextAlign.center,
+                style: theme.textTheme.bodySmall,
               ),
-            },
-            value: kind,
-            onChanged: (value) {
-              if (kind == value) return;
-              kind = value;
-              invalidate();
-            },
-          ),
-          const SizedBox(height: 24),
-          Text(
-            kind == LibraryCodeKind.entrance ? '僅限當日進出圖書館使用' : '請向圖書館櫃台出示此條碼',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-          const SizedBox(height: 24),
-          if (image != null)
-            Center(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxWidth: kind == LibraryCodeKind.entrance ? 420 : 700,
-                ),
-                child: AspectRatio(
-                  aspectRatio: kind == LibraryCodeKind.entrance ? 1 : 2.2,
-                  child: ColoredBox(
-                    key: const ValueKey('library-code-surface'),
-                    color: Colors.white,
-                    child: Padding(
-                      padding: const EdgeInsets.all(NiuSpacing.page),
-                      child: Center(
-                        child: Image.memory(
-                          image!,
-                          width: double.infinity,
-                          height: double.infinity,
-                          fit: BoxFit.contain,
-                          gaplessPlayback: false,
-                          filterQuality: FilterQuality.none,
-                          semanticLabel: kind == LibraryCodeKind.entrance
-                              ? '門禁 QR Code'
-                              : '借書條碼',
+              const SizedBox(height: NiuSpacing.xl),
+              if (image != null)
+                Center(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: entrance ? 420 : 700),
+                    child: AspectRatio(
+                      aspectRatio: entrance ? 1 : 2.2,
+                      child: DecoratedBox(
+                        key: const ValueKey('library-code-surface'),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(NiuRadius.lg),
+                          border: Border.all(color: colors.hairline),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(NiuSpacing.lg),
+                          child: Center(
+                            child: Image.memory(
+                              image!,
+                              width: double.infinity,
+                              height: double.infinity,
+                              fit: BoxFit.contain,
+                              gaplessPlayback: false,
+                              filterQuality: FilterQuality.none,
+                              semanticLabel: entrance ? '入館 QR Code' : '借書條碼',
+                            ),
+                          ),
                         ),
                       ),
                     ),
                   ),
+                )
+              else
+                AspectRatio(
+                  aspectRatio: entrance ? 1.4 : 2.2,
+                  child: NiuWell(
+                    child: Center(
+                      child: !active
+                          ? Text(
+                              '回到 App 後會重新取得',
+                              textAlign: TextAlign.center,
+                              style: theme.textTheme.bodySmall,
+                            )
+                          : loading
+                          ? const NiuLoading(message: '正在取得', compact: true)
+                          : Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  entrance ? NiuIcons.qr : NiuIcons.barcode,
+                                  size: 36,
+                                  color: colors.inkTertiary,
+                                ),
+                                const SizedBox(height: NiuSpacing.sm),
+                                Text('還沒有圖碼', style: theme.textTheme.bodySmall),
+                              ],
+                            ),
+                    ),
+                  ),
+                ),
+              const SizedBox(height: NiuSpacing.lg),
+              Text(
+                updated == null
+                    ? account
+                    : '$account · ${formatTaipeiClock(updated!)} 更新',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  fontFeatures: tabularFigures,
                 ),
               ),
-            ),
-          if (image == null)
-            NiuCard(
-              child: !active
-                  ? const Text('回到 App 後重新取得通行碼')
-                  : loading
-                  ? const AppLoadingState(message: '正在取得通行碼…')
-                  : const Text('尚未取得通行碼', textAlign: TextAlign.center),
-            ),
-          if (error != null)
-            Padding(
-              padding: const EdgeInsets.only(top: NiuSpacing.lg),
-              child: Semantics(
-                liveRegion: true,
-                child: Text(error!, textAlign: TextAlign.center),
-              ),
-            ),
-          if (updated != null)
-            Padding(
-              padding: const EdgeInsets.only(top: NiuSpacing.lg),
-              child: Text(
-                '最後更新：${formatTaipeiClock(updated!)}',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.labelMedium,
-              ),
-            ),
-          const SizedBox(height: 16),
-          Center(
-            child: FilledButton(
-              style: FilledButton.styleFrom(minimumSize: const Size(48, 48)),
-              onPressed: active && !loading ? refresh : null,
-              child: Text(loading ? '更新中…' : '重新整理'),
-            ),
+            ],
           ),
-          const SizedBox(height: 12),
-          Text(
-            '每 5 分鐘自動更新',
-            textAlign: TextAlign.center,
-            style: Theme.of(context).textTheme.bodySmall,
+        ),
+        if (error != null) ...[
+          const SizedBox(height: NiuSpacing.lg),
+          NiuBanner(
+            tone: image == null ? NiuTone.error : NiuTone.warning,
+            message: error!,
           ),
         ],
-      ),
-    ),
-  );
+        const SizedBox(height: NiuSpacing.xl),
+        FilledButton.tonal(
+          onPressed: active && !loading ? refresh : null,
+          child: Text(loading ? '更新中' : '重新整理'),
+        ),
+        const SizedBox(height: NiuSpacing.md),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(NiuIcons.brightness, size: 16, color: colors.inkTertiary),
+            const SizedBox(width: NiuSpacing.xs),
+            Flexible(
+              child: Text(
+                '已調到最亮方便掃描，每 5 分鐘自動更新',
+                textAlign: TextAlign.center,
+                style: theme.textTheme.labelMedium,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 }

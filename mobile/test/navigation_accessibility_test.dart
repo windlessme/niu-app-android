@@ -47,13 +47,24 @@ void main() {
       );
       await tester.tap(find.text('校園'));
       await tester.pumpAndSettle();
-      expect(find.text('校園服務'), findsOneWidget);
+      expect(find.text('校園服務'), findsWidgets);
       expect(tester.takeException(), isNull);
-      expect(
-        tester.getSize(find.byTooltip('返回')).height,
-        greaterThanOrEqualTo(48),
-      );
-      await tester.tap(find.byTooltip('返回'));
+      // Tab roots have no back arrow; the navigation bar switches tabs.
+      expect(find.byTooltip('返回'), findsNothing);
+      for (final label in ['首頁', '課表', 'M 園區', '校園']) {
+        expect(
+          tester
+              .getSize(
+                find.ancestor(
+                  of: find.text(label),
+                  matching: find.byType(NavigationDestination),
+                ),
+              )
+              .height,
+          greaterThanOrEqualTo(48),
+        );
+      }
+      await tester.tap(find.text('首頁'));
       await tester.pumpAndSettle();
       expect(find.text('首頁內容'), findsOneWidget);
       expect(tester.takeException(), isNull);

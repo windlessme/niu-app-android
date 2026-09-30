@@ -22,8 +22,8 @@ void main() {
     );
     await refresh.onRefresh();
     await tester.pump();
-    expect(find.text('暫時無法更新，目前顯示上次資料。'), findsOneWidget);
-    expect(find.text('今天接下來沒有課程，好好安排你的時間。'), findsOneWidget);
+    expect(find.text('更新失敗，先顯示上次的資料'), findsOneWidget);
+    expect(find.text('今天沒有接下來的課'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
   testWidgets('home distinguishes not-synced schedule from completed day', (
@@ -36,12 +36,7 @@ void main() {
           home: CampusHomeScreen(name: '測試同學', hasSchedule: hasSchedule),
         ),
       );
-      expect(
-        find.text(
-          hasSchedule ? '今天接下來沒有課程，好好安排你的時間。' : '尚未同步課表，開啟完整課表即可取得今日安排。',
-        ),
-        findsOneWidget,
-      );
+      expect(find.text(hasSchedule ? '今天沒有接下來的課' : '還沒有課表'), findsOneWidget);
       expect(tester.takeException(), isNull);
     }
   });
