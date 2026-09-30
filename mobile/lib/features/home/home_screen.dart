@@ -40,8 +40,8 @@ class CampusHomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final accent = theme.colorScheme.primary;
-    final attendanceBackground = theme.colorScheme.primaryContainer;
-    final attendanceInk = theme.colorScheme.onPrimaryContainer;
+    final attendanceBackground = NiuColors.of(context).cardSurface;
+    final attendanceInk = NiuColors.of(context).text;
     final now = DateTime.now().toUtc().add(const Duration(hours: 8));
     final date = '${now.month} 月 ${now.day} 日・星期${'一二三四五六日'[now.weekday - 1]}';
     return Scaffold(
@@ -224,16 +224,7 @@ class CampusHomeScreen extends StatelessWidget {
                   onTap: () => context.push('/attendance'),
                   child: Ink(
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          attendanceBackground,
-                          Color.lerp(
-                            attendanceBackground,
-                            theme.colorScheme.surface,
-                            .2,
-                          )!,
-                        ],
-                      ),
+                      color: attendanceBackground,
                       borderRadius: BorderRadius.circular(NiuRadius.hero),
                     ),
                     padding: const EdgeInsets.all(NiuSpacing.page),
@@ -241,8 +232,8 @@ class CampusHomeScreen extends StatelessWidget {
                       children: [
                         Icon(
                           CupertinoIcons.qrcode_viewfinder,
-                          color: attendanceInk,
-                          size: 34,
+                          color: accent,
+                          size: 28,
                         ),
                         const SizedBox(width: 16),
                         Expanded(
@@ -251,15 +242,15 @@ class CampusHomeScreen extends StatelessWidget {
                             children: [
                               Text(
                                 '快速點名',
-                                style: theme.textTheme.titleLarge?.copyWith(
+                                style: theme.textTheme.titleMedium?.copyWith(
                                   color: attendanceInk,
                                 ),
                               ),
                               const SizedBox(height: 4),
                               Text(
                                 '掃描課堂 QR Code',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: attendanceInk,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: NiuColors.of(context).secondary,
                                 ),
                               ),
                             ],
@@ -267,7 +258,7 @@ class CampusHomeScreen extends StatelessWidget {
                         ),
                         Icon(
                           CupertinoIcons.chevron_right,
-                          color: attendanceInk,
+                          color: NiuColors.of(context).secondary,
                           size: 18,
                         ),
                       ],

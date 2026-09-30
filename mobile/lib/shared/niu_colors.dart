@@ -179,4 +179,5 @@ abstract final class NiuRadius {
 
 abstract final class NiuSize {
   static const double touchTarget = 48;
+  static const double toolbar = 64, toolbarIcon = 20, tabIcon = 18;
 }

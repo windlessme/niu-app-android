@@ -100,7 +100,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
           child: Column(
             children: [
               SizedBox(
-                height: 76,
+                height: NiuSize.toolbar,
                 child: IosPageHeader(
                   title: '我的課表',
                   actions: [
