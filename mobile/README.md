@@ -69,10 +69,11 @@ retained. Explicit logout still clears all account-scoped data. Credentials
 already removed by an older version cannot be recovered by the upgrade.
 
 Since 0.5.1, successful school login automatically remembers verified credentials
-in the device credential vault, without a checkbox. Only the exact school login
-page is prefilled; CAPTCHA and submission remain user actions. Users can forget
-credentials in Settings, and explicit logout also removes them. A subsequent
-successful credential login saves them again.
+in the device credential vault, without a checkbox. Since 0.10.0 login matches
+iOS: a native form supplies 學號／密碼, the app fills and submits the school SSO
+page out of sight once its human verification enables 登入, and shows the page
+only when interaction is needed. Credentials the school rejects are forgotten.
+Users can forget credentials in Settings, and explicit logout also removes them.
 
 The registration feature uses the school's ENR5020 registration query and the
 currently authenticated student's enrollment certificate. Certificate bytes must

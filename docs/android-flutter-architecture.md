@@ -31,7 +31,7 @@ Riverpod 管理校曆資料來源與非同步狀態；CampusSession 使用 Chang
 
 ## 設計系統
 
-重新授權由 `SchoolReauthorization` 共用同一次進行中的 SSO 恢復請求：僅在已有本機帳號時讀取安全儲存帳密，以暫時 WebView 嘗試登入，最多等待 20 秒。只點擊校方登入按鈕一次，遇到驗證元件、停用的按鈕或失敗則回到可見登入頁；Token 必須經伺服器身分驗證後才能恢復 Session。活動登入失效時也只嘗試一次帳密恢復，不重送報名操作。
+登入與 iOS 相同：原生表單輸入學號與密碼後，`SchoolLoginDriver` 在不可見的 WebView 開啟校方 SSO 登入頁，填入帳密，等校方的人機驗證（Turnstile）讓「登入」按鈕可按後按下一次，再讀取 `niu_sso_token` 或校方錯誤彈窗。登入頁先被「正在登入校務系統」遮住，8 秒後或使用者點選時顯示，讓需要互動的驗證可以手動完成；App 不處理驗證本身。Token 必須經 `Authorization/info` 伺服器身分驗證後才能建立 Session，接著並行建立 M 園區與活動系統登入。帳密錯誤會清除已記住的帳密；密碼到期提供修改密碼連結。`SchoolReauthorization` 以同一套流程在背景用已記住的帳密恢復 Session，最多等待 25 秒。活動登入失效時也只嘗試一次帳密恢復，不重送報名操作。
 
 `NiuColors` 為 ThemeExtension，採三層表面：canvas（頁面）→ surface（卡片、導覽列）→ fill（卡片內的控制項與區塊），另有 ink 三階文字、accent 與 success/warning/error；`NiuHue` 為各功能的識別色，淺深色皆有可讀前景與淡色底。`NiuSpacing`（4pt，頁面邊距 20）、`NiuRadius`（卡片 20）、`NiuSize`、`NiuMotion` 為共用 tokens，字級見 `NiuTheme`。
 
