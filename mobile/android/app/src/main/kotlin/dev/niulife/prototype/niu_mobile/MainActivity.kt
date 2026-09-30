@@ -19,6 +19,16 @@ class MainActivity : FlutterActivity() {
             .setMethodCallHandler { call, result ->
                 registrationDocuments.handle(call.method, call.argument<ByteArray>("bytes"), result)
             }
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "niulife/app")
+            .setMethodCallHandler { call, result ->
+                if (call.method != "version") return@setMethodCallHandler result.notImplemented()
+                try {
+                    val info = packageManager.getPackageInfo(packageName, 0)
+                    val code = if (Build.VERSION.SDK_INT >= 28) info.longVersionCode
+                        else @Suppress("DEPRECATION") info.versionCode.toLong()
+                    result.success(mapOf("name" to (info.versionName ?: ""), "build" to code.toString()))
+                } catch (e: Exception) { result.error("version_error", e.message, null) }
+            }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "niulife/schedule")
             .setMethodCallHandler { call, result ->
                 try {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/platform/app_version.dart';
 import '../../shared/shared.dart';
 import 'credits_repository.dart';
 
@@ -213,6 +214,16 @@ class SettingsScreen extends StatelessWidget {
         const NiuEyebrow('關於'),
         NiuGroup(
           children: [
+            FutureBuilder<AppVersion?>(
+              future: AppVersion.current(),
+              builder: (context, snapshot) => NiuRow(
+                icon: NiuIcons.info,
+                hue: NiuHue.gray,
+                title: '版本',
+                value: snapshot.data?.toString() ?? '—',
+                chevron: false,
+              ),
+            ),
             NiuRow(
               icon: Icons.feedback_outlined,
               hue: NiuHue.orange,
