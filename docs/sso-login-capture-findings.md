@@ -34,39 +34,31 @@ uses `#username`, `#password`, `form.login-form`, and
 Its disabled-button check also waits for the school's verification. Flutter now
 uses those exact field identities, including when password visibility is enabled.
 
-## Capture behavior and fixture
+## Sign-in behavior (matches iOS)
+
+The app no longer captures credentials typed on the school page. The native
+login form supplies them, and `schoolLoginFillScript`
+(`mobile/lib/features/authentication/school_login_scripts.dart`) mirrors iOS
+`fillModernLoginForm`: it sets `#username` and `#password` through the native value
+setter with input/change events, then returns `waiting_verification` while the
+school keeps the 登入 button disabled (`!turnstileToken()`), and presses it once when
+enabled. It never touches Turnstile. `schoolLoginStateScript` mirrors iOS
+`checkModernLoginState`: it reports `niu_sso_token` or a visible SweetAlert
+error/warning (loading and success popups are ignored).
 
 `mobile/test/fixtures/sso_login.html` reconstructs the relevant public template
 with synthetic values, without loading school code or submitting requests.
-The production script observes trusted submit, login-button click (including
-nested icon/text), and non-composing Enter on the two credential fields. The
-click-only button variant is also supported. It ignores disabled login buttons,
-password visibility toggles, certificate PIN/FIDO2 controls, synthetic events,
-foreign origins, frames, and other SSO routes. It never enables controls, changes
-Turnstile, calls submit/click, or prevents the school's event handling.
 
-Click plus submit may both deliver the same credentials; the native handler only
-replaces transient data, while verified SSO and the single-flight Moodle service
-gate actual authentication. No credentials are retained in a JS deduplication cache.
-
-This validates public template/event compatibility, not a real authenticated SSO,
-Moodle session, or attendance result. Live device verification remains required.
+This validates template compatibility, not a real authenticated SSO. Live device
+verification remains required.
 
 ## Reproduce DOM checks without an app build
-
-The standalone Node harness uses jsdom installed outside the repository (no
-pubspec or app dependency changes):
 
 ```sh
 npm install --prefix /tmp/opencode/sso-dom-check --no-audit --no-fund jsdom
 cd mobile
-dart test/fixtures/emit_capture_script.dart | NODE_PATH=/tmp/opencode/sso-dom-check/node_modules node test/sso_login_capture_dom.cjs
+dart test/fixtures/emit_login_fill_script.dart | NODE_PATH=/tmp/opencode/sso-dom-check/node_modules node test/sso_login_fill_dom.cjs
 ```
 
-The emitter runs the actual Dart script generator. The harness executes that JS
-against the HTML fixture and verifies disabled-button handling, nested login
-clicks, submit, Enter, password visibility, click-only buttons, exact payload,
-unrelated controls, origin/path restrictions, and synthetic-event rejection.
-jsdom cannot produce browser-trusted events, so positive cases invoke the
-registered handler with simulated trusted metadata and real DOM elements.
-This limitation is explicit; no real-user browser-event test is claimed.
+The harness checks field filling and events, waiting on the disabled button, a
+single press once enabled, a hostile password value, and the origin restriction.
