@@ -42,7 +42,7 @@ class FakePostal extends PostalService {
 }
 
 void main() {
-  testWidgets('opens with the student\'s own name searched across statuses', (
+  testWidgets('own name is filled on request and searched across statuses', (
     tester,
   ) async {
     final queries = <PostalQuery>[];
@@ -59,6 +59,18 @@ void main() {
         ),
       ),
     );
+    await tester.pumpAndSettle();
+    // Nothing is filled or searched until the student asks.
+    expect(queries, isEmpty);
+    expect(
+      tester.widget<TextField>(find.byType(TextField).first).controller!.text,
+      '',
+    );
+    await tester.tap(find.text('帶入我的姓名'));
+    await tester.pump();
+    expect(find.text('帶入我的姓名'), findsNothing);
+    expect(queries, isEmpty);
+    await tester.tap(find.widgetWithText(FilledButton, '查詢'));
     await tester.pumpAndSettle();
     // 全部 queries every status (the school form accepts one at a time).
     expect(queries.map((q) => q.status).toSet(), PostalStatus.values.toSet());
