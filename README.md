@@ -20,8 +20,6 @@
 - 註冊資訊與本人在學證明 PDF。
 - 裝置加密登入憑證、自動記住帳密、深淺色與無障礙版面。
 
-目前為開發預覽版，部分校方流程尚需有效帳號與真機驗證。公車功能僅有 Phase 1 研究與 domain models，沒有公車 UI 或正式 TDX proxy。
-
 ## 開發
 
 版本與工具鏈以 [`mobile/toolchain.json`](mobile/toolchain.json) 為準：Flutter 3.47.5、Dart 3.13.4、Java 17、Android API 36。
