@@ -203,6 +203,22 @@ void main() {
     final gateway = FixtureLeaveGateway(notice: true, loading: loading);
     await tester.pumpWidget(app(gateway));
     await tester.pump();
+    // The disclaimer leads, and the notice scrolls while the school loads.
+    expect(
+      tester.getTopLeft(find.text('重要聲明')).dy,
+      lessThan(tester.getTopLeft(find.text('請假注意事項')).dy),
+    );
+    await tester.drag(find.byType(ListView).first, const Offset(0, -2000));
+    await tester.pump();
+    final list = tester.state<ScrollableState>(
+      find
+          .descendant(
+            of: find.byType(ListView).first,
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    expect(list.position.pixels, greaterThan(0));
     await tester.tap(find.byType(CheckboxListTile));
     await tester.pump();
     await tester.tap(find.text('同意並開始申請'));

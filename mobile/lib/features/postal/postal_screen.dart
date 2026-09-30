@@ -178,7 +178,8 @@ class _PostalScreenState extends State<PostalScreen> {
         ownName.isNotEmpty && name.text.trim() != ownName && !loading;
     return NiuScrollPage(
       title: '郵件包裹',
-      onRefresh: canSearch ? search : null,
+      // Always set: toggling it rebuilds the page and collapses 更多條件.
+      onRefresh: search,
       children: [
         NiuCard(
           child: Column(
