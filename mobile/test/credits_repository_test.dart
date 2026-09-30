@@ -38,12 +38,13 @@ void main() {
       );
       addTearDown(() => directory.delete(recursive: true));
       final json = jsonDecode(CreditsRepository.bundled);
-      json['revision'] = 2;
+      final next = (json['revision'] as int) + 1;
+      json['revision'] = next;
       final repository = CreditsRepository(
         cacheDirectory: directory,
         fetch: (_) async => utf8.encode(jsonEncode(json)),
       );
-      expect((await repository.refresh()).document.revision, 2);
+      expect((await repository.refresh()).document.revision, next);
       json['introduction'] = 'Changed without revision';
       final rejected = await repository.refresh();
       expect(rejected.document.introduction, isNot('Changed without revision'));
@@ -52,7 +53,7 @@ void main() {
         cacheDirectory: directory,
         fetch: (_) async => throw const SocketException('offline'),
       );
-      expect((await offline.refresh()).document.revision, 2);
+      expect((await offline.refresh()).document.revision, next);
       expect(
         await File('${directory.path}/credits.json.tmp').exists(),
         isFalse,

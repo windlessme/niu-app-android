@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
-  "revision": 2,
+  "revision": 3,
   "introduction": "感謝下列開源專案與開發者提供靈感與參考：",
   "entries": [
     {
       "id": "qian403-niu-app",
       "name": "qian403",
-      "description": "NIU-app 開發者，本 App 的功能與設計參考來源",
+      "description": "iOS NIU-app 開發者與維護者",
       "projectName": "NIU-app",
       "url": "https://github.com/qian403/NIU-app",
       "order": 5
