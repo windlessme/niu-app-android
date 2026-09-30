@@ -210,7 +210,8 @@ class _PostalScreenState extends State<PostalScreen> {
                 data: theme.copyWith(dividerColor: Colors.transparent),
                 child: ExpansionTile(
                   tilePadding: EdgeInsets.zero,
-                  childrenPadding: EdgeInsets.zero,
+                  // Room for the floating label of the first field.
+                  childrenPadding: const EdgeInsets.only(top: NiuSpacing.md),
                   title: Text('更多條件', style: theme.textTheme.titleSmall),
                   children: [
                     TextField(
