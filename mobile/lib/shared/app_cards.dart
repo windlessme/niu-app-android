@@ -43,15 +43,17 @@ class SectionHeader extends StatelessWidget {
     required this.title,
     this.subtitle,
     this.trailing,
+    this.crossAxisAlignment = CrossAxisAlignment.start,
   });
   final String title;
   final String? subtitle;
   final Widget? trailing;
+  final CrossAxisAlignment crossAxisAlignment;
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(vertical: NiuSpacing.compact),
     child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: crossAxisAlignment,
       children: [
         Expanded(
           child: Column(

@@ -128,7 +128,7 @@ assert.equal(eval(script),null);eval(script);assert.equal(clicks,1);
             builder: (context, child) => MediaQuery(
               data: MediaQuery.of(context).copyWith(
                 textScaler: const TextScaler.linear(2),
-                padding: EdgeInsets.only(bottom: inset),
+                padding: EdgeInsets.zero,
                 viewPadding: EdgeInsets.only(bottom: inset),
                 systemGestureInsets: EdgeInsets.only(bottom: inset),
               ),
@@ -198,6 +198,11 @@ assert.equal(eval(script),null);eval(script);assert.equal(clicks,1);
       );
       await tester.pumpAndSettle();
       expect(find.text('13 節'), findsOneWidget);
+      await tester.scrollUntilVisible(find.text('請假紀錄'), 100);
+      final header = tester.widget<SectionHeader>(
+        find.byWidgetPredicate((w) => w is SectionHeader && w.title == '請假紀錄'),
+      );
+      expect(header.crossAxisAlignment, CrossAxisAlignment.center);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());
       session.dispose();
