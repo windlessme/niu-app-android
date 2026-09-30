@@ -83,7 +83,7 @@ class EventFactGroup extends StatelessWidget {
   const EventFactGroup({super.key, required this.facts});
   final List<(String, String)> facts;
   @override
-  Widget build(BuildContext context) => AppCard(
+  Widget build(BuildContext context) => CompactCard(
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -99,7 +99,7 @@ class EventFactGroup extends StatelessWidget {
               color: NiuColors.of(context).secondary,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: NiuSpacing.xs),
           SelectableText(
             facts[index].$2.trim().isEmpty ? '-' : facts[index].$2,
           ),

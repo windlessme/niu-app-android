@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../core/session/campus_session.dart';
 import '../features/authentication/login_screen.dart';
+import '../shared/shared.dart';
 
 /// Restore once before routing; no extra unlock/confirmation screen.
 class AuthGate extends StatefulWidget {
@@ -38,7 +39,7 @@ class _AuthGateState extends State<AuthGate> {
         }
         if (result.connectionState != ConnectionState.done) {
           return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
+            body: Center(child: AppLoadingState(message: '恢復登入中…')),
           );
         }
         completingLogin = true;

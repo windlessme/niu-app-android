@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'niu_widgets.dart';
+import 'niu_colors.dart';
 
 class AppLoadingState extends StatelessWidget {
   const AppLoadingState({super.key, this.message = '載入中…'});
@@ -9,11 +10,11 @@ class AppLoadingState extends StatelessWidget {
   Widget build(BuildContext context) => Semantics(
     liveRegion: true,
     child: Padding(
-      padding: const EdgeInsets.all(32),
+      padding: const EdgeInsets.all(NiuSpacing.large),
       child: Column(
         children: [
           const CupertinoActivityIndicator(),
-          const SizedBox(height: 16),
+          const SizedBox(height: NiuSpacing.content),
           Text(
             message,
             textAlign: TextAlign.center,

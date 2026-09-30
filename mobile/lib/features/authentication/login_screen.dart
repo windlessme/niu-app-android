@@ -293,12 +293,12 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 if (connectingServices)
                   const Padding(
-                    padding: EdgeInsets.all(20),
+                    padding: EdgeInsets.all(NiuSpacing.page),
                     child: Text('校務登入成功，正在連接 M 園區與活動系統…'),
                   ),
                 if (error != null)
                   Padding(
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(NiuSpacing.page),
                     child: Text(
                       error!,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(

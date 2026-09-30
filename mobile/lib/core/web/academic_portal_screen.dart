@@ -800,7 +800,7 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen>
                       ),
                     ),
                   if (entry == null && error == null && !nativeCover)
-                    const Center(child: CircularProgressIndicator()),
+                    const Center(child: AppLoadingState(message: '連線中…')),
                 ],
               ),
             ),

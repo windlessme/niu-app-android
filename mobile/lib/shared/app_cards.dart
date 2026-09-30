@@ -37,13 +37,21 @@ class HeroCard extends AppCard {
   }) : super(borderRadius: NiuRadius.hero);
 }
 
+class CompactCard extends AppCard {
+  const CompactCard({super.key, required super.child, super.onTap, super.color})
+    : super(
+        padding: const EdgeInsets.all(NiuSpacing.content),
+        borderRadius: NiuRadius.compact,
+      );
+}
+
 class SectionHeader extends StatelessWidget {
   const SectionHeader({
     super.key,
     required this.title,
     this.subtitle,
     this.trailing,
-    this.crossAxisAlignment = CrossAxisAlignment.start,
+    this.crossAxisAlignment = CrossAxisAlignment.center,
   });
   final String title;
   final String? subtitle;
@@ -51,7 +59,10 @@ class SectionHeader extends StatelessWidget {
   final CrossAxisAlignment crossAxisAlignment;
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: NiuSpacing.compact),
+    padding: const EdgeInsets.only(
+      top: NiuSpacing.section,
+      bottom: NiuSpacing.compact,
+    ),
     child: Row(
       crossAxisAlignment: crossAxisAlignment,
       children: [
@@ -67,13 +78,16 @@ class SectionHeader extends StatelessWidget {
                 ),
               ),
               if (subtitle != null) ...[
-                const SizedBox(height: 4),
+                const SizedBox(height: NiuSpacing.xs),
                 Text(subtitle!, style: Theme.of(context).textTheme.bodySmall),
               ],
             ],
           ),
         ),
-        if (trailing != null) ...[const SizedBox(width: 8), trailing!],
+        if (trailing != null) ...[
+          const SizedBox(width: NiuSpacing.sm),
+          trailing!,
+        ],
       ],
     ),
   );

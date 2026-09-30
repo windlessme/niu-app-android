@@ -1046,7 +1046,7 @@ class _MoodleAssignmentScreenState extends State<MoodleAssignmentScreen> {
               );
             }
             if (snapshot.connectionState != ConnectionState.done) {
-              return const Center(child: CircularProgressIndicator());
+              return const Center(child: AppLoadingState());
             }
             final attempt = snapshot.data!['lastattempt'] is Map
                 ? object(snapshot.data!['lastattempt'])

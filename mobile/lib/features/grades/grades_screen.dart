@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/web/academic_portal_screen.dart';
 import 'grade_statistics.dart';
+import '../../shared/shared.dart';
 
 enum GradeMode { midterm, finalTerm, history }
 
@@ -16,9 +17,11 @@ class GradeSummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final stats = GradeStatistics(courses);
     return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(NiuRadius.card),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(NiuSpacing.page),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -120,7 +123,7 @@ class _GradesScreenState extends State<GradesScreen> {
         SafeArea(
           bottom: false,
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(NiuSpacing.page),
             child: SegmentedButton<GradeMode>(
               style: const ButtonStyle(
                 minimumSize: WidgetStatePropertyAll(Size(48, 48)),
@@ -157,14 +160,14 @@ class _GradesScreenState extends State<GradesScreen> {
                         .toList();
               final semesters = courses.map((c) => c.semester).toSet();
               return ListView(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(NiuSpacing.page),
                 children: [
                   if (mode == GradeMode.history)
                     GradeSummaryCard(courses: courses, title: '累計 GPA（估算）'),
                   if (value['average'] != null && value['average'] != '')
                     Card(
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24),
+                        borderRadius: BorderRadius.circular(NiuRadius.card),
                       ),
                       child: ListTile(
                         title: const Text('學期平均'),
@@ -175,7 +178,7 @@ class _GradesScreenState extends State<GradesScreen> {
                     ...((value['summary'] as List).map(
                       (s) => Card(
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(24),
+                          borderRadius: BorderRadius.circular(NiuRadius.card),
                         ),
                         child: ListTile(
                           title: Text('${s[0]} 學期'),
@@ -187,7 +190,7 @@ class _GradesScreenState extends State<GradesScreen> {
                   if (value['rank'] != null && value['rank'] != '')
                     Card(
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24),
+                        borderRadius: BorderRadius.circular(NiuRadius.card),
                       ),
                       child: ListTile(
                         title: const Text('班級排名'),
@@ -196,7 +199,7 @@ class _GradesScreenState extends State<GradesScreen> {
                     ),
                   if (courses.isEmpty)
                     const Padding(
-                      padding: EdgeInsets.all(24),
+                      padding: EdgeInsets.all(NiuSpacing.section),
                       child: Text('校方尚未公布成績。'),
                     ),
                   for (final semester in semesters) ...[
@@ -206,7 +209,9 @@ class _GradesScreenState extends State<GradesScreen> {
                         title: '$semester GPA',
                       ),
                     Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: NiuSpacing.compact,
+                      ),
                       child: Text(
                         semester,
                         style: Theme.of(context).textTheme.titleMedium,
@@ -217,7 +222,9 @@ class _GradesScreenState extends State<GradesScreen> {
                         .map(
                           (c) => Card(
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(24),
+                              borderRadius: BorderRadius.circular(
+                                NiuRadius.card,
+                              ),
                             ),
                             child: ListTile(
                               title: Text(c.name),
