@@ -4,7 +4,7 @@
 
 ## 結構
 
-- `mobile/lib/app/`：啟動組裝、go_router 路由及四個主頁籤。
+- `mobile/lib/app/`：啟動組裝、go_router 路由及三個主頁籤（首頁、課表、M 園區）。
 - `mobile/lib/features/`：依功能分組的畫面、presentation models、repositories。
 - `mobile/lib/core/`：HTTP、校務 WebView、Session、憑證儲存及 Android 橋接。
 - `mobile/lib/shared/`：語意色彩、字級、間距、圓角及共用 UI 元件。
@@ -35,7 +35,7 @@ Riverpod 管理校曆資料來源與非同步狀態；CampusSession 使用 Chang
 
 `NiuColors` 為 ThemeExtension，採三層表面：canvas（頁面）→ surface（卡片、導覽列）→ fill（卡片內的控制項與區塊），另有 ink 三階文字、accent 與 success/warning/error；`NiuHue` 為各功能的識別色，淺深色皆有可讀前景與淡色底。`NiuSpacing`（4pt，頁面邊距 20）、`NiuRadius`（卡片 20）、`NiuSize`、`NiuMotion` 為共用 tokens，字級見 `NiuTheme`。
 
-元件統一放在 `lib/shared/`：頁面框架 `NiuScrollPage`（主分頁用 large、次頁用 medium 可收合標題列）與 `NiuAppBar`；表面 `NiuCard`、`NiuGroup`/`NiuRow`（分組列表）、`NiuSection`、`NiuWell`；狀態 `NiuLoading`、`NiuEmpty`、`NiuError`、`NiuBanner`、`NiuSyncStatus`；資料 `NiuStat`、`NiuProgressBar`、`NiuKeyValue`、`NiuField`；控制項 `NiuSegmented`、`NiuTabs`、`NiuFilterBar`、`NiuBadge`、`NiuTag`、`NiuSearchField`。圖示只用 `NiuIcons`（Material Rounded）。首頁與校園分頁共用 `features/home/campus_services.dart` 的服務目錄。主分頁不顯示返回鍵，其他頁使用 Android 返回箭頭並支援預測式返回；列表底部保留系統手勢區距離。QR 原始影像與白色 quiet zone 是掃描用途的例外。
+元件統一放在 `lib/shared/`：頁面框架 `NiuScrollPage`（主分頁用 large、次頁用 medium 可收合標題列）與 `NiuAppBar`；表面 `NiuCard`、`NiuGroup`/`NiuRow`（分組列表）、`NiuSection`、`NiuWell`；狀態 `NiuLoading`、`NiuEmpty`、`NiuError`、`NiuBanner`、`NiuSyncStatus`；資料 `NiuStat`、`NiuProgressBar`、`NiuKeyValue`、`NiuField`；控制項 `NiuSegmented`、`NiuTabs`、`NiuFilterBar`、`NiuBadge`、`NiuTag`、`NiuSearchField`。圖示只用 `NiuIcons`（Material Rounded）。其他校園服務只從首頁的服務格進入，名稱、圖示與顏色集中在 `features/home/campus_services.dart`。主分頁不顯示返回鍵，其他頁使用 Android 返回箭頭並支援預測式返回；列表底部保留系統手勢區距離。QR 原始影像與白色 quiet zone 是掃描用途的例外。
 
 ## 驗證
 

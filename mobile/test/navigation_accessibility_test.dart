@@ -24,8 +24,13 @@ void main() {
                 builder: (_, _) => const Scaffold(body: Text('首頁內容')),
               ),
               GoRoute(
-                path: '/campus',
-                builder: (_, _) => const CampusServicesScreen(),
+                path: '/schedule',
+                builder: (_, _) => const NiuScrollPage(
+                  title: '課表',
+                  large: true,
+                  showBack: false,
+                  children: [Text('課表內容')],
+                ),
               ),
             ],
           ),
@@ -45,13 +50,13 @@ void main() {
           ),
         ),
       );
-      await tester.tap(find.text('校園'));
+      await tester.tap(find.text('課表').last);
       await tester.pumpAndSettle();
-      expect(find.text('校園服務'), findsWidgets);
+      expect(find.text('課表內容'), findsOneWidget);
       expect(tester.takeException(), isNull);
       // Tab roots have no back arrow; the navigation bar switches tabs.
       expect(find.byTooltip('返回'), findsNothing);
-      for (final label in ['首頁', '課表', 'M 園區', '校園']) {
+      for (final label in ['首頁', 'M 園區']) {
         expect(
           tester
               .getSize(

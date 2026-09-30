@@ -2,8 +2,7 @@ import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import '../../shared/shared.dart';
 
-/// One catalogue for every entry point, so names, icons and colours match
-/// between Home and the Campus tab.
+/// Home's service catalogue; one place for names, icons and colours.
 class CampusService {
   const CampusService(
     this.title,
@@ -25,13 +24,6 @@ abstract final class CampusServices {
     NiuIcons.moodle,
     NiuHue.blue,
     '/moodle',
-  );
-  static const attendance = CampusService(
-    '點名',
-    '掃描課堂 QR Code 簽到',
-    NiuIcons.attendance,
-    NiuHue.blue,
-    '/attendance',
   );
   static const grades = CampusService(
     '成績',
@@ -82,13 +74,6 @@ abstract final class CampusServices {
     NiuHue.cyan,
     '/registration',
   );
-  static const settings = CampusService(
-    '設定',
-    '帳號、外觀與關於',
-    NiuIcons.settings,
-    NiuHue.gray,
-    '/settings',
-  );
 
   static const home = [
     moodle,
@@ -100,16 +85,9 @@ abstract final class CampusServices {
     events,
     registration,
   ];
-
-  static const groups = [
-    ('課業', [attendance, grades, graduation]),
-    ('校園生活', [calendar, library, events]),
-    ('行政', [leave, registration]),
-    ('App', [settings]),
-  ];
 }
 
-const _tabRoutes = {'/', '/schedule', '/moodle', '/campus'};
+const _tabRoutes = {'/', '/schedule', '/moodle'};
 
 /// Tabs switch in place; every other service is pushed above the shell.
 void openCampusService(BuildContext context, CampusService service) =>

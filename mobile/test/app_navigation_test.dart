@@ -39,7 +39,8 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('校園'));
+    await tester.scrollUntilVisible(find.text('行事曆'), 200);
+    await tester.ensureVisible(find.text('行事曆'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('行事曆'));
     await tester.pumpAndSettle();
@@ -51,6 +52,6 @@ void main() {
     expect(find.text('測試事項'), findsNothing);
     await tester.tap(find.byTooltip('返回'));
     await tester.pumpAndSettle();
-    expect(find.text('校園服務'), findsWidgets);
+    expect(find.text('校園服務'), findsOneWidget);
   });
 }
