@@ -17,27 +17,32 @@ GraduationPresentation present(Map<String, dynamic> json) {
 }
 
 void main() {
-  testWidgets('estimation details expand immediately with reduced motion', (
+  testWidgets('dashboard stays plain: no status verdicts or filters', (
     tester,
   ) async {
     await tester.pumpWidget(
       MaterialApp(
-        home: MediaQuery(
-          data: const MediaQueryData(disableAnimations: true),
-          child: Scaffold(
-            body: GraduationDashboard(data: GraduationData.fromJson({})),
+        home: Scaffold(
+          body: GraduationDashboard(
+            data: GraduationData.fromJson({
+              'diverseHours': ['12', '20', '20', '20', '5', '20', '0', '40'],
+              'creditRequired': ['128', '96'],
+              'englishAbility': '已通過',
+              'physicalFitness': '尚未檢測',
+              'creditCourse': '',
+            }),
           ),
         ),
       ),
     );
-    expect(find.textContaining('已修數量達到應修門檻'), findsNothing);
-    await tester.scrollUntilVisible(find.text('計算方式與資料說明'), 300);
-    await tester.tap(find.text('計算方式與資料說明'));
-    await tester.pump();
-    expect(find.textContaining('已修數量達到應修門檻'), findsOneWidget);
-    final expandedSize = tester.getSize(find.byType(ExpansionTile));
-    await tester.pump(const Duration(milliseconds: 250));
-    expect(tester.getSize(find.byType(ExpansionTile)), expandedSize);
+    for (final word in ['尚差', '已完成', '未完成', '待處理']) {
+      expect(find.textContaining(word), findsNothing);
+    }
+    expect(find.text('12 / 20'), findsOneWidget);
+    expect(find.text('已通過'), findsOneWidget);
+    expect(find.text('尚未檢測'), findsOneWidget);
+    expect(find.text('學分學程'), findsNothing);
+    expect(find.byType(NiuSegmented<Object>), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -166,20 +171,13 @@ void main() {
           ),
         );
         expect(tester.takeException(), isNull);
-        await tester.scrollUntilVisible(find.text('3 / 128 學分'), 300);
-        expect(find.text('尚差 125 學分'), findsOneWidget);
-        expect(tester.takeException(), isNull);
-        await tester.scrollUntilVisible(find.text('學分學程'), 200);
-        expect(tester.takeException(), isNull);
-        await tester.scrollUntilVisible(find.text('計算方式與資料說明'), 200);
-        await tester.tap(find.text('計算方式與資料說明'));
-        await tester.pumpAndSettle();
+        await tester.scrollUntilVisible(find.text('學分學程'), 300);
         expect(tester.takeException(), isNull);
       },
     );
   }
 
-  testWidgets('all unknown hero shows unknown count without a progress bar', (
+  testWidgets('all unknown data shows a dash instead of zero progress', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -193,19 +191,13 @@ void main() {
     expect(
       tester
           .widget<Text>(find.byKey(const ValueKey('graduation-overall')))
-          .data,
-      '已完成 0 項',
+          .textSpan!
+          .toPlainText(),
+      '—',
     );
     expect(find.byType(LinearProgressIndicator), findsNothing);
     expect(find.byType(CircularProgressIndicator), findsNothing);
-    expect(find.text('資料待確認 8 項'), findsOneWidget);
-    expect(find.textContaining('非校方畢業資格審核結果'), findsNothing);
-    await tester.tap(find.text('待處理'));
-    await tester.pumpAndSettle();
-    expect(find.text('包含尚未完成及資料待確認的項目'), findsOneWidget);
-    expect(find.text('— / — 學分'), findsOneWidget);
-    await tester.tap(find.text('已完成'));
-    await tester.pumpAndSettle();
-    expect(find.text('目前沒有符合的項目'), findsOneWidget);
+    expect(find.text('尚未登錄'), findsNWidgets(2));
+    expect(tester.takeException(), isNull);
   });
 }

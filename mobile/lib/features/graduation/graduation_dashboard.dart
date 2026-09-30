@@ -3,9 +3,7 @@ import '../../shared/shared.dart';
 import 'graduation_presentation.dart';
 import 'graduation_screen.dart';
 
-enum _StatusFilter { all, attention, completed }
-
-class GraduationDashboard extends StatefulWidget {
+class GraduationDashboard extends StatelessWidget {
   const GraduationDashboard({
     super.key,
     required this.data,
@@ -22,159 +20,87 @@ class GraduationDashboard extends StatefulWidget {
   final bool embedded;
 
   @override
-  State<GraduationDashboard> createState() => _GraduationDashboardState();
-}
-
-class _GraduationDashboardState extends State<GraduationDashboard> {
-  _StatusFilter _filter = _StatusFilter.all;
-
-  bool _visible(GraduationRequirement requirement) => switch (_filter) {
-    _StatusFilter.all => true,
-    _StatusFilter.attention => requirement.needsAttention,
-    _StatusFilter.completed => requirement.isComplete,
-  };
-
-  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final model = GraduationPresentation(
-      hours: widget.data.hours,
-      credits: widget.data.credits,
-      english: widget.data.english,
-      fitness: widget.data.fitness,
-      program: widget.data.program,
+      hours: data.hours,
+      credits: data.credits,
+      english: data.english,
+      fitness: data.fitness,
+      program: data.program,
     );
-    final hours = model.hours.where(_visible).toList();
-    final qualifications = [
-      ...model.qualifications,
-      model.program,
-    ].where(_visible).toList();
+    final program = data.program.trim();
+    final hasProgram =
+        program.isNotEmpty && program != '無' && program.length >= 2;
     final children = <Widget>[
-      if (widget.needsReauthentication) ...[
+      if (needsReauthentication) ...[
         const NiuBanner(tone: NiuTone.warning, message: '校務登入已過期，先顯示上次保存的資料。'),
         const SizedBox(height: NiuSpacing.lg),
       ],
-      _Overview(model: model),
+      _Overview(progress: model.progress),
       const SizedBox(height: NiuSpacing.lg),
-      NiuSegmented<_StatusFilter>(
-        segments: const [
-          (_StatusFilter.all, '全部'),
-          (_StatusFilter.attention, '待處理'),
-          (_StatusFilter.completed, '已完成'),
-        ],
-        value: _filter,
-        onChanged: (filter) => setState(() => _filter = filter),
-      ),
-      if (_filter == _StatusFilter.attention) ...[
-        const SizedBox(height: NiuSpacing.sm),
-        Text(
-          '包含尚未完成及資料待確認的項目',
-          textAlign: TextAlign.center,
-          style: theme.textTheme.labelMedium,
-        ),
-      ],
-      if (!model.requirements.any(_visible))
-        const Padding(
-          padding: EdgeInsets.only(top: NiuSpacing.lg),
-          child: NiuCard(
-            child: NiuEmpty(
-              padding: EdgeInsets.symmetric(vertical: NiuSpacing.xl),
-              icon: NiuIcons.graduation,
-              title: '目前沒有符合的項目',
-            ),
-          ),
-        ),
-      if (_visible(model.credits))
-        NiuSection(
-          title: '畢業學分',
-          child: NiuCard(
-            padding: const EdgeInsets.all(NiuSpacing.xl),
-            child: _QuantityRow(
-              requirement: model.credits,
-              unit: '學分',
-              prominent: true,
-            ),
-          ),
-        ),
-      if (hours.isNotEmpty)
-        NiuSection(
-          title: '多元學習時數',
-          subtitle: '已完成時數／應修時數',
-          child: NiuCard(
-            child: Column(
-              children: [
-                for (var i = 0; i < hours.length; i++) ...[
-                  if (i > 0)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: NiuSpacing.md),
-                      child: Divider(),
-                    ),
-                  _QuantityRow(requirement: hours[i], unit: '小時'),
-                ],
-              ],
-            ),
-          ),
-        ),
-      if (qualifications.isNotEmpty)
-        NiuSection(
-          title: '能力檢定與學程',
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final scale = MediaQuery.textScalerOf(context).scale(16) / 16;
-              final twoColumns = constraints.maxWidth >= 300 * scale;
-              final width = twoColumns
-                  ? (constraints.maxWidth - NiuSpacing.md) / 2
-                  : constraints.maxWidth;
-              return Wrap(
-                spacing: NiuSpacing.md,
-                runSpacing: NiuSpacing.md,
-                children: [
-                  for (final requirement in qualifications)
-                    SizedBox(
-                      width: width,
-                      child: _QualificationCard(requirement: requirement),
-                    ),
-                ],
-              );
-            },
-          ),
-        ),
-      const SizedBox(height: NiuSpacing.xl),
-      NiuCard(
-        padding: EdgeInsets.zero,
-        child: Theme(
-          data: theme.copyWith(dividerColor: Colors.transparent),
-          child: ExpansionTile(
-            expansionAnimationStyle: MediaQuery.disableAnimationsOf(context)
-                ? AnimationStyle.noAnimation
-                : null,
-            tilePadding: const EdgeInsets.symmetric(horizontal: NiuSpacing.lg),
-            childrenPadding: const EdgeInsets.fromLTRB(
-              NiuSpacing.lg,
-              0,
-              NiuSpacing.lg,
-              NiuSpacing.lg,
-            ),
-            leading: Icon(
-              NiuIcons.info,
-              color: NiuColors.of(context).inkSecondary,
-            ),
-            title: Text('計算方式與資料說明', style: theme.textTheme.titleSmall),
-            children: [
-              Text(
-                '已修數量達到應修門檻，或學校標示為通過，即算完成。環形圖顯示已完成項目占適用項目的比例；資料待確認的項目仍計入總數，但不當作零進度，不計入的項目則排除。尚差數量只在已修與應修都已知時顯示，最低為 0。以上為整理參考，非校方畢業資格審核結果。',
-                style: theme.textTheme.bodySmall,
+      _Card(
+        icon: NiuIcons.time,
+        title: '多元時數',
+        child: Column(
+          children: [
+            for (var i = 0; i < model.hours.length; i++) ...[
+              if (i > 0) const SizedBox(height: NiuSpacing.lg),
+              _HoursRow(
+                label: model.hours[i].label.replaceAll('學習', ''),
+                requirement: model.hours[i],
               ),
             ],
-          ),
+          ],
         ),
       ),
-      if (widget.updatedAt != null) ...[
+      const SizedBox(height: NiuSpacing.lg),
+      IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: _AbilityTile(
+                icon: Icons.translate_rounded,
+                title: '外語能力',
+                requirement: model.qualifications[0],
+              ),
+            ),
+            const SizedBox(width: NiuSpacing.md),
+            Expanded(
+              child: _AbilityTile(
+                icon: Icons.directions_run_rounded,
+                title: '體適能',
+                requirement: model.qualifications[1],
+              ),
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: NiuSpacing.lg),
+      _Card(
+        icon: Icons.menu_book_rounded,
+        title: '畢業學分',
+        child: _CreditsRow(requirement: model.credits),
+      ),
+      if (hasProgram) ...[
         const SizedBox(height: NiuSpacing.lg),
-        NiuSyncStatus(updatedAt: widget.updatedAt, offline: widget.offline),
+        _Card(
+          icon: NiuIcons.graduation,
+          title: '學分學程',
+          child: Text(
+            program.replaceAll('、', '\n'),
+            style: theme.textTheme.bodyMedium,
+          ),
+        ),
       ],
+      const SizedBox(height: NiuSpacing.xl),
+      if (updatedAt != null || offline)
+        NiuSyncStatus(updatedAt: updatedAt, offline: offline),
+      const SizedBox(height: NiuSpacing.xs),
+      Text('僅供參考，以學校審核結果為準', style: theme.textTheme.labelMedium),
     ];
-    if (widget.embedded) {
+    if (embedded) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: children,
@@ -192,90 +118,99 @@ class _GraduationDashboardState extends State<GraduationDashboard> {
   }
 }
 
+String _quantity(double? value) => value == null
+    ? '—'
+    : value == value.roundToDouble()
+    ? value.toInt().toString()
+    : value.toString();
+
+Color _tint(BuildContext context, double progress) {
+  final colors = NiuColors.of(context);
+  if (progress >= 1) return colors.success;
+  if (progress >= .6) return colors.accent;
+  return colors.warning;
+}
+
 class _Overview extends StatelessWidget {
-  const _Overview({required this.model});
-  final GraduationPresentation model;
+  const _Overview({required this.progress});
+  final double? progress;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = NiuColors.of(context);
-    final summary = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('畢業進度', style: theme.textTheme.labelMedium),
-        const SizedBox(height: NiuSpacing.xs),
-        Text(
-          '已完成 ${model.completedCount} 項',
-          key: const ValueKey('graduation-overall'),
-          style: theme.textTheme.headlineSmall,
-        ),
-        const SizedBox(height: NiuSpacing.sm),
-        Wrap(
-          spacing: NiuSpacing.sm,
-          runSpacing: NiuSpacing.xs,
-          children: [
-            NiuBadge(
-              label: '尚未完成 ${model.remainingCount} 項',
-              tone: model.remainingCount > 0
-                  ? NiuTone.warning
-                  : NiuTone.neutral,
-            ),
-            NiuBadge(label: '資料待確認 ${model.missingCount} 項'),
-          ],
-        ),
-      ],
-    );
-    final fraction = model.applicableCount == 0
-        ? 0.0
-        : model.completedCount / model.applicableCount;
-    final ring = Semantics(
+    final percent = progress == null ? null : (progress! * 100).round();
+    return Semantics(
+      label: '整體達成度 ${percent == null ? '資料待確認' : '$percent%'}',
       excludeSemantics: true,
-      label:
-          '${model.applicableCount} 項適用門檻，已完成 ${model.completedCount} 項，資料待確認 ${model.missingCount} 項',
-      child: SizedBox.square(
-        dimension: 84,
-        child: CustomPaint(
-          painter: _RingPainter(
-            value: model.measuredCount > 0 ? fraction : 0,
-            track: colors.fill,
-            color: colors.success,
+      child: Container(
+        padding: const EdgeInsets.all(NiuSpacing.xl),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(NiuRadius.card),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [colors.accent, colors.accent.withValues(alpha: .78)],
           ),
-          child: Center(
-            child: Text(
-              '${model.completedCount}/${model.applicableCount}',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-                fontFeatures: tabularFigures,
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '整體達成度',
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      color: colors.onAccent.withValues(alpha: .85),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: NiuSpacing.xs),
+                  Text.rich(
+                    key: const ValueKey('graduation-overall'),
+                    TextSpan(
+                      children: [
+                        TextSpan(
+                          text: percent == null ? '—' : '$percent',
+                          style: theme.textTheme.displayMedium?.copyWith(
+                            color: colors.onAccent,
+                            fontFeatures: tabularFigures,
+                          ),
+                        ),
+                        if (percent != null)
+                          TextSpan(
+                            text: ' %',
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              color: colors.onAccent.withValues(alpha: .85),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
+            const SizedBox(width: NiuSpacing.lg),
+            SizedBox.square(
+              dimension: 84,
+              child: CustomPaint(
+                painter: _RingPainter(
+                  value: progress ?? 0,
+                  track: colors.onAccent.withValues(alpha: .22),
+                  color: colors.onAccent,
+                ),
+                child: Center(
+                  child: Icon(
+                    NiuIcons.graduation,
+                    color: colors.onAccent,
+                    size: 28,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
-      ),
-    );
-    return NiuCard(
-      padding: const EdgeInsets.all(NiuSpacing.xl),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final scale = MediaQuery.textScalerOf(context).scale(16) / 16;
-          if (constraints.maxWidth < 240 * scale) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                ring,
-                const SizedBox(height: NiuSpacing.lg),
-                summary,
-              ],
-            );
-          }
-          return Row(
-            children: [
-              ring,
-              const SizedBox(width: NiuSpacing.xl),
-              Expanded(child: summary),
-            ],
-          );
-        },
       ),
     );
   }
@@ -288,20 +223,29 @@ class _RingPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     const stroke = 8.0;
-    final rect = Offset.zero & size;
-    final arc = rect.deflate(stroke / 2);
-    final base = Paint()
-      ..color = track
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = stroke;
-    canvas.drawArc(arc, 0, 6.2832, false, base);
+    final arc = (Offset.zero & size).deflate(stroke / 2);
+    canvas.drawArc(
+      arc,
+      0,
+      6.2832,
+      false,
+      Paint()
+        ..color = track
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = stroke,
+    );
     if (value <= 0) return;
-    final fill = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round
-      ..strokeWidth = stroke;
-    canvas.drawArc(arc, -1.5708, 6.2832 * value.clamp(0, 1), false, fill);
+    canvas.drawArc(
+      arc,
+      -1.5708,
+      6.2832 * value.clamp(0, 1),
+      false,
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeWidth = stroke,
+    );
   }
 
   @override
@@ -309,109 +253,170 @@ class _RingPainter extends CustomPainter {
       old.value != value || old.track != track || old.color != color;
 }
 
-String _quantity(double? value) => value == null
-    ? '—'
-    : value == value.roundToDouble()
-    ? value.toInt().toString()
-    : value.toString();
+class _Card extends StatelessWidget {
+  const _Card({required this.icon, required this.title, required this.child});
+  final IconData icon;
+  final String title;
+  final Widget child;
+  @override
+  Widget build(BuildContext context) => NiuCard(
+    padding: const EdgeInsets.all(NiuSpacing.xl),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 20, color: NiuColors.of(context).accent),
+            const SizedBox(width: NiuSpacing.sm),
+            Expanded(
+              child: Semantics(
+                header: true,
+                child: Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: NiuSpacing.lg),
+        child,
+      ],
+    ),
+  );
+}
 
-class _QuantityRow extends StatelessWidget {
-  const _QuantityRow({
-    required this.requirement,
-    required this.unit,
-    this.prominent = false,
-  });
+class _HoursRow extends StatelessWidget {
+  const _HoursRow({required this.label, required this.requirement});
+  final String label;
   final GraduationRequirement requirement;
-  final String unit;
-  final bool prominent;
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    final colors = NiuColors.of(context);
     final progress = requirement.progress;
-    final amount = requirement.nonApplicable
-        ? '${_quantity(requirement.earned)} $unit・不計入'
-        : '${_quantity(requirement.earned)} / ${_quantity(requirement.required)} $unit';
-    final status = progress == null
-        ? Text(
-            requirement.nonApplicable ? '不列入門檻' : '資料待確認',
-            style: text.labelMedium,
-          )
-        : requirement.isComplete
-        ? const NiuBadge(label: '已完成', tone: NiuTone.success)
-        : Text(
-            '尚差 ${_quantity(requirement.remaining)} $unit',
-            style: text.labelMedium?.copyWith(
-              color: colors.warning,
-              fontWeight: FontWeight.w600,
-            ),
-          );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (!prominent)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Flexible(child: Text(requirement.label, style: text.titleMedium)),
-              const SizedBox(width: NiuSpacing.sm),
-              Flexible(
-                child: Text(
-                  amount,
-                  textAlign: TextAlign.end,
-                  style: text.bodyMedium?.copyWith(
-                    color: colors.inkSecondary,
-                    fontFeatures: tabularFigures,
-                  ),
-                ),
-              ),
-            ],
-          )
-        else
-          Text(
-            amount,
-            style: text.headlineSmall?.copyWith(fontFeatures: tabularFigures),
-          ),
-        const SizedBox(height: NiuSpacing.sm),
-        if (progress != null) ...[
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Flexible(child: Text(label, style: text.titleSmall)),
+            const SizedBox(width: NiuSpacing.sm),
+            Text(
+              requirement.nonApplicable
+                  ? '不計入'
+                  : '${_quantity(requirement.earned)} / ${_quantity(requirement.required)}',
+              style: text.bodySmall?.copyWith(fontFeatures: tabularFigures),
+            ),
+          ],
+        ),
+        if (!requirement.nonApplicable) ...[
+          const SizedBox(height: 6),
           NiuProgressBar(
-            value: progress,
-            color: requirement.isComplete ? colors.success : colors.accent,
-            semanticLabel: '${requirement.label}完成比例',
+            value: progress ?? 0,
+            color: _tint(context, progress ?? 0),
+            semanticLabel: requirement.label,
           ),
-          const SizedBox(height: NiuSpacing.sm),
         ],
-        Align(alignment: Alignment.centerLeft, child: status),
       ],
     );
   }
 }
 
-class _QualificationCard extends StatelessWidget {
-  const _QualificationCard({required this.requirement});
+class _CreditsRow extends StatelessWidget {
+  const _CreditsRow({required this.requirement});
   final GraduationRequirement requirement;
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
-    final (tone, icon, label) = switch (requirement.status) {
-      GraduationStatus.notTested => (NiuTone.warning, NiuIcons.pending, '尚未檢測'),
-      GraduationStatus.passed => (NiuTone.success, NiuIcons.success, '已通過'),
-      GraduationStatus.failed => (NiuTone.error, NiuIcons.error, '未通過'),
-      _ => (NiuTone.neutral, NiuIcons.neutral, '資料待確認'),
-    };
+    final colors = NiuColors.of(context);
+    final progress = requirement.progress;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              child: Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(
+                      text: _quantity(requirement.earned),
+                      style: text.displaySmall,
+                    ),
+                    TextSpan(
+                      text: ' / ${_quantity(requirement.required)}',
+                      style: text.titleLarge?.copyWith(
+                        color: colors.inkSecondary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+                style: const TextStyle(fontFeatures: tabularFigures),
+              ),
+            ),
+            Text(
+              progress == null ? '—' : '${(progress * 100).round()}%',
+              style: text.titleSmall?.copyWith(color: colors.inkSecondary),
+            ),
+          ],
+        ),
+        const SizedBox(height: NiuSpacing.md),
+        NiuProgressBar(value: progress ?? 0, semanticLabel: '畢業學分'),
+      ],
+    );
+  }
+}
+
+class _AbilityTile extends StatelessWidget {
+  const _AbilityTile({
+    required this.icon,
+    required this.title,
+    required this.requirement,
+  });
+  final IconData icon;
+  final String title;
+  final GraduationRequirement requirement;
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final colors = NiuColors.of(context);
+    final passed = requirement.status == GraduationStatus.passed;
+    final tint = passed ? colors.success : colors.warning;
+    final value = requirement.source.isEmpty ? '尚未登錄' : requirement.source;
     return NiuCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(requirement.label, style: text.titleMedium),
-          const SizedBox(height: NiuSpacing.sm),
-          NiuBadge(label: label, tone: tone, icon: icon),
-          const SizedBox(height: NiuSpacing.sm),
-          Text(
-            requirement.source.isEmpty || requirement.source == label
-                ? '-'
-                : requirement.source,
-            style: text.bodySmall,
+          Row(
+            children: [
+              Icon(icon, size: 18, color: tint),
+              const SizedBox(width: NiuSpacing.sm),
+              Expanded(child: Text(title, style: text.titleSmall)),
+            ],
+          ),
+          const SizedBox(height: NiuSpacing.md),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Icon(
+                  passed ? Icons.verified_rounded : Icons.error_rounded,
+                  size: 18,
+                  color: tint,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  value,
+                  style: text.titleMedium?.copyWith(color: tint),
+                ),
+              ),
+            ],
           ),
         ],
       ),
