@@ -85,11 +85,48 @@ assert.deepEqual(clicks,[]);
     expect(result.exitCode, 0, reason: result.stderr.toString());
   });
 
+  test('individual leave detail page opens its workflow like group leaves', () {
+    final result = Process.runSync('node', [
+      '-e',
+      '''
+const assert=require('node:assert/strict');
+for(const page of ['SEC2010_01','SEC2010_04']){
+  let flow=0;
+  const hidden={H_FORM_CODE:'F',H_APPROVE_FLOW_CODE:'A',H_GROUP_APPLY_NO:page==='SEC2010_04'?'G':'',M_FORM_NO:'N'};
+  const doc={
+    location:{pathname:'/NIU/Application/SEC/SEC20/'+page+'.aspx',href:'https://acade.niu.edu.tw/NIU/Application/SEC/SEC20/'+page+'.aspx'},
+    readyState:'complete',
+    querySelectorAll:()=>[],
+    getElementById:id=>id==='FLOW_BTN'?{disabled:false,click:()=>flow++}:(id in hidden?{value:hidden[id]}:null),
+  };
+  global.window={document:doc,frames:[]};
+  const script=${jsonEncode(leaveDetailPrepare('N', 1))};
+  assert.equal(eval(script),false);
+  assert.equal(flow,1);
+  assert.ok(window.__niuLeaveWorkflowDetail);
+  assert.equal(new URL(window.__niuLeaveWorkflowDetail.workflowUrl).pathname,
+    page==='SEC2010_01'?'/NIU/Application/FLO/FLO30/FLO3020_01.aspx':'/NIU/Application/FLO/FLO30/FLO3040_01.aspx');
+  assert.equal(eval(script),true);
+}
+''',
+    ]);
+    expect(result.exitCode, 0, reason: result.stderr.toString());
+  });
+
   test('workflow accepts only the school read-only endpoint', () {
     expect(
       isLeaveWorkflowUri(
         Uri.parse(
           'https://acade.niu.edu.tw/NIU/Application/FLO/FLO30/FLO3040_01.aspx?FORM_CODE=fixture',
+        ),
+      ),
+      isTrue,
+    );
+    // Individual (non-group) leaves use the FORM_NO based flow page.
+    expect(
+      isLeaveWorkflowUri(
+        Uri.parse(
+          'https://acade.niu.edu.tw/NIU/Application/FLO/FLO30/FLO3020_01.aspx?FORM_NO=fixture',
         ),
       ),
       isTrue,
@@ -121,6 +158,7 @@ const rows=[['簽核狀況','簽核日期','關卡說明','簽核單位'],['結�
 global.document={getElementById:()=>({rows})};
 const result=JSON.parse(eval(${jsonEncode(leaveWorkflowExtract)}));
 assert.equal(result.workflow.length,2);assert.equal(result.workflow[0]['簽核狀況'],'結案');assert.equal(result.workflow[1]['簽核日期'],'');
+location.pathname='/NIU/Application/FLO/FLO30/FLO3020_01.aspx';assert.equal(JSON.parse(eval(${jsonEncode(leaveWorkflowExtract)})).workflow.length,2);
 location.pathname='/NIU/Application/FLO/FLO00/FLO0030_01.aspx';assert.equal(eval(${jsonEncode(leaveWorkflowExtract)}),null);
 ''',
     ]);
