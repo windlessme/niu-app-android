@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:niu_mobile/app/campus_shell.dart';
+import 'package:niu_mobile/features/home/home_screen.dart';
 import 'package:niu_mobile/shared/shared.dart';
 
 void main() {
@@ -10,7 +10,10 @@ void main() {
     (tester) async {
       final router = GoRouter(
         routes: [
-          GoRoute(path: '/', builder: (_, _) => const CampusServicesScreen()),
+          GoRoute(
+            path: '/',
+            builder: (_, _) => const CampusHomeScreen(name: '測試同學'),
+          ),
           GoRoute(
             path: '/registration',
             builder: (_, _) => const Scaffold(body: Text('註冊與證明測試頁')),

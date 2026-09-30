@@ -96,11 +96,11 @@ class CreditsRepository {
   CreditsSnapshot? _current;
   Future<CreditsSnapshot>? _pending;
   static final url = Uri.parse(
-    'https://raw.githubusercontent.com/qian403/NIU-app/main/app-content/credits.json',
+    'https://raw.githubusercontent.com/windlessme/niu-app-android/main/app-content/credits.json',
   );
   // Same reviewed public content as app-content/credits.json; available offline.
   static const bundled =
-      '''{"schemaVersion":1,"revision":1,"introduction":"感謝下列開源專案與開發者提供靈感與參考：","entries":[{"id":"kennyyang0726-niu-app-ios","name":"KennyYang0726","description":"NIU_APP_IOS 開發者","projectName":"NIU_APP_IOS","url":"https://github.com/KennyYang0726/NIU_APP_IOS","order":10}]}''';
+      '''{"schemaVersion":1,"revision":2,"introduction":"感謝下列開源專案與開發者提供靈感與參考：","entries":[{"id":"qian403-niu-app","name":"qian403","description":"NIU-app 開發者，本 App 的功能與設計參考來源","projectName":"NIU-app","url":"https://github.com/qian403/NIU-app","order":5},{"id":"kennyyang0726-niu-app-ios","name":"KennyYang0726","description":"NIU_APP_IOS 開發者","projectName":"NIU_APP_IOS","url":"https://github.com/KennyYang0726/NIU_APP_IOS","order":10}]}''';
 
   Future<CreditsSnapshot> local() async {
     if (_current != null) return _current!;

@@ -151,10 +151,6 @@ class CampusHomeScreen extends StatelessWidget {
               ),
               NiuSection(
                 title: '校園服務',
-                action: TextButton(
-                  onPressed: () => context.go('/campus'),
-                  child: const Text('全部'),
-                ),
                 child: const _ServiceGrid(services: CampusServices.home),
               ),
               const SizedBox(height: NiuSpacing.xxxl),
