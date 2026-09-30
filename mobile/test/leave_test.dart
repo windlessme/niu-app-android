@@ -33,6 +33,58 @@ assert.equal(JSON.parse(eval(script)).workflow,undefined);
       expect(result.exitCode, 0, reason: result.stderr.toString());
     },
   );
+  test('detail search pages through results and clicks the matching row', () {
+    final result = Process.runSync('node', [
+      '-e',
+      '''
+const assert=require('node:assert/strict');
+const clicks=[];const storage={};
+function makeList(pages){
+  const input={value:'1'};let page=1;
+  const rowsFor=p=>[
+    ['假單序號','請假類別','審核結果'],
+    ...pages[p-1].map(([id,link])=>[id,'病假','已核准',link]),
+  ];
+  const cell=t=>({textContent:t});
+  const table={get rows(){return rowsFor(page).map(r=>({
+    cells:r.slice(0,3).map(cell),
+    querySelector:sel=>{const link=r[3];if(!link)return null;
+      if(link==='doNewEdit'&&sel.includes('doNewEdit'))return {click:()=>clicks.push(r[0])};
+      if(link==='onclick'&&!sel.includes('doNewEdit')&&sel.includes('onclick'))return {click:()=>clicks.push(r[0])};
+      return null;},
+  }));}};
+  const view={
+    eval:()=>true,
+    sessionStorage:{getItem:k=>storage[k]??null,setItem:(k,v)=>{storage[k]=v;}},
+    __niuAcademicRun:'run-1',
+  };
+  const doc={
+    location:{pathname:'/NIU/Application/SEC/SEC40/SEC4030_01.aspx'},
+    readyState:'complete',defaultView:view,
+    getElementById:id=>({DataGrid:table,PC_PageNo:input,PC_TotalPage:{textContent:String(pages.length)},
+      PC_ToGo:{click:()=>{page=parseInt(input.value,10);}}})[id]??null,
+  };
+  return {doc,input};
+}
+function run(script,doc){global.window={document:doc,frames:[]};return eval(script);}
+// The record moved from page 1 (where it was cached) to page 2, with an onclick link.
+const {doc}=makeList([[['A1','doNewEdit']],[['B2','onclick']]]);
+const script=${jsonEncode(leaveDetailPrepare('B2', 1))};
+global.window={document:doc,frames:[]};
+for(let i=0;i<4;i++)assert.equal(eval(script),false);
+assert.deepEqual(clicks,['B2']);
+// A row that exists nowhere does not click anything or loop forever.
+clicks.length=0;
+const other=makeList([[['A1','doNewEdit']]]);
+global.window={document:other.doc,frames:[]};
+const missing=${jsonEncode(leaveDetailPrepare('ZZ', 1))};
+for(let i=0;i<3;i++)assert.equal(eval(missing),false);
+assert.deepEqual(clicks,[]);
+''',
+    ]);
+    expect(result.exitCode, 0, reason: result.stderr.toString());
+  });
+
   test('workflow accepts only the school read-only endpoint', () {
     expect(
       isLeaveWorkflowUri(
