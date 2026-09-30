@@ -96,6 +96,20 @@ class LeaveRepository {
             )) {
           throw const FormatException('Invalid detail');
         }
+        if (data.containsKey('workflow') &&
+            (data['workflow'] is! List ||
+                (data['workflow'] as List).any(
+                  (step) =>
+                      step is! Map ||
+                      [
+                        '簽核狀況',
+                        '簽核日期',
+                        '關卡說明',
+                        '簽核單位',
+                      ].any((key) => step[key] is! String),
+                ))) {
+          throw const FormatException('Invalid workflow');
+        }
       } else {
         throw const FormatException('Unknown snapshot');
       }
@@ -241,7 +255,36 @@ const leaveDetailExtract = r'''
    fields[name]=(inputs.length?inputs.map(e=>e.tagName==='SELECT'?e.selectedOptions[0]?.text:e.value).join(' '):cell.innerText).trim();
   }
   const periods=Array.from(d.querySelectorAll('table')).filter(t=>t.rows[0]?.textContent.includes('請假節次')).map(t=>Array.from(t.rows,r=>Array.from(r.cells,c=>c.innerText.trim())));
-  return JSON.stringify({fields,periods});
+  const code=d.getElementById('H_FORM_CODE')?.value;
+  const flow=d.getElementById('H_APPROVE_FLOW_CODE')?.value;
+  const group=d.getElementById('H_GROUP_APPLY_NO')?.value;
+  let workflowUrl=null;
+  if(code && flow && group){
+    const url=new URL('/NIU/Application/FLO/FLO30/FLO3040_01.aspx',d.location.href);
+    url.search=new URLSearchParams({FORM_CODE:code,APPROVE_FLOW_CODE:flow,GROUP_APPLY_NO:group,STAFF_ID:''}).toString();workflowUrl=url.href;
+  }
+  return JSON.stringify({fields,periods,workflowUrl});
  }return null;
+})()
+''';
+
+bool isLeaveWorkflowUri(Uri uri) =>
+    uri.scheme == 'https' &&
+    uri.host == 'acade.niu.edu.tw' &&
+    uri.port == 443 &&
+    uri.userInfo.isEmpty &&
+    uri.path == '/NIU/Application/FLO/FLO30/FLO3040_01.aspx';
+
+const leaveWorkflowExtract = r'''
+(() => {
+ if(location.hostname!=='acade.niu.edu.tw' || location.pathname!=='/NIU/Application/FLO/FLO30/FLO3040_01.aspx')return null;
+ const table=document.getElementById('DataGrid');if(!table)return null;
+ const clean=v=>String(v||'').replace(/\s+/g,' ').trim();
+ const headers=Array.from(table.rows[0]?.cells||[],c=>clean(c.textContent));
+ const fields=['簽核狀況','簽核日期','關卡說明','簽核單位'];
+ if(!fields.every(f=>headers.includes(f)))return null;
+ const workflow=Array.from(table.rows).slice(1).filter(r=>r.cells.length===headers.length)
+   .map(r=>Object.fromEntries(fields.map(f=>[f,clean(r.cells[headers.indexOf(f)].textContent)])));
+ return JSON.stringify({workflow});
 })()
 ''';

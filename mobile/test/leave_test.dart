@@ -10,6 +10,47 @@ import 'package:niu_mobile/shared/shared.dart';
 import 'features/authentication_session_test.dart' show MemoryVault;
 
 void main() {
+  test('workflow accepts only the school read-only endpoint', () {
+    expect(
+      isLeaveWorkflowUri(
+        Uri.parse(
+          'https://acade.niu.edu.tw/NIU/Application/FLO/FLO30/FLO3040_01.aspx?FORM_CODE=fixture',
+        ),
+      ),
+      isTrue,
+    );
+    expect(
+      isLeaveWorkflowUri(
+        Uri.parse(
+          'https://evil.test/NIU/Application/FLO/FLO30/FLO3040_01.aspx',
+        ),
+      ),
+      isFalse,
+    );
+    expect(
+      isLeaveWorkflowUri(
+        Uri.parse(
+          'https://acade.niu.edu.tw/NIU/Application/FLO/FLO00/FLO0030_01.aspx',
+        ),
+      ),
+      isFalse,
+    );
+  });
+  test('workflow extraction preserves school order and raw status', () {
+    final result = Process.runSync('node', [
+      '-e',
+      '''
+const assert=require('node:assert/strict');
+global.location={hostname:'acade.niu.edu.tw',pathname:'/NIU/Application/FLO/FLO30/FLO3040_01.aspx'};
+const rows=[['簽核狀況','簽核日期','關卡說明','簽核單位'],['結案','2026/09/30','第一關','單位甲'],['待簽核','','第二關','單位乙']].map(r=>({cells:r.map(textContent=>({textContent}))}));
+global.document={getElementById:()=>({rows})};
+const result=JSON.parse(eval(${jsonEncode(leaveWorkflowExtract)}));
+assert.equal(result.workflow.length,2);assert.equal(result.workflow[0]['簽核狀況'],'結案');assert.equal(result.workflow[1]['簽核日期'],'');
+location.pathname='/NIU/Application/FLO/FLO00/FLO0030_01.aspx';assert.equal(eval(${jsonEncode(leaveWorkflowExtract)}),null);
+''',
+    ]);
+    expect(result.exitCode, 0, reason: result.stderr.toString());
+  });
   test('statistics agrees once; application still requires interaction', () {
     final result = Process.runSync('node', [
       '-e',
