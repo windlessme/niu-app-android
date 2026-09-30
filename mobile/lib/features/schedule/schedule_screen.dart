@@ -60,8 +60,16 @@ const scheduleExtractScript = r'''
 ''';
 
 class ScheduleScreen extends StatefulWidget {
-  const ScheduleScreen({super.key, this.session, this.webViewBuilder});
+  const ScheduleScreen({
+    super.key,
+    this.session,
+    this.webViewBuilder,
+    this.onOpenCourse,
+  });
   final CampusSession? session;
+
+  /// Opens the matching M 園區 course for a lesson.
+  final void Function(String course)? onOpenCourse;
   final Widget Function(Widget Function() create)? webViewBuilder;
 
   @override
@@ -121,6 +129,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             updatedAt: cached.fetchedAt,
             offline: session.isOffline,
             embedded: true,
+            onOpenCourse: widget.onOpenCourse,
           ),
         ],
       );
@@ -158,6 +167,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               .map((r) => (r as List).map((v) => v.toString()).toList())
               .toList(),
         ),
+        onOpenCourse: widget.onOpenCourse,
       ),
     );
     if (fetching && cached != null && cached.account == owner) {
@@ -289,6 +299,7 @@ class ScheduleView extends StatefulWidget {
     this.offline = false,
     this.initialWeekday,
     this.embedded = false,
+    this.onOpenCourse,
   });
   final ClassSchedule schedule;
   final DateTime? updatedAt;
@@ -297,6 +308,7 @@ class ScheduleView extends StatefulWidget {
 
   /// Embedded views render inside a parent scroll view instead of their own.
   final bool embedded;
+  final void Function(String course)? onOpenCourse;
 
   @override
   State<ScheduleView> createState() => _ScheduleViewState();
@@ -377,6 +389,7 @@ class _ScheduleViewState extends State<ScheduleView> {
           padding: const EdgeInsets.only(bottom: NiuSpacing.md),
           child: _LessonTile(
             lesson: lesson,
+            onOpen: widget.onOpenCourse,
             current:
                 selected == today &&
                 _minutes(lesson.start) != null &&
@@ -544,9 +557,10 @@ class _DayChip extends StatelessWidget {
 }
 
 class _LessonTile extends StatelessWidget {
-  const _LessonTile({required this.lesson, this.current = false});
+  const _LessonTile({required this.lesson, this.current = false, this.onOpen});
   final ScheduleLesson lesson;
   final bool current;
+  final void Function(String course)? onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -555,6 +569,7 @@ class _LessonTile extends StatelessWidget {
     final scale = MediaQuery.textScalerOf(context).scale(1);
     final compact = MediaQuery.sizeOf(context).width < 360 && scale > 1.5;
     final card = NiuCard(
+      onTap: onOpen == null ? null : () => onOpen!(lesson.name),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

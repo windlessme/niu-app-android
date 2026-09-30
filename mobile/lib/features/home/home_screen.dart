@@ -35,6 +35,7 @@ class CampusHomeScreen extends StatelessWidget {
     this.offline = false,
     this.ssoNeedsReauthentication = false,
     this.hasSchedule = false,
+    this.onOpenCourse,
   });
   final String? name;
   final String? department;
@@ -43,6 +44,9 @@ class CampusHomeScreen extends StatelessWidget {
   final bool offline;
   final bool ssoNeedsReauthentication;
   final bool hasSchedule;
+
+  /// Opens the matching M 園區 course for a timetable entry.
+  final void Function(String course)? onOpenCourse;
 
   static String greeting(DateTime taipei) => switch (taipei.hour) {
     >= 5 && < 11 => '早安',
@@ -119,6 +123,7 @@ class CampusHomeScreen extends StatelessWidget {
                   signedIn: name != null,
                   courses: courses,
                   hasSchedule: hasSchedule,
+                  onOpenCourse: onOpenCourse,
                 ),
               ),
               const SizedBox(height: NiuSpacing.md),
@@ -232,10 +237,12 @@ class _TodayCard extends StatelessWidget {
     required this.signedIn,
     required this.courses,
     required this.hasSchedule,
+    this.onOpenCourse,
   });
   final bool signedIn;
   final List<HomeCourse> courses;
   final bool hasSchedule;
+  final void Function(String course)? onOpenCourse;
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -290,7 +297,7 @@ class _TodayCard extends StatelessWidget {
         children: [
           for (final (i, course) in courses.indexed) ...[
             if (i > 0) const Divider(indent: 84),
-            _CourseRow(course: course),
+            _CourseRow(course: course, onOpen: onOpenCourse),
           ],
         ],
       ),
@@ -299,15 +306,18 @@ class _TodayCard extends StatelessWidget {
 }
 
 class _CourseRow extends StatelessWidget {
-  const _CourseRow({required this.course});
+  const _CourseRow({required this.course, this.onOpen});
   final HomeCourse course;
+  final void Function(String course)? onOpen;
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = NiuColors.of(context);
     final range = course.range;
     return InkWell(
-      onTap: () => context.go('/schedule'),
+      onTap: onOpen == null
+          ? () => context.go('/schedule')
+          : () => onOpen!(course.name),
       child: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: NiuSpacing.lg,
