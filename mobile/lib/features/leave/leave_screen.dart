@@ -5,6 +5,7 @@ import '../../core/web/academic_portal_screen.dart';
 import '../../shared/shared.dart';
 import 'leave_repository.dart';
 import 'leave_widgets.dart';
+import 'leave_application_screen.dart';
 
 class LeaveScreen extends StatefulWidget {
   const LeaveScreen({super.key, this.session});
@@ -63,6 +64,31 @@ class _LeaveScreenState extends State<LeaveScreen> {
     int page = 1,
   }) async {
     if (busy || !session.hasLocalAccount) return;
+    if (application) {
+      final applicationOwner = session.account;
+      final applicationEpoch = session.coordinator.epoch;
+      setState(() => busy = true);
+      bool? checkRecords;
+      try {
+        checkRecords = await Navigator.of(context).push<bool>(
+          MaterialPageRoute(
+            builder: (_) => LeaveApplicationScreen(session: session),
+          ),
+        );
+      } finally {
+        if (mounted) setState(() => busy = false);
+      }
+      // A response timeout is not a reason to resend. Return to the existing
+      // read-only query so the student can check the school's actual records.
+      if (mounted &&
+          session.hasLocalAccount &&
+          checkRecords == true &&
+          session.account == applicationOwner &&
+          session.coordinator.epoch == applicationEpoch) {
+        await open(keyName: 'list');
+      }
+      return;
+    }
     final owner = session.account!;
     final epoch = session.coordinator.epoch;
     setState(() {
