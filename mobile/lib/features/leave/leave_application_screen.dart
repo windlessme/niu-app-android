@@ -217,56 +217,16 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen>
     try {
       final available = await gateway!.periods(data!);
       if (!mounted || !current) return;
-      final chosen = <String>{
-        for (final p in available)
-          if (p.selected) p.value,
-      };
+      // Nothing is loading while the student chooses.
+      setState(() => busy = false);
       final selected = await showModalBottomSheet<List<String>>(
         context: context,
         isScrollControlled: true,
         useSafeArea: true,
-        builder: (context) => StatefulBuilder(
-          builder: (context, update) => SafeArea(
-            top: false,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(NiuSpacing.gutter),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('選擇請假節次', style: Theme.of(context).textTheme.titleLarge),
-                  const SizedBox(height: NiuSpacing.md),
-                  if (available.isEmpty)
-                    const NiuEmpty(
-                      title: '這段日期沒有可選節次',
-                      message: '請調整日期或查看學校網頁。',
-                    ),
-                  for (final p in available)
-                    CheckboxListTile(
-                      value: chosen.contains(p.value),
-                      onChanged: (value) => update(() {
-                        value == true
-                            ? chosen.add(p.value)
-                            : chosen.remove(p.value);
-                      }),
-                      title: Text('${p.date} · ${p.period}'),
-                      subtitle: p.course.isEmpty ? null : Text(p.course),
-                      controlAffinity: ListTileControlAffinity.leading,
-                    ),
-                  const SizedBox(height: NiuSpacing.md),
-                  FilledButton(
-                    onPressed: chosen.isEmpty
-                        ? null
-                        : () => Navigator.pop(context, chosen.toList()),
-                    child: const Text('確認節次'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
+        builder: (_) => _PeriodSheet(available: available),
       );
       if (!current) return;
+      setState(() => busy = true);
       if (selected == null) {
         await gateway!.cancelPeriods();
       } else {
@@ -353,11 +313,15 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen>
       return;
     }
     await change(() => gateway!.draft(data!, reason.text, deferAttachment));
-    if (!editable) return;
-    final ok = await confirm(
-      '確認送出請假',
-      '${data!.typeLabel}\n${displayLeaveDate(data!.start)}–${displayLeaveDate(data!.end)}\n${data!.total ?? '-'} 節\n\n${reason.text.trim()}\n\n送出後將進入校方審核，不代表已核准。',
-    );
+    if (!mounted || !editable) return;
+    final ok =
+        await showModalBottomSheet<bool>(
+          context: context,
+          isScrollControlled: true,
+          useSafeArea: true,
+          builder: (_) => _SubmitSheet(data: data!, reason: reason.text.trim()),
+        ) ??
+        false;
     if (!current || !ok || !editable) return;
     setState(() {
       sent = true;
@@ -421,14 +385,14 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen>
         appBar: NiuAppBar(
           title: '申請請假',
           actions: [
-            if (web != null)
-              NiuIconButton(
-                icon: showWeb ? NiuIcons.back : NiuIcons.external,
-                tooltip: showWeb ? '返回 App' : '學校網頁',
+            if (web != null && result == null)
+              TextButton(
                 onPressed: busy ? null : openSchool,
+                child: Text(showWeb ? '返回 App' : '學校網頁'),
               ),
           ],
         ),
+        bottomNavigationBar: showWeb ? null : actionBar(context),
         body: SafeArea(
           top: false,
           child: Stack(
@@ -508,189 +472,576 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen>
     );
   }
 
+  Future<void> chooseType() async {
+    final form = data;
+    if (form == null || !editable) return;
+    final value = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (context) => SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(
+            NiuSpacing.gutter,
+            0,
+            NiuSpacing.gutter,
+            NiuSpacing.xl,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('假別', style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: NiuSpacing.md),
+              NiuGroup(
+                insetDividers: NiuSpacing.lg,
+                children: [
+                  for (final choice in form.choices)
+                    Semantics(
+                      selected: choice.value == form.type,
+                      inMutuallyExclusiveGroup: true,
+                      child: NiuRow(
+                        title: choice.label,
+                        chevron: false,
+                        onTap: () => Navigator.pop(context, choice.value),
+                        trailing: Icon(
+                          choice.value == form.type
+                              ? Icons.radio_button_checked_rounded
+                              : Icons.radio_button_unchecked_rounded,
+                          color: choice.value == form.type
+                              ? NiuColors.of(context).accent
+                              : NiuColors.of(context).inkTertiary,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (!current || value == null || value == form.type) return;
+    await change(() => gateway!.changeType(form, value));
+  }
+
+  /// Sticky primary action for the current step.
+  Widget? actionBar(BuildContext context) {
+    final form = data;
+    if (result != null || form == null) return null;
+    if (form.notice != null) {
+      return NiuBottomBar(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            CheckboxListTile(
+              value: agreed,
+              contentPadding: EdgeInsets.zero,
+              onChanged: busy
+                  ? null
+                  : (v) => setState(() => agreed = v == true),
+              title: const Text('我已閱讀並同意請假注意事項'),
+              controlAffinity: ListTileControlAffinity.leading,
+            ),
+            FilledButton(
+              onPressed: editable && agreed
+                  ? () => change(() => gateway!.agree(form))
+                  : null,
+              child: const Text('開始申請'),
+            ),
+          ],
+        ),
+      );
+    }
+    if (sent) return null;
+    final missing = form.validate(reason.text);
+    return NiuBottomBar(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          FilledButton(
+            onPressed: editable ? submit : null,
+            child: const Text('確認申請'),
+          ),
+          if (missing != null && editable) ...[
+            const SizedBox(height: NiuSpacing.xs),
+            Text(
+              missing,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.labelMedium,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget nativeBody(BuildContext context) {
     final form = data;
     final theme = Theme.of(context);
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        NiuSpacing.gutter,
-        NiuSpacing.md,
-        NiuSpacing.gutter,
-        NiuSpacing.huge,
-      ),
-      children: [
-        if (error != null) NiuBanner(tone: NiuTone.warning, message: error!),
-        if (schoolMessage?.isNotEmpty == true)
-          NiuBanner(tone: NiuTone.accent, message: schoolMessage!),
-        if (busy) const NiuLoading(message: '正在更新校方表單'),
-        if (result case final result?) ...[
-          NiuSection(
-            first: true,
-            title: result.confirmed ? '已建立假單' : '請確認送出結果',
-            child: NiuCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (result.applicationId != null)
-                    NiuKeyValue(label: '假單編號', value: result.applicationId!),
-                  Text(result.message),
-                  const SizedBox(height: NiuSpacing.lg),
-                  FilledButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    child: const Text('返回並更新紀錄'),
-                  ),
-                ],
-              ),
+    final colors = NiuColors.of(context);
+    if (form == null && result == null && error == null) {
+      return const Center(child: NiuLoading(message: '正在開啟請假申請'));
+    }
+    final banners = <Widget>[
+      if (error != null)
+        Padding(
+          padding: const EdgeInsets.only(bottom: NiuSpacing.lg),
+          child: NiuBanner(
+            tone: NiuTone.warning,
+            message: error!,
+            actionLabel: blocked && !sent && web != null ? '在學校網頁繼續' : null,
+            onAction: blocked && !sent && web != null ? openSchool : null,
+          ),
+        ),
+      if (schoolMessage?.isNotEmpty == true)
+        Padding(
+          padding: const EdgeInsets.only(bottom: NiuSpacing.lg),
+          child: NiuBanner(
+            tone: NiuTone.accent,
+            title: '學校訊息',
+            message: schoolMessage!,
+          ),
+        ),
+    ];
+    final List<Widget> content;
+    if (result case final result?) {
+      content = [
+        NiuEmpty(
+          icon: result.confirmed ? NiuIcons.success : NiuIcons.warning,
+          tone: result.confirmed ? NiuTone.success : NiuTone.warning,
+          title: result.confirmed ? '已送出請假申請' : '請確認送出結果',
+          message: result.message,
+          padding: const EdgeInsets.fromLTRB(
+            0,
+            NiuSpacing.xxl,
+            0,
+            NiuSpacing.xl,
+          ),
+        ),
+        if (result.applicationId != null)
+          NiuCard(
+            child: NiuKeyValue(
+              label: '假單編號',
+              value: result.applicationId!,
+              emphasis: true,
             ),
           ),
-        ] else if (form?.notice case final String notice) ...[
-          Text('請假注意事項', style: theme.textTheme.titleLarge),
+        const SizedBox(height: NiuSpacing.md),
+        Text(
+          result.confirmed
+              ? '送出後由學校審核，不代表已核准，可在請假紀錄查看進度。'
+              : '請先到請假紀錄確認是否已建立假單，不要重複申請。',
+          textAlign: TextAlign.center,
+          style: theme.textTheme.bodySmall,
+        ),
+        const SizedBox(height: NiuSpacing.xl),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text('返回請假紀錄'),
+        ),
+      ];
+    } else if (form?.notice case final String notice) {
+      content = [
+        Text('申請前請先閱讀', style: theme.textTheme.headlineSmall),
+        const SizedBox(height: NiuSpacing.xs),
+        Text('以下是學校的請假注意事項。', style: theme.textTheme.bodySmall),
+        const SizedBox(height: NiuSpacing.lg),
+        NiuCard(
+          child: SelectableText(notice, style: theme.textTheme.bodyMedium),
+        ),
+      ];
+    } else if (form != null) {
+      final dated = form.start.isNotEmpty && form.end.isNotEmpty;
+      final byDate = <String, List<String>>{};
+      for (final row in form.periods) {
+        if (row.isEmpty) continue;
+        byDate.putIfAbsent(row.first, () => []).addAll(row.skip(1));
+      }
+      content = [
+        Text('送出後由學校審核，核准前可在請假紀錄查看進度。', style: theme.textTheme.bodySmall),
+        NiuSection(
+          title: '請假內容',
+          child: NiuGroup(
+            children: [
+              NiuRow(
+                icon: NiuIcons.leave,
+                hue: NiuHue.pink,
+                title: '假別',
+                value: form.choices.any((c) => c.value == form.type)
+                    ? form.typeLabel
+                    : '請選擇',
+                onTap: editable ? chooseType : null,
+                chevron: true,
+              ),
+              NiuRow(
+                icon: NiuIcons.calendar,
+                hue: NiuHue.red,
+                title: '日期',
+                subtitle: dated
+                    ? leaveRangeSummary(form.start, form.end)
+                    : null,
+                value: dated ? null : '請選擇',
+                onTap: editable ? dates : null,
+                chevron: true,
+              ),
+              NiuRow(
+                icon: NiuIcons.time,
+                hue: NiuHue.orange,
+                title: '節次',
+                subtitle: dated ? null : '先選擇日期',
+                value: form.hasPeriods ? '${form.total ?? '-'} 節' : '請選擇',
+                onTap: editable && dated ? periods : null,
+                chevron: true,
+              ),
+            ],
+          ),
+        ),
+        if (byDate.isNotEmpty) ...[
           const SizedBox(height: NiuSpacing.md),
-          NiuCard(child: Text(notice, style: theme.textTheme.bodyMedium)),
-          CheckboxListTile(
-            value: agreed,
-            onChanged: busy ? null : (v) => setState(() => agreed = v == true),
-            title: const Text('已閱讀並同意校方請假注意事項'),
-            controlAffinity: ListTileControlAffinity.leading,
-          ),
-          FilledButton(
-            onPressed: editable && agreed
-                ? () => change(() => gateway!.agree(form!))
-                : null,
-            child: const Text('開始申請'),
-          ),
-        ] else if (form != null) ...[
-          NiuSection(
-            first: true,
-            title: '假別與日期',
-            child: NiuCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  DropdownButtonFormField<String>(
-                    initialValue: form.choices.any((c) => c.value == form.type)
-                        ? form.type
-                        : null,
-                    key: ValueKey(form.type),
-                    isExpanded: true,
-                    itemHeight: null,
-                    decoration: const InputDecoration(labelText: '請假類別'),
-                    items: [
-                      for (final choice in form.choices)
-                        DropdownMenuItem(
-                          value: choice.value,
-                          child: Text(
-                            choice.label,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                    ],
-                    onChanged: editable
-                        ? (value) {
-                            if (value != null) {
-                              unawaited(
-                                change(() => gateway!.changeType(form, value)),
-                              );
-                            }
-                          }
-                        : null,
-                  ),
-                  const SizedBox(height: NiuSpacing.md),
-                  OutlinedButton.icon(
-                    onPressed: editable ? dates : null,
-                    icon: const Icon(Icons.date_range_outlined),
-                    label: Text(
-                      '${displayLeaveDate(form.start)} – ${displayLeaveDate(form.end)}',
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          NiuSection(
-            title: '請假節次',
-            action: TextButton(
-              onPressed:
-                  editable && form.start.isNotEmpty && form.end.isNotEmpty
-                  ? periods
-                  : null,
-              child: const Text('選擇節次'),
-            ),
-            child: NiuCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+          NiuWell(
+            padding: const EdgeInsets.all(NiuSpacing.lg),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (final (i, entry) in byDate.entries.indexed) ...[
+                  if (i > 0) const SizedBox(height: NiuSpacing.md),
                   Text(
-                    '${form.total ?? '-'} 節',
-                    style: theme.textTheme.headlineSmall,
-                  ),
-                  if (!form.hasPeriods) const Text('尚未選擇節次'),
-                  for (final row in form.periods)
-                    Padding(
-                      padding: const EdgeInsets.only(top: NiuSpacing.sm),
-                      child: Text(row.join(' · ')),
+                    displayLeaveDate(entry.key),
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
                     ),
+                  ),
+                  const SizedBox(height: NiuSpacing.xs),
+                  Wrap(
+                    spacing: NiuSpacing.sm,
+                    runSpacing: NiuSpacing.sm,
+                    children: [
+                      for (final label in entry.value.where(
+                        (v) => v.trim().isNotEmpty,
+                      ))
+                        NiuTag(label: label),
+                    ],
+                  ),
                 ],
-              ),
+              ],
             ),
           ),
-          NiuSection(
-            title: '請假事由',
+        ],
+        NiuSection(
+          title: '請假事由',
+          child: NiuCard(
+            padding: const EdgeInsets.fromLTRB(
+              NiuSpacing.lg,
+              NiuSpacing.sm,
+              NiuSpacing.lg,
+              NiuSpacing.xs,
+            ),
             child: TextField(
               controller: reason,
               enabled: editable,
               maxLength: form.reasonLimit,
               minLines: 3,
-              maxLines: 6,
+              maxLines: 8,
               onChanged: (_) => setState(() => dirty = true),
-              decoration: const InputDecoration(hintText: '填寫請假原因'),
-            ),
-          ),
-          NiuSection(
-            title: '證明文件',
-            child: NiuCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (form.attachments.isEmpty) const Text('尚未附加文件'),
-                  Text('App 支援 10 MB 以下檔案', style: theme.textTheme.labelMedium),
-                  for (final attachment in form.attachments) Text(attachment),
-                  const SizedBox(height: NiuSpacing.sm),
-                  OutlinedButton.icon(
-                    onPressed: editable && form.extensions.isNotEmpty
-                        ? attach
-                        : null,
-                    icon: const Icon(Icons.attach_file),
-                    label: const Text('選擇並上傳附件'),
-                  ),
-                  if (form.canDeferAttachment)
-                    CheckboxListTile(
-                      value: deferAttachment,
-                      onChanged: editable
-                          ? (v) => setState(() {
-                              deferAttachment = v == true;
-                              dirty = true;
-                            })
-                          : null,
-                      title: const Text('事後補檔'),
-                      contentPadding: EdgeInsets.zero,
-                      controlAffinity: ListTileControlAffinity.leading,
-                    ),
-                ],
+              decoration: const InputDecoration(
+                hintText: '簡單說明請假原因',
+                filled: false,
+                border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(vertical: NiuSpacing.sm),
               ),
             ),
           ),
-          const SizedBox(height: NiuSpacing.xxl),
-          FilledButton.icon(
-            onPressed: editable ? submit : null,
-            icon: const Icon(Icons.send_outlined),
-            label: const Text('確認申請'),
+        ),
+        NiuSection(
+          title: '證明文件',
+          subtitle: form.extensions.isEmpty
+              ? null
+              : '${form.extensions.map((e) => e.toUpperCase()).join('、')}，10 MB 以下',
+          child: NiuGroup(
+            children: [
+              for (final attachment in form.attachments)
+                NiuRow(
+                  icon: NiuIcons.file,
+                  hue: NiuHue.cyan,
+                  title: attachment,
+                  chevron: false,
+                ),
+              NiuRow(
+                icon: NiuIcons.upload,
+                hue: NiuHue.blue,
+                title: form.attachments.isEmpty ? '上傳證明文件' : '再上傳一份',
+                subtitle: '上傳後仍需按「確認申請」才會送出',
+                onTap: editable && form.extensions.isNotEmpty ? attach : null,
+              ),
+              if (form.canDeferAttachment)
+                NiuRow(
+                  icon: NiuIcons.history,
+                  hue: NiuHue.gray,
+                  title: '事後補件',
+                  subtitle: '先送出假單，之後再補上證明文件',
+                  chevron: false,
+                  trailing: Switch(
+                    value: deferAttachment,
+                    onChanged: editable
+                        ? (v) => setState(() {
+                            deferAttachment = v;
+                            dirty = true;
+                          })
+                        : null,
+                  ),
+                ),
+            ],
           ),
-        ],
-        if (blocked && !sent && web != null)
-          TextButton(onPressed: openSchool, child: const Text('在學校網頁繼續')),
+        ),
+      ];
+    } else {
+      content = const [];
+    }
+    return Column(
+      children: [
+        SizedBox(
+          height: 2,
+          child: busy
+              ? LinearProgressIndicator(
+                  minHeight: 2,
+                  borderRadius: BorderRadius.zero,
+                  color: colors.accent,
+                )
+              : null,
+        ),
+        Expanded(
+          child: AbsorbPointer(
+            absorbing: busy,
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(
+                NiuSpacing.gutter,
+                NiuSpacing.md,
+                NiuSpacing.gutter,
+                NiuSpacing.huge,
+              ),
+              children: [...banners, ...content],
+            ),
+          ),
+        ),
       ],
     );
   }
+}
+
+/// School period choices grouped by date, with per-day select all.
+class _PeriodSheet extends StatefulWidget {
+  const _PeriodSheet({required this.available});
+  final List<LeavePeriodChoice> available;
+  @override
+  State<_PeriodSheet> createState() => _PeriodSheetState();
+}
+
+class _PeriodSheetState extends State<_PeriodSheet> {
+  late final chosen = <String>{
+    for (final p in widget.available)
+      if (p.selected) p.value,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = NiuColors.of(context);
+    final byDate = <String, List<LeavePeriodChoice>>{};
+    for (final p in widget.available) {
+      byDate.putIfAbsent(p.date, () => []).add(p);
+    }
+    return SafeArea(
+      top: false,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              NiuSpacing.gutter,
+              0,
+              NiuSpacing.gutter,
+              NiuSpacing.sm,
+            ),
+            child: Text('選擇請假節次', style: theme.textTheme.titleLarge),
+          ),
+          Flexible(
+            child: widget.available.isEmpty
+                ? const NiuEmpty(
+                    icon: NiuIcons.time,
+                    title: '這段日期沒有可選的節次',
+                    message: '換個日期，或到學校網頁確認。',
+                  )
+                : ListView(
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: NiuSpacing.gutter,
+                    ),
+                    children: [
+                      for (final entry in byDate.entries) ...[
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(
+                            NiuSpacing.xs,
+                            NiuSpacing.md,
+                            0,
+                            NiuSpacing.xs,
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  displayLeaveDate(entry.key),
+                                  style: theme.textTheme.titleSmall,
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: () => setState(() {
+                                  final values = entry.value.map(
+                                    (p) => p.value,
+                                  );
+                                  values.every(chosen.contains)
+                                      ? chosen.removeAll(values)
+                                      : chosen.addAll(values);
+                                }),
+                                child: Text(
+                                  entry.value
+                                          .map((p) => p.value)
+                                          .every(chosen.contains)
+                                      ? '取消全選'
+                                      : '全選',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        NiuGroup(
+                          insetDividers: NiuSpacing.lg,
+                          children: [
+                            for (final p in entry.value)
+                              NiuRow(
+                                title: p.period,
+                                subtitle: p.course.isEmpty ? null : p.course,
+                                chevron: false,
+                                onTap: () => setState(
+                                  () => chosen.contains(p.value)
+                                      ? chosen.remove(p.value)
+                                      : chosen.add(p.value),
+                                ),
+                                trailing: Icon(
+                                  chosen.contains(p.value)
+                                      ? Icons.check_circle_rounded
+                                      : Icons.radio_button_unchecked_rounded,
+                                  color: chosen.contains(p.value)
+                                      ? colors.accent
+                                      : colors.inkTertiary,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(NiuSpacing.gutter),
+            child: FilledButton(
+              onPressed: chosen.isEmpty
+                  ? null
+                  : () => Navigator.pop(context, chosen.toList()),
+              child: Text(chosen.isEmpty ? '確認節次' : '確認節次（${chosen.length} 節）'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Summary shown before the one-time submission.
+class _SubmitSheet extends StatelessWidget {
+  const _SubmitSheet({required this.data, required this.reason});
+  final LeaveApplicationData data;
+  final String reason;
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SafeArea(
+      top: false,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(
+          NiuSpacing.gutter,
+          0,
+          NiuSpacing.gutter,
+          NiuSpacing.xl,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('確認送出請假', style: theme.textTheme.titleLarge),
+            const SizedBox(height: NiuSpacing.lg),
+            NiuCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  NiuKeyValue(label: '假別', value: data.typeLabel),
+                  NiuKeyValue(
+                    label: '日期',
+                    value: data.start == data.end
+                        ? displayLeaveDate(data.start)
+                        : '${displayLeaveDate(data.start)} – ${displayLeaveDate(data.end)}',
+                  ),
+                  NiuKeyValue(label: '節次', value: '${data.total ?? '-'} 節'),
+                  const Divider(height: NiuSpacing.xl),
+                  Text('事由', style: theme.textTheme.labelMedium),
+                  const SizedBox(height: NiuSpacing.xs),
+                  Text(reason, style: theme.textTheme.bodyMedium),
+                ],
+              ),
+            ),
+            const SizedBox(height: NiuSpacing.md),
+            const NiuBanner(
+              tone: NiuTone.neutral,
+              message: '送出後會進入學校審核，不代表已核准。',
+            ),
+            const SizedBox(height: NiuSpacing.lg),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('取消'),
+                  ),
+                ),
+                const SizedBox(width: NiuSpacing.md),
+                Expanded(
+                  child: FilledButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text('送出申請'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Compact 日期 value: `10/1（四）` or `10/1（四）– 10/2（五）・2 天`.
+String leaveRangeSummary(String start, String end) {
+  final from = parseSchoolLeaveDate(start), to = parseSchoolLeaveDate(end);
+  if (from == null || to == null || to.isBefore(from)) {
+    return '${displayLeaveDate(start)} – ${displayLeaveDate(end)}';
+  }
+  String day(DateTime d) => '${d.month}/${d.day}（${'一二三四五六日'[d.weekday - 1]}）';
+  if (from == to) return day(from);
+  return '${day(from)} – ${day(to)}・${to.difference(from).inDays + 1} 天';
 }
