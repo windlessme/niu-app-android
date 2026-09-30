@@ -21,8 +21,10 @@ void main() {
       await tester.pumpWidget(
         MaterialApp.router(theme: NiuTheme.light, routerConfig: router),
       );
-      await tester.scrollUntilVisible(find.text('註冊資訊'), 200);
-      await tester.tap(find.text('註冊資訊'));
+      await tester.scrollUntilVisible(find.text('在學證明'), 200);
+      await tester.ensureVisible(find.text('在學證明'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('在學證明'));
       await tester.pumpAndSettle();
       expect(find.text('註冊與證明測試頁'), findsOneWidget);
     },

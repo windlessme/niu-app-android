@@ -2,7 +2,6 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../shared/shared.dart';
-import '../../shared/app_fact.dart';
 import 'course_presentation.dart';
 import 'course_widgets.dart';
 import 'course_resource_tile.dart';
@@ -24,13 +23,6 @@ void pushMoodle(BuildContext context, Widget screen) => Navigator.of(
   context,
   rootNavigator: true,
 ).push(MaterialPageRoute<void>(builder: (_) => screen));
-Widget moodleCard(Widget child) => Card(
-  shape: RoundedRectangleBorder(
-    borderRadius: BorderRadius.circular(NiuRadius.card),
-  ),
-  clipBehavior: Clip.antiAlias,
-  child: child,
-);
 
 class MoodleScreen extends StatefulWidget {
   const MoodleScreen({
@@ -86,7 +78,7 @@ class _MoodleScreenState extends State<MoodleScreen> {
       }
     } catch (_) {
       if (mounted && generation == loginGeneration) {
-        setState(() => error = '目前無法恢復 M 園區登入，請檢查網路後重試，或開啟校方登入頁。');
+        setState(() => error = '目前無法恢復 M 園區登入。檢查網路後再試一次，或重新登入。');
       }
     }
     if (!mounted || generation != loginGeneration) return;
@@ -169,44 +161,34 @@ class _MoodleScreenState extends State<MoodleScreen> {
     if (repo != null) {
       return MoodleCoursesScreen(key: ValueKey(repo.session), repository: repo);
     }
-    return Scaffold(
-      appBar: AppBar(title: const Text('M 園區')),
-      body: ListView(
-        padding: const EdgeInsets.all(NiuSpacing.xxl),
-        children: [
-          const Icon(Icons.school_outlined, size: 64),
-          const SizedBox(height: NiuSpacing.xxl),
-          moodleCard(
-            Padding(
-              padding: const EdgeInsets.all(NiuSpacing.xl),
-              child: Column(
-                children: [
-                  const Text('使用校方登入頁輸入一次帳號密碼，即可連接 M 園區。校方要求的驗證仍需在頁面完成。'),
-                  const SizedBox(height: NiuSpacing.xl),
-                  if (error != null) Text(error!),
-                  FilledButton(
-                    onPressed: busy
-                        ? null
-                        : () async {
-                            await Navigator.of(context).push<bool>(
-                              MaterialPageRoute(
-                                builder: (_) => const LoginScreen(),
-                              ),
-                            );
-                            if (mounted) await restoreOrLogin();
-                          },
-                    child: Text(busy ? '恢復登入中…' : '開啟校方登入頁'),
-                  ),
-                  TextButton(
-                    onPressed: busy ? null : restoreOrLogin,
-                    child: const Text('重試恢復登入'),
-                  ),
-                ],
-              ),
+    return NiuScrollPage(
+      title: 'M 園區',
+      large: true,
+      showBack: false,
+      children: [
+        if (busy)
+          const NiuLoading(message: '正在連接 M 園區')
+        else
+          NiuEmpty(
+            icon: NiuIcons.moodle,
+            tone: NiuTone.accent,
+            title: '連接 M 園區',
+            message: error ?? '用學校帳號登入一次，就能在這裡看課程、公告、作業和成績。',
+            action: FilledButton(
+              onPressed: () async {
+                await Navigator.of(context).push<bool>(
+                  MaterialPageRoute(builder: (_) => const LoginScreen()),
+                );
+                if (mounted) await restoreOrLogin();
+              },
+              child: const Text('登入'),
+            ),
+            secondaryAction: TextButton(
+              onPressed: restoreOrLogin,
+              child: const Text('重新連線'),
             ),
           ),
-        ],
-      ),
+      ],
     );
   }
 }
@@ -253,22 +235,27 @@ class _MoodleListState extends State<MoodleList> {
           snapshot.hasData) {
         retained = snapshot.data;
       }
+      const padding = EdgeInsets.fromLTRB(
+        NiuSpacing.gutter,
+        NiuSpacing.lg,
+        NiuSpacing.gutter,
+        NiuSpacing.huge,
+      );
       if (snapshot.hasError && retained == null) {
         return ListView(
-          padding: const EdgeInsets.all(NiuSpacing.lg),
+          padding: padding,
           children: [
-            if (widget.header != null) widget.header!,
-            const Text('無法讀取校方資料，請檢查連線或重新登入。'),
-            TextButton(onPressed: reload, child: const Text('重新讀取')),
+            ?widget.header,
+            NiuError(message: '檢查網路連線，或重新登入 M 園區。', onRetry: reload),
           ],
         );
       }
       if (retained == null) {
         return ListView(
-          padding: const EdgeInsets.all(NiuSpacing.lg),
+          padding: padding,
           children: [
-            if (widget.header != null) widget.header!,
-            const AppLoadingState(message: '正在讀取課程資料…'),
+            ?widget.header,
+            const NiuLoading(message: '正在讀取'),
           ],
         );
       }
@@ -276,26 +263,33 @@ class _MoodleListState extends State<MoodleList> {
         onRefresh: reload,
         child: ListView.builder(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(NiuSpacing.lg),
+          padding: padding,
           itemCount: retained!.length + 1,
           itemBuilder: (context, index) => index == 0
               ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    if (widget.header != null) widget.header!,
+                    ?widget.header,
                     if (snapshot.connectionState == ConnectionState.waiting)
                       const Padding(
-                        padding: EdgeInsets.symmetric(vertical: NiuSpacing.md),
-                        child: Text('正在更新，顯示上次資料…'),
+                        padding: EdgeInsets.only(bottom: NiuSpacing.md),
+                        child: NiuSyncStatus(updatedAt: null, refreshing: true),
                       ),
                     if (snapshot.hasError)
-                      TextButton(
-                        onPressed: refreshing ? null : reload,
-                        child: const Text('更新失敗，顯示上次資料。點此重試'),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: NiuSpacing.md),
+                        child: NiuBanner(
+                          tone: NiuTone.warning,
+                          message: '更新失敗，先顯示上次的資料。',
+                          actionLabel: '再試一次',
+                          onAction: refreshing ? null : reload,
+                        ),
                       ),
                     if (retained!.isEmpty)
-                      const NiuEmptyState(
-                        title: '目前沒有資料',
-                        message: '校方提供的資料會顯示在這裡。',
+                      const NiuEmpty(
+                        icon: NiuIcons.notifications,
+                        title: '沒有新消息',
+                        message: '有新的通知時會出現在這裡。',
                       ),
                   ],
                 )
@@ -343,192 +337,166 @@ class _MoodleCoursesScreenState extends State<MoodleCoursesScreen> {
     super.dispose();
   }
 
+  void openNotifications() => pushMoodle(
+    context,
+    Scaffold(
+      appBar: const NiuAppBar(title: '通知'),
+      body: MoodleList(
+        load: widget.repository.notifications,
+        item: (n) => CourseDetailItem(
+          title: plain(n['subject']),
+          metadata: campusTime(n['timecreated']) == '未設定'
+              ? null
+              : campusTime(n['timecreated']),
+          excerpt: plain(
+            n['fullmessagehtml'] ?? n['fullmessage'] ?? n['smallmessage'],
+          ),
+          onTap: n['contexturl'] is String
+              ? () => openMoodleUrl(
+                  context,
+                  widget.repository,
+                  '${n['contexturl']}',
+                  '通知',
+                )
+              : null,
+        ),
+      ),
+    ),
+  );
+
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: IosPageHeader(
-      title: 'M 園區',
-      actions: [
-        CircleIconButton(
+  Widget build(BuildContext context) => FutureBuilder<List<Json>>(
+    future: future,
+    builder: (context, snapshot) {
+      if (snapshot.connectionState == ConnectionState.done &&
+          snapshot.hasData &&
+          !identical(retained, snapshot.data)) {
+        retained = snapshot.data;
+        presented = retained!.map(CoursePresentation.new).toList();
+        if (semester != null && !presented.any((c) => c.semester == semester)) {
+          semester = null;
+        }
+      }
+      final actions = [
+        NiuIconButton(
           tooltip: '點名掃描',
+          icon: NiuIcons.attendance,
           onPressed: () => pushMoodle(
             context,
             AttendanceScannerScreen(repository: widget.repository),
           ),
-          icon: Icons.qr_code_scanner,
         ),
-        CircleIconButton(
+        NiuIconButton(
           tooltip: '通知',
-          onPressed: () => pushMoodle(
-            context,
-            Scaffold(
-              appBar: AppBar(title: const Text('M 園區通知')),
-              body: MoodleList(
-                load: widget.repository.notifications,
-                item: (n) => moodleCard(
-                  ListTile(
-                    title: Text(plain(n['subject'])),
-                    subtitle: Text(
-                      plain(
-                        n['fullmessagehtml'] ??
-                            n['fullmessage'] ??
-                            n['smallmessage'],
-                      ),
-                    ),
-                    onTap: n['contexturl'] is String
-                        ? () => openMoodleUrl(
-                            context,
-                            widget.repository,
-                            '${n['contexturl']}',
-                            '通知',
-                          )
-                        : null,
-                  ),
+          icon: NiuIcons.notifications,
+          onPressed: openNotifications,
+        ),
+      ];
+      if (retained == null) {
+        return NiuScrollPage(
+          title: 'M 園區',
+          large: true,
+          showBack: false,
+          actions: actions,
+          children: [
+            if (snapshot.hasError)
+              NiuError(
+                title: '無法讀取課程',
+                message: '檢查網路連線後再試一次。',
+                onRetry: reload,
+              )
+            else
+              const NiuLoading(message: '正在讀取我的課程'),
+          ],
+        );
+      }
+      final terms =
+          presented
+              .map((c) => c.semester)
+              .where((s) => s.isNotEmpty)
+              .toSet()
+              .toList()
+            ..sort((a, b) => b.compareTo(a));
+      final normalizedQuery = query.trim().toLowerCase();
+      final courses = presented
+          .where(
+            (c) =>
+                (semester == null || c.semester == semester) &&
+                c.searchText.contains(normalizedQuery),
+          )
+          .toList();
+      return NiuScrollPage(
+        title: 'M 園區',
+        large: true,
+        showBack: false,
+        actions: actions,
+        onRefresh: reload,
+        children: [
+          NiuSearchField(
+            controller: search,
+            hint: '搜尋課程、老師或代碼',
+            onChanged: (v) => setState(() => query = v),
+          ),
+          if (terms.isNotEmpty) ...[
+            const SizedBox(height: NiuSpacing.md),
+            NiuFilterBar<String?>(
+              options: [
+                (null, '全部學期'),
+                for (final t in terms)
+                  (t, t.length == 4 ? '${t.substring(0, 3)}-${t[3]}' : t),
+              ],
+              value: semester,
+              onChanged: (t) => setState(() => semester = t),
+            ),
+          ],
+          const SizedBox(height: NiuSpacing.lg),
+          if (snapshot.connectionState == ConnectionState.waiting)
+            const Padding(
+              padding: EdgeInsets.only(bottom: NiuSpacing.md),
+              child: NiuSyncStatus(updatedAt: null, refreshing: true),
+            ),
+          if (snapshot.hasError)
+            Padding(
+              padding: const EdgeInsets.only(bottom: NiuSpacing.md),
+              child: NiuBanner(
+                tone: NiuTone.warning,
+                message: '更新失敗，先顯示上次的課程。',
+                actionLabel: '再試一次',
+                onAction: refreshing ? null : reload,
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.only(
+              left: NiuSpacing.xs,
+              bottom: NiuSpacing.md,
+            ),
+            child: Text(
+              semester == null
+                  ? '${courses.length} 門課程'
+                  : '${semesterLabel(semester!)} · ${courses.length} 門課程',
+              style: Theme.of(context).textTheme.labelMedium,
+            ),
+          ),
+          if (courses.isEmpty)
+            NiuEmpty(
+              icon: NiuIcons.search,
+              title: presented.isEmpty ? '還沒有課程' : '找不到符合的課程',
+              message: presented.isEmpty ? '選課完成後，課程會自動出現在這裡。' : '換個關鍵字或學期試試。',
+            ),
+          for (final course in courses)
+            MoodleCourseCard(
+              course: course,
+              onTap: () => pushMoodle(
+                context,
+                MoodleCourseScreen(
+                  repository: widget.repository,
+                  course: course.source,
                 ),
               ),
             ),
-          ),
-          icon: Icons.notifications_outlined,
-        ),
-      ],
-    ),
-    body: FutureBuilder<List<Json>>(
-      future: future,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.done &&
-            snapshot.hasData &&
-            !identical(retained, snapshot.data)) {
-          retained = snapshot.data;
-          presented = retained!.map(CoursePresentation.new).toList();
-          if (semester != null &&
-              !presented.any((c) => c.semester == semester)) {
-            semester = null;
-          }
-        }
-        if (snapshot.hasError && retained == null) {
-          return AppErrorState(
-            title: '資料更新失敗',
-            message: '請檢查連線後重新整理。',
-            onRetry: reload,
-          );
-        }
-        if (retained == null) {
-          return const AppLoadingState(message: '正在讀取我的課程…');
-        }
-        final terms =
-            presented
-                .map((c) => c.semester)
-                .where((s) => s.isNotEmpty)
-                .toSet()
-                .toList()
-              ..sort((a, b) => b.compareTo(a));
-        final normalizedQuery = query.trim().toLowerCase();
-        final courses = presented
-            .where(
-              (c) =>
-                  (semester == null || c.semester == semester) &&
-                  c.searchText.contains(normalizedQuery),
-            )
-            .toList();
-        return RefreshIndicator(
-          onRefresh: reload,
-          child: ListView.builder(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(NiuSpacing.xl),
-            itemCount: courses.length + 1,
-            itemBuilder: (context, index) {
-              if (index > 0) {
-                final course = courses[index - 1];
-                return MoodleCourseCard(
-                  course: course,
-                  onTap: () => pushMoodle(
-                    context,
-                    MoodleCourseScreen(
-                      repository: widget.repository,
-                      course: course.source,
-                    ),
-                  ),
-                );
-              }
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(NiuSpacing.xxl),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(
-                            Icons.school_outlined,
-                            size: 36,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                          const SizedBox(height: NiuSpacing.xl),
-                          Text(
-                            '我的課程',
-                            style: Theme.of(context).textTheme.headlineLarge,
-                          ),
-                          const SizedBox(height: NiuSpacing.sm),
-                          Text('${courses.length} 門課程 · 下拉更新'),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: NiuSpacing.lg),
-                  if (snapshot.connectionState == ConnectionState.waiting)
-                    const Padding(
-                      padding: EdgeInsets.only(bottom: NiuSpacing.md),
-                      child: Text('正在更新，顯示上次課程…'),
-                    ),
-                  if (snapshot.hasError)
-                    TextButton(
-                      onPressed: refreshing ? null : reload,
-                      child: const Text('更新失敗，保留上次資料。點此重試'),
-                    ),
-                  AppSearchField(
-                    controller: search,
-                    hint: '搜尋課程',
-                    onChanged: (v) => setState(() => query = v),
-                  ),
-                  const SizedBox(height: NiuSpacing.md),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        ChoiceChip(
-                          label: const Text('全部學期'),
-                          selected: semester == null,
-                          onSelected: (_) => setState(() => semester = null),
-                        ),
-                        for (final t in terms)
-                          Padding(
-                            padding: const EdgeInsets.only(left: NiuSpacing.sm),
-                            child: ChoiceChip(
-                              label: Text(
-                                t.length == 4
-                                    ? '${t.substring(0, 3)}-${t[3]}'
-                                    : t,
-                              ),
-                              selected: semester == t,
-                              onSelected: (_) => setState(() => semester = t),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: NiuSpacing.lg),
-                  if (courses.isEmpty)
-                    const NiuEmptyState(
-                      title: '沒有符合的課程',
-                      message: '試試其他關鍵字或學期。',
-                    ),
-                ],
-              );
-            },
-          ),
-        );
-      },
-    ),
+        ],
+      );
+    },
   );
 }
 
@@ -548,24 +516,13 @@ Future<void> openMoodleUrl(
       );
     } else if (uri.host == 'euni.niu.edu.tw') {
       if (attendanceQr(raw) != null) {
-        final confirmed = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('確認開啟點名'),
-            content: const Text('開啟校方頁面可能立即記錄出席，是否繼續？'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('取消'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('開啟並點名'),
-              ),
-            ],
-          ),
+        final confirmed = await confirmNiuAction(
+          context,
+          title: '要開啟點名嗎？',
+          message: '開啟這個頁面可能會直接記錄出席。',
+          confirmLabel: '開啟並點名',
         );
-        if (confirmed != true || !context.mounted) return;
+        if (!confirmed || !context.mounted) return;
       }
       pushMoodle(
         context,
@@ -581,9 +538,7 @@ Future<void> openMoodleUrl(
     }
   } catch (_) {
     if (context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('無法開啟此連結')));
+      showNiuMessage(context, '無法開啟這個連結');
     }
   }
 }
@@ -626,7 +581,8 @@ class MoodleCourseScreen extends StatelessWidget {
     excerpt: plain(d['message']),
     children: [
       for (final file in objects(d['attachments'] ?? []))
-        TextButton.icon(
+        _AttachmentButton(
+          name: plain(file['filename']),
           onPressed: file['fileurl'] is String
               ? () => openMoodleUrl(
                   context,
@@ -636,8 +592,6 @@ class MoodleCourseScreen extends StatelessWidget {
                   file: true,
                 )
               : null,
-          icon: const Icon(Icons.attach_file, size: 18),
-          label: Text(plain(file['filename'])),
         ),
     ],
     onTap: () => pushMoodle(
@@ -645,21 +599,113 @@ class MoodleCourseScreen extends StatelessWidget {
       MoodleDiscussionScreen(repository: repository, discussion: d),
     ),
   );
+
+  Widget assignment(BuildContext context, Json a) {
+    final status =
+        a['submissionstatus'] ??
+        (a['submission'] is Map ? a['submission']['status'] : null);
+    return CourseDetailItem(
+      badge: Wrap(
+        spacing: NiuSpacing.sm,
+        runSpacing: NiuSpacing.xs,
+        children: [
+          NiuBadge(
+            label: submissionLabel(status),
+            tone: submissionTone(status),
+          ),
+          if (a['graded'] is bool)
+            NiuBadge(
+              label: a['graded'] == true ? '已評分' : '尚未評分',
+              tone: a['graded'] == true ? NiuTone.success : NiuTone.neutral,
+            ),
+        ],
+      ),
+      title: plain(a['name']),
+      metadata: '截止 ${campusTime(a['duedate'])}',
+      onTap: () => pushMoodle(
+        context,
+        MoodleAssignmentScreen(repository: repository, assignment: a),
+      ),
+    );
+  }
+
+  Widget grade(BuildContext context, Json g) {
+    final theme = Theme.of(context);
+    final value = gradeValue(g['gradeformatted']);
+    final published = value != '未提供';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: NiuSpacing.md),
+      child: NiuCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Text(
+                    plain(g['itemname']).isEmpty
+                        ? '課程總成績'
+                        : plain(g['itemname']),
+                    style: theme.textTheme.titleMedium,
+                  ),
+                ),
+                const SizedBox(width: NiuSpacing.md),
+                Text(
+                  published ? value : '尚未公布',
+                  style:
+                      (published
+                              ? theme.textTheme.headlineSmall
+                              : theme.textTheme.titleSmall?.copyWith(
+                                  color: NiuColors.of(context).inkTertiary,
+                                ))
+                          ?.copyWith(fontFeatures: tabularFigures),
+                ),
+              ],
+            ),
+            const SizedBox(height: NiuSpacing.sm),
+            NiuKeyValue(label: '範圍', value: gradeValue(g['rangeformatted'])),
+            NiuKeyValue(
+              label: '百分比',
+              value: gradeValue(g['percentageformatted']),
+            ),
+            NiuKeyValue(label: '權重', value: gradeValue(g['weightformatted'])),
+            if (plain(g['feedback']).isNotEmpty) ...[
+              const SizedBox(height: NiuSpacing.sm),
+              NiuWell(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('老師回饋', style: theme.textTheme.labelMedium),
+                    const SizedBox(height: NiuSpacing.xs),
+                    SelectableText(plain(g['feedback'])),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('課程詳情')),
+    appBar: const NiuAppBar(title: '課程'),
     body: CourseDetailTabs(
       builders: [
         (context) => CourseDetailList(
-          emptyTitle: '目前沒有課程公告',
-          emptyMessage: '老師發布的最新消息會顯示在這裡。',
+          emptyIcon: NiuIcons.announcement,
+          emptyTitle: '還沒有公告',
+          emptyMessage: '老師發布的消息會出現在這裡。',
           header: MoodleCourseInformation(course: CoursePresentation(course)),
           load: () => repository.announcements(id),
           item: (d) => discussion(context, d),
         ),
         (context) => CourseDetailList(
-          emptyTitle: '尚無教材',
-          emptyMessage: '老師上傳的教材與課程資源會顯示在這裡。',
+          emptyIcon: NiuIcons.folder,
+          emptyTitle: '還沒有教材',
+          emptyMessage: '老師上傳的講義和資源會依週次排在這裡。',
           load: () async => (await repository.contents(id))
               .where(
                 (s) =>
@@ -673,92 +719,73 @@ class MoodleCourseScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Padding(
-                  padding: const EdgeInsets.symmetric(vertical: NiuSpacing.md),
-                  child: Text(
-                    courseDateRange(plain(s['name'])),
-                    style: Theme.of(context).textTheme.titleMedium,
+                  padding: const EdgeInsets.only(
+                    left: NiuSpacing.xs,
+                    bottom: NiuSpacing.sm,
+                  ),
+                  child: Semantics(
+                    header: true,
+                    child: Text(
+                      courseDateRange(plain(s['name'])),
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
                   ),
                 ),
                 if (plain(s['summary']).isNotEmpty)
                   Padding(
-                    padding: const EdgeInsets.all(NiuSpacing.lg),
-                    child: SelectableText(plain(s['summary'])),
-                  ),
-                for (final m in objects(s['modules']))
-                  CourseResourceTile(
-                    module: m,
-                    onTap: () => pushMoodle(
-                      context,
-                      MoodleModuleScreen(repository: repository, module: m),
+                    padding: const EdgeInsets.only(bottom: NiuSpacing.sm),
+                    child: NiuWell(
+                      padding: const EdgeInsets.all(NiuSpacing.lg),
+                      child: SelectableText(plain(s['summary'])),
                     ),
                   ),
+                if (objects(s['modules']).isNotEmpty)
+                  NiuGroup(
+                    children: [
+                      for (final m in objects(s['modules']))
+                        CourseResourceTile(
+                          module: m,
+                          onTap: () => pushMoodle(
+                            context,
+                            MoodleModuleScreen(
+                              repository: repository,
+                              module: m,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
               ],
             ),
           ),
         ),
         (context) => CourseDetailList(
-          emptyTitle: '目前沒有作業',
-          emptyMessage: '老師指派的作業會依截止時間排列在這裡。',
+          emptyIcon: NiuIcons.assignment,
+          emptyTitle: '沒有作業',
+          emptyMessage: '老師指派的作業會依截止時間排在這裡。',
           load: loadAssignments,
-          item: (a) => CourseDetailItem(
-            title: plain(a['name']),
-            metadata: '截止：${campusTime(a['duedate'])}',
-            excerpt: submissionLabel(
-              a['submissionstatus'] ??
-                  (a['submission'] is Map ? a['submission']['status'] : null),
-            ),
-            children: [
-              if (a['graded'] is bool)
-                Text(a['graded'] == true ? '已評分' : '尚未評分'),
-            ],
+          item: (a) => assignment(context, a),
+        ),
+        (context) => CourseDetailList(
+          emptyIcon: NiuIcons.forum,
+          emptyTitle: '沒有討論區',
+          emptyMessage: '課程開放的討論區會出現在這裡。',
+          load: () => repository.forums(id),
+          item: (f) => CourseDetailItem(
+            title: plain(f['name']),
+            excerpt: plain(f['intro']),
             onTap: () => pushMoodle(
               context,
-              MoodleAssignmentScreen(repository: repository, assignment: a),
+              MoodleForumScreen(repository: repository, forum: f),
             ),
           ),
         ),
         (context) => CourseDetailList(
-          emptyTitle: '尚無討論區',
-          emptyMessage: '課程開放的討論區會顯示在這裡。',
-          load: () => repository.forums(id),
-          item: (f) => moodleCard(
-            ListTile(
-              title: Text(plain(f['name'])),
-              subtitle: Text(plain(f['intro'])),
-              onTap: () => pushMoodle(
-                context,
-                MoodleForumScreen(repository: repository, forum: f),
-              ),
-            ),
-          ),
-        ),
-        (context) => CourseDetailList(
-          emptyTitle: '尚無成績項目',
-          emptyMessage: '老師公布的評分項目與成績會顯示在這裡。',
+          emptyIcon: NiuIcons.grades,
+          emptyTitle: '還沒有成績',
+          emptyMessage: '老師公布的評分項目會出現在這裡。',
           load: () => repository.grades(id),
-          item: (g) => CourseDetailItem(
-            title: plain(g['itemname']).isEmpty
-                ? '課程總成績'
-                : plain(g['itemname']),
-            children: [
-              const SizedBox(height: NiuSpacing.md),
-              Text(
-                '成績：${gradeValue(g['gradeformatted']) == '未提供' ? '尚未公布' : gradeValue(g['gradeformatted'])}',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              AppFact(label: '範圍', value: gradeValue(g['rangeformatted'])),
-              AppFact(
-                label: '百分比',
-                value: gradeValue(g['percentageformatted']),
-              ),
-              AppFact(label: '權重', value: gradeValue(g['weightformatted'])),
-              if (plain(g['feedback']).isNotEmpty) ...[
-                const SizedBox(height: NiuSpacing.md),
-                Text('老師回饋', style: Theme.of(context).textTheme.titleSmall),
-                SelectableText(plain(g['feedback'])),
-              ],
-            ],
-          ),
+          item: (g) => grade(context, g),
         ),
         (context) => AttendanceRecords(repository: repository, courseId: id),
       ],
@@ -766,9 +793,61 @@ class MoodleCourseScreen extends StatelessWidget {
   );
 }
 
+NiuTone submissionTone(Object? status) => switch (status) {
+  'submitted' => NiuTone.success,
+  'draft' => NiuTone.warning,
+  'new' || 'reopened' => NiuTone.accent,
+  _ => NiuTone.neutral,
+};
+
 String gradeValue(Object? value) {
   final text = plain(value).trim();
   return text.isEmpty || text == '-' || text == '—' ? '未提供' : text;
+}
+
+class _AttachmentButton extends StatelessWidget {
+  const _AttachmentButton({required this.name, this.onPressed});
+  final String name;
+  final VoidCallback? onPressed;
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: NiuSpacing.sm),
+    child: Material(
+      color: NiuColors.of(context).fill,
+      borderRadius: BorderRadius.circular(NiuRadius.md),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(NiuRadius.md),
+        onTap: onPressed,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 44),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: NiuSpacing.md,
+              vertical: NiuSpacing.sm,
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  NiuIcons.attach,
+                  size: 18,
+                  color: NiuColors.of(context).accent,
+                ),
+                const SizedBox(width: NiuSpacing.sm),
+                Expanded(
+                  child: Text(
+                    name.isEmpty ? '附件' : name,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: NiuColors.of(context).accent,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 class MoodleModuleScreen extends StatelessWidget {
@@ -780,45 +859,73 @@ class MoodleModuleScreen extends StatelessWidget {
   final MoodleRepository repository;
   final Json module;
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(plain(module['name']))),
-    body: ListView(
-      padding: const EdgeInsets.all(NiuSpacing.page),
-      children: [
-        SelectableText(plain(module['description'])),
-        for (final content in objects(module['contents'] ?? []))
-          moodleCard(
-            ListTile(
-              title: Text(plain(content['filename'] ?? '開啟資源')),
-              subtitle: Text(
-                content['filesize'] == null
-                    ? ''
-                    : '${content['filesize']} bytes',
+  Widget build(BuildContext context) {
+    final contents = objects(module['contents'] ?? []);
+    final description = plain(module['description']);
+    return NiuScrollPage(
+      title: plain(module['name']),
+      bottomBar: module['url'] is String
+          ? OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                minimumSize: const Size.fromHeight(NiuSize.buttonHeight),
               ),
-              onTap: content['fileurl'] is String
-                  ? () => openMoodleUrl(
-                      context,
-                      repository,
-                      '${content['fileurl']}',
-                      plain(module['name']),
-                      file: content['type'] == 'file',
-                    )
-                  : null,
-            ),
+              icon: const Icon(NiuIcons.external, size: 18),
+              onPressed: () => openMoodleUrl(
+                context,
+                repository,
+                '${module['url']}',
+                plain(module['name']),
+              ),
+              label: const Text('在 M 園區開啟'),
+            )
+          : null,
+      children: [
+        if (description.isNotEmpty) ...[
+          NiuCard(child: SelectableText(description)),
+          const SizedBox(height: NiuSpacing.lg),
+        ],
+        if (contents.isNotEmpty)
+          NiuGroup(
+            children: [
+              for (final content in contents)
+                NiuRow(
+                  icon: content['type'] == 'url'
+                      ? NiuIcons.link
+                      : NiuIcons.file,
+                  hue: content['type'] == 'url' ? NiuHue.cyan : NiuHue.blue,
+                  title: plain(content['filename'] ?? '開啟資源'),
+                  subtitle: content['filesize'] == null
+                      ? null
+                      : _fileSize(content['filesize']),
+                  onTap: content['fileurl'] is String
+                      ? () => openMoodleUrl(
+                          context,
+                          repository,
+                          '${content['fileurl']}',
+                          plain(module['name']),
+                          file: content['type'] == 'file',
+                        )
+                      : null,
+                ),
+            ],
           ),
-        if (module['url'] is String)
-          FilledButton(
-            onPressed: () => openMoodleUrl(
-              context,
-              repository,
-              '${module['url']}',
-              plain(module['name']),
-            ),
-            child: const Text('在 M 園區開啟完整內容'),
+        if (contents.isEmpty && description.isEmpty)
+          const NiuEmpty(
+            icon: NiuIcons.file,
+            title: '這裡沒有可預覽的內容',
+            message: '點下方按鈕在 M 園區查看完整內容。',
           ),
       ],
-    ),
-  );
+    );
+  }
+}
+
+String _fileSize(Object? raw) {
+  final size = num.tryParse('$raw');
+  if (size == null || size <= 0) return '';
+  return size >= 1048576
+      ? '${(size / 1048576).toStringAsFixed(1)} MB'
+      : '${(size / 1024).ceil()} KB';
 }
 
 class MoodleForumScreen extends StatefulWidget {
@@ -837,34 +944,44 @@ class _MoodleForumScreenState extends State<MoodleForumScreen> {
   int page = 0;
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(plain(widget.forum['name']))),
+    appBar: NiuAppBar(title: plain(widget.forum['name'])),
     body: CourseDetailList(
-      emptyTitle: '目前沒有討論主題',
-      emptyMessage: '這個討論區尚未有主題，或這一頁已沒有更多討論。',
+      emptyIcon: NiuIcons.forum,
+      emptyTitle: '沒有討論主題',
+      emptyMessage: '這個討論區還沒有主題，或這一頁已經沒有更多討論。',
       key: ValueKey(page),
       load: () =>
           widget.repository.discussions(number(widget.forum['id']), page: page),
-      header: Wrap(
-        alignment: WrapAlignment.spaceBetween,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          TextButton(
-            onPressed: page > 0 ? () => setState(() => page--) : null,
-            child: const Text('上一頁'),
-          ),
-          Text('第 ${page + 1} 頁'),
-          TextButton(
-            onPressed: () => setState(() => page++),
-            child: const Text('下一頁'),
-          ),
-        ],
+      header: Padding(
+        padding: const EdgeInsets.only(bottom: NiuSpacing.md),
+        child: Row(
+          children: [
+            NiuIconButton(
+              tooltip: '上一頁',
+              icon: Icons.chevron_left_rounded,
+              tonal: true,
+              onPressed: page > 0 ? () => setState(() => page--) : null,
+            ),
+            Expanded(
+              child: Text(
+                '第 ${page + 1} 頁',
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+            ),
+            NiuIconButton(
+              tooltip: '下一頁',
+              icon: Icons.chevron_right_rounded,
+              tonal: true,
+              onPressed: () => setState(() => page++),
+            ),
+          ],
+        ),
       ),
       item: (d) => CourseDetailItem(
         title: plain(d['subject'] ?? d['name']),
         metadata:
-            '${plain(d['userfullname']).isEmpty ? '作者未提供' : plain(d['userfullname'])} · ${campusTime(d['timemodified'])}\n${d['numreplies'] == null ? '回覆數未提供' : '${d['numreplies']} 則回覆'}',
+            '${plain(d['userfullname']).isEmpty ? '作者未提供' : plain(d['userfullname'])} · ${campusTime(d['timemodified'])} · ${d['numreplies'] == null ? '回覆數未提供' : '${d['numreplies']} 則回覆'}',
         excerpt: plain(d['message']),
         onTap: () => pushMoodle(
           context,
@@ -885,46 +1002,77 @@ class MoodleDiscussionScreen extends StatelessWidget {
   final Json discussion;
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: Text(plain(discussion['subject'] ?? discussion['name'])),
+    appBar: NiuAppBar(
+      title: plain(discussion['subject'] ?? discussion['name']),
     ),
     body: CourseDetailList(
-      emptyTitle: '尚無討論內容',
-      emptyMessage: '這個主題目前沒有可顯示的貼文。',
+      emptyIcon: NiuIcons.forum,
+      emptyTitle: '沒有貼文',
+      emptyMessage: '這個主題目前沒有可以顯示的內容。',
       load: () => repository.posts(
         number(discussion['discussion'] ?? discussion['id']),
       ),
-      item: (p) => moodleCard(
-        Padding(
-          padding: const EdgeInsets.all(NiuSpacing.xl),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                plain(p['subject']),
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              Text(
-                '${plain(p['author'] is Map ? p['author']['fullname'] : '')}　${campusTime(p['timecreated'])}',
-                style: Theme.of(context).textTheme.labelMedium,
-              ),
-              const Divider(),
-              SelectableText(plain(p['message'])),
-              for (final f in objects(p['attachments'] ?? []))
-                TextButton(
-                  onPressed: () => openMoodleUrl(
-                    context,
-                    repository,
-                    '${f['fileurl']}',
-                    plain(f['filename']),
-                    file: true,
-                  ),
-                  child: Text(plain(f['filename'])),
+      item: (p) {
+        final theme = Theme.of(context);
+        final author = plain(p['author'] is Map ? p['author']['fullname'] : '');
+        return Padding(
+          padding: const EdgeInsets.only(bottom: NiuSpacing.md),
+          child: NiuCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 16,
+                      backgroundColor: NiuColors.of(context).accentSoft,
+                      child: Text(
+                        author.characters.firstOrNull ?? '?',
+                        style: theme.textTheme.labelLarge?.copyWith(
+                          color: NiuColors.of(context).accent,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: NiuSpacing.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            author.isEmpty ? '作者未提供' : author,
+                            style: theme.textTheme.titleSmall,
+                          ),
+                          Text(
+                            campusTime(p['timecreated']),
+                            style: theme.textTheme.labelMedium,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-            ],
+                const SizedBox(height: NiuSpacing.md),
+                if (plain(p['subject']).isNotEmpty) ...[
+                  Text(plain(p['subject']), style: theme.textTheme.titleMedium),
+                  const SizedBox(height: NiuSpacing.xs),
+                ],
+                SelectableText(plain(p['message'])),
+                for (final f in objects(p['attachments'] ?? []))
+                  _AttachmentButton(
+                    name: plain(f['filename']),
+                    onPressed: () => openMoodleUrl(
+                      context,
+                      repository,
+                      '${f['fileurl']}',
+                      plain(f['filename']),
+                      file: true,
+                    ),
+                  ),
+              ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     ),
   );
 }
@@ -947,6 +1095,7 @@ class _MoodleAssignmentScreenState extends State<MoodleAssignmentScreen> {
   bool busy = false;
   bool accept = false;
   String? message;
+  bool messageFailed = false;
   Future<void> mutate(Future<void> Function() action) async {
     if (busy) return;
     setState(() {
@@ -957,14 +1106,16 @@ class _MoodleAssignmentScreenState extends State<MoodleAssignmentScreen> {
       await action();
       if (mounted) {
         setState(() {
-          message = '操作完成，已重新讀取校方狀態。';
+          message = '完成，已重新讀取最新狀態。';
+          messageFailed = false;
           future = widget.repository.submission(id);
         });
       }
     } catch (_) {
       if (mounted) {
         setState(() {
-          message = '校方未確認操作完成，未自動重送。請先重新整理狀態再決定下一步。';
+          message = 'M 園區沒有確認這次操作，App 不會自動重送。請先重新整理狀態再決定下一步。';
+          messageFailed = true;
           future = widget.repository.submission(id);
         });
       }
@@ -973,25 +1124,13 @@ class _MoodleAssignmentScreenState extends State<MoodleAssignmentScreen> {
     }
   }
 
-  Future<bool> confirm(String title, String text) async =>
-      await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text(title),
-          content: Text(text),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('取消'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('確定'),
-            ),
-          ],
-        ),
-      ) ??
-      false;
+  Future<bool> confirm(String title, String text, String action) =>
+      confirmNiuAction(
+        context,
+        title: title,
+        message: text,
+        confirmLabel: action,
+      );
   Future<void> upload() async {
     final result = await openFiles();
     if (!mounted || result.isEmpty) return;
@@ -1001,180 +1140,270 @@ class _MoodleAssignmentScreenState extends State<MoodleAssignmentScreen> {
         files.add((name: file.name, bytes: await file.readAsBytes()));
       }
     } catch (_) {
-      if (mounted) setState(() => message = '無法讀取選取的檔案，請重新選擇。');
+      if (mounted) {
+        setState(() {
+          message = '讀不到選取的檔案，請重新選擇。';
+          messageFailed = true;
+        });
+      }
       return;
     }
     if (!mounted) return;
     if (files.any((f) => f.bytes.isEmpty)) {
-      setState(() => message = '無法讀取選取的檔案，請重新選擇。');
+      setState(() {
+        message = '讀不到選取的檔案，請重新選擇。';
+        messageFailed = true;
+      });
       return;
     }
-    if (!await confirm('更新作業檔案', '本次選取的 ${files.length} 個檔案會取代目前的作業檔案。')) {
+    if (!await confirm('更新作業檔案？', '這 ${files.length} 個檔案會取代目前儲存的作業檔案。', '上傳')) {
       return;
     }
     await mutate(() => widget.repository.uploadFiles(id, files));
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: Text(plain(widget.assignment['name'])),
-      actions: [
-        IconButton(
-          tooltip: '重新整理',
-          onPressed: busy
-              ? null
-              : () => setState(() => future = widget.repository.submission(id)),
-          icon: const Icon(Icons.refresh),
-        ),
-      ],
-    ),
-    body: ListView(
-      padding: const EdgeInsets.all(NiuSpacing.xl),
-      children: [
-        AppFact(label: '截止時間', value: campusTime(widget.assignment['duedate'])),
-        const SizedBox(height: NiuSpacing.lg),
-        SelectableText(plain(widget.assignment['intro'])),
-        if (message != null)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: NiuSpacing.lg),
-            child: Text(message!),
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final intro = plain(widget.assignment['intro']);
+    return Scaffold(
+      appBar: NiuAppBar(
+        title: '作業',
+        actions: [
+          NiuIconButton(
+            tooltip: '重新整理',
+            icon: NiuIcons.refresh,
+            onPressed: busy
+                ? null
+                : () =>
+                      setState(() => future = widget.repository.submission(id)),
           ),
-        if (busy) const LinearProgressIndicator(),
-        FutureBuilder<Json>(
-          future: future,
-          builder: (context, snapshot) {
-            if (snapshot.hasError) {
-              return const Padding(
-                padding: EdgeInsets.all(NiuSpacing.lg),
-                child: Text('無法取得繳交狀態，請重新整理或開啟校方頁面。'),
-              );
-            }
-            if (snapshot.connectionState != ConnectionState.done) {
-              return const Center(child: AppLoadingState());
-            }
-            final attempt = snapshot.data!['lastattempt'] is Map
-                ? object(snapshot.data!['lastattempt'])
-                : <String, dynamic>{};
-            final submission = attempt['submission'] is Map
-                ? object(attempt['submission'])
-                : <String, dynamic>{};
-            final status = '${submission['status'] ?? ''}';
-            final canEdit =
-                attempt['canedit'] != false && status != 'submitted';
-            final feedback = snapshot.data!['feedback'];
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                moodleCard(
-                  Padding(
-                    padding: const EdgeInsets.all(NiuSpacing.lg),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '繳交狀態：${submissionLabel(status)}',
-                          style: Theme.of(context).textTheme.titleMedium,
-                        ),
-                        const SizedBox(height: NiuSpacing.sm),
-                        Text(
-                          '最後修改：${campusTime(submission['timemodified'])}',
-                          style: Theme.of(context).textTheme.labelMedium,
-                        ),
-                        Text(
-                          '評分：${switch (attempt['graded']) {
-                            true => '已評分',
-                            false => '尚未評分',
-                            _ => '未提供',
-                          }}',
-                        ),
-                        if (feedback is Map &&
-                            feedback['gradefordisplay'] != null)
-                          Text('成績：${plain(feedback['gradefordisplay'])}'),
-                        for (final plugin in objects(
-                          submission['plugins'] ?? [],
-                        )) ...[
-                          for (final area in objects(plugin['fileareas'] ?? []))
-                            for (final file in objects(area['files'] ?? []))
-                              TextButton(
-                                onPressed: file['fileurl'] is String
-                                    ? () => openMoodleUrl(
-                                        context,
-                                        widget.repository,
-                                        '${file['fileurl']}',
-                                        plain(file['filename']),
-                                        file: true,
-                                      )
-                                    : null,
-                                child: Text(plain(file['filename'])),
-                              ),
-                          for (final field in objects(
-                            plugin['editorfields'] ?? [],
-                          ))
-                            SelectableText(plain(field['text'])),
-                        ],
-                      ],
-                    ),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(
+          NiuSpacing.gutter,
+          NiuSpacing.md,
+          NiuSpacing.gutter,
+          NiuSpacing.huge,
+        ),
+        children: [
+          Text(
+            plain(widget.assignment['name']),
+            style: theme.textTheme.headlineSmall,
+          ),
+          const SizedBox(height: NiuSpacing.sm),
+          Row(
+            children: [
+              Icon(
+                NiuIcons.time,
+                size: 16,
+                color: NiuColors.of(context).inkSecondary,
+              ),
+              const SizedBox(width: NiuSpacing.xs),
+              Text(
+                '截止 ${campusTime(widget.assignment['duedate'])}',
+                style: theme.textTheme.bodySmall,
+              ),
+            ],
+          ),
+          if (intro.isNotEmpty) ...[
+            const SizedBox(height: NiuSpacing.lg),
+            NiuCard(child: SelectableText(intro)),
+          ],
+          if (message != null) ...[
+            const SizedBox(height: NiuSpacing.lg),
+            NiuBanner(
+              tone: messageFailed ? NiuTone.warning : NiuTone.success,
+              message: message!,
+            ),
+          ],
+          if (busy) ...[
+            const SizedBox(height: NiuSpacing.lg),
+            const LinearProgressIndicator(),
+          ],
+          FutureBuilder<Json>(
+            future: future,
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return const Padding(
+                  padding: EdgeInsets.only(top: NiuSpacing.lg),
+                  child: NiuBanner(
+                    tone: NiuTone.warning,
+                    message: '讀不到繳交狀態。重新整理，或在 M 園區網頁查看。',
                   ),
+                );
+              }
+              if (snapshot.connectionState != ConnectionState.done) {
+                return const NiuLoading(message: '正在讀取繳交狀態', compact: true);
+              }
+              final attempt = snapshot.data!['lastattempt'] is Map
+                  ? object(snapshot.data!['lastattempt'])
+                  : <String, dynamic>{};
+              final submission = attempt['submission'] is Map
+                  ? object(attempt['submission'])
+                  : <String, dynamic>{};
+              final status = '${submission['status'] ?? ''}';
+              final canEdit =
+                  attempt['canedit'] != false && status != 'submitted';
+              final feedback = snapshot.data!['feedback'];
+              final files = [
+                for (final plugin in objects(submission['plugins'] ?? []))
+                  for (final area in objects(plugin['fileareas'] ?? []))
+                    ...objects(area['files'] ?? []),
+              ];
+              final texts = [
+                for (final plugin in objects(submission['plugins'] ?? []))
+                  for (final field in objects(plugin['editorfields'] ?? []))
+                    plain(field['text']),
+              ].where((t) => t.trim().isNotEmpty).toList();
+              return NiuSection(
+                title: '繳交狀態',
+                action: NiuBadge(
+                  label: submissionLabel(status.isEmpty ? null : status),
+                  tone: submissionTone(status.isEmpty ? null : status),
                 ),
-                if (canEdit) ...[
-                  FilledButton.icon(
-                    onPressed: busy ? null : upload,
-                    icon: const Icon(Icons.upload_file),
-                    label: const Text('選擇檔案並儲存草稿'),
-                  ),
-                  TextButton(
-                    onPressed: busy
-                        ? null
-                        : () async {
-                            if (await confirm('清除作業檔案', '確定要清除目前儲存的作業檔案嗎？')) {
-                              await mutate(() => widget.repository.clear(id));
-                            }
-                          },
-                    child: const Text('清除已儲存檔案'),
-                  ),
-                  if (status == 'draft') ...[
-                    CheckboxListTile(
-                      value: accept,
-                      onChanged: busy
-                          ? null
-                          : (v) => setState(() => accept = v ?? false),
-                      title: const Text('我確認這是自己的作業，並同意校方的繳交聲明。'),
-                    ),
-                    FilledButton(
-                      onPressed: busy || !accept
-                          ? null
-                          : () async {
-                              if (await confirm(
-                                '正式繳交',
-                                '送出後可能無法再次修改，確定繳交給老師評分嗎？',
-                              )) {
-                                await mutate(
-                                  () => widget.repository.submit(
-                                    id,
-                                    acceptStatement: accept,
-                                  ),
-                                );
-                              }
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    NiuCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          NiuKeyValue(
+                            label: '繳交狀態',
+                            value: submissionLabel(
+                              status.isEmpty ? null : status,
+                            ),
+                          ),
+                          NiuKeyValue(
+                            label: '最後修改',
+                            value: campusTime(submission['timemodified']),
+                          ),
+                          NiuKeyValue(
+                            label: '評分',
+                            value: switch (attempt['graded']) {
+                              true => '已評分',
+                              false => '尚未評分',
+                              _ => '未提供',
                             },
-                      child: const Text('正式繳交給老師評分'),
+                          ),
+                          if (feedback is Map &&
+                              feedback['gradefordisplay'] != null)
+                            NiuKeyValue(
+                              label: '成績',
+                              value: plain(feedback['gradefordisplay']),
+                              emphasis: true,
+                            ),
+                          for (final file in files)
+                            _AttachmentButton(
+                              name: plain(file['filename']),
+                              onPressed: file['fileurl'] is String
+                                  ? () => openMoodleUrl(
+                                      context,
+                                      widget.repository,
+                                      '${file['fileurl']}',
+                                      plain(file['filename']),
+                                      file: true,
+                                    )
+                                  : null,
+                            ),
+                          for (final text in texts) ...[
+                            const SizedBox(height: NiuSpacing.sm),
+                            NiuWell(child: SelectableText(text)),
+                          ],
+                        ],
+                      ),
                     ),
+                    if (canEdit) ...[
+                      const SizedBox(height: NiuSpacing.lg),
+                      FilledButton.icon(
+                        onPressed: busy ? null : upload,
+                        icon: const Icon(NiuIcons.upload),
+                        label: const Text('選擇檔案並存成草稿'),
+                      ),
+                      const SizedBox(height: NiuSpacing.xs),
+                      TextButton(
+                        style: TextButton.styleFrom(
+                          foregroundColor: NiuColors.of(context).error,
+                        ),
+                        onPressed: busy
+                            ? null
+                            : () async {
+                                if (await confirm(
+                                  '清除作業檔案？',
+                                  '目前儲存的作業檔案會被移除。',
+                                  '清除',
+                                )) {
+                                  await mutate(
+                                    () => widget.repository.clear(id),
+                                  );
+                                }
+                              },
+                        child: const Text('清除已儲存的檔案'),
+                      ),
+                      if (status == 'draft') ...[
+                        const SizedBox(height: NiuSpacing.lg),
+                        NiuCard(
+                          padding: EdgeInsets.zero,
+                          child: CheckboxListTile(
+                            value: accept,
+                            controlAffinity: ListTileControlAffinity.leading,
+                            onChanged: busy
+                                ? null
+                                : (v) => setState(() => accept = v ?? false),
+                            title: Text(
+                              '這是我自己完成的作業，我同意學校的繳交聲明。',
+                              style: theme.textTheme.bodyMedium,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: NiuSpacing.md),
+                        FilledButton(
+                          onPressed: busy || !accept
+                              ? null
+                              : () async {
+                                  if (await confirm(
+                                    '正式繳交？',
+                                    '送出後可能無法再修改，作業會交給老師評分。',
+                                    '繳交',
+                                  )) {
+                                    await mutate(
+                                      () => widget.repository.submit(
+                                        id,
+                                        acceptStatement: accept,
+                                      ),
+                                    );
+                                  }
+                                },
+                          child: const Text('正式繳交'),
+                        ),
+                      ],
+                    ],
                   ],
-                ],
-              ],
-            );
-          },
-        ),
-        TextButton(
-          onPressed: () => openMoodleUrl(
-            context,
-            widget.repository,
-            'https://euni.niu.edu.tw/mod/assign/view.php?id=${widget.assignment['cmid']}',
-            '校方作業頁面',
+                ),
+              );
+            },
           ),
-          child: const Text('開啟校方作業頁面（線上文字、聲明與完整回饋）'),
-        ),
-      ],
-    ),
-  );
+          const SizedBox(height: NiuSpacing.xl),
+          OutlinedButton.icon(
+            icon: const Icon(NiuIcons.external, size: 18),
+            onPressed: () => openMoodleUrl(
+              context,
+              widget.repository,
+              'https://euni.niu.edu.tw/mod/assign/view.php?id=${widget.assignment['cmid']}',
+              '作業',
+            ),
+            label: const Text('在 M 園區網頁開啟'),
+          ),
+          const SizedBox(height: NiuSpacing.sm),
+          Text(
+            '線上文字、繳交聲明與完整回饋，請在網頁查看。',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodySmall,
+          ),
+        ],
+      ),
+    );
+  }
 }

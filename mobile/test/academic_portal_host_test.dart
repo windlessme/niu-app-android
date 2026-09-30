@@ -26,9 +26,9 @@ void main() {
     final size = tester.getSize(find.byKey(host));
     expect(size.width, greaterThan(100));
     expect(size.height, greaterThan(100));
-    expect(find.text('正在連線校務系統並讀取資料…'), findsOneWidget);
+    expect(find.text('正在向學校系統讀取資料'), findsOneWidget);
     await tester.pump(const Duration(seconds: 3));
-    expect(find.text('資料載入逾時，可重試或開啟校方頁面。'), findsOneWidget);
+    expect(find.text('學校系統回應逾時。可以再試一次，或直接開啟學校網頁。'), findsOneWidget);
     expect(find.byType(LinearProgressIndicator), findsNothing);
     await tester.pumpWidget(const SizedBox());
   });

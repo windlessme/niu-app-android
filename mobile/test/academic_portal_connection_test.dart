@@ -86,8 +86,8 @@ void main() {
       await state.loaded(web, expired);
       await tester.pump();
       expect(api.bridges, 1);
-      expect(find.text('登入已過期，請重新登入'), findsOneWidget);
-      expect(find.text('登入校務帳號'), findsOneWidget);
+      expect(find.text('校務登入已過期，請重新登入。'), findsOneWidget);
+      expect(find.text('重新登入'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
       session.dispose();
     },
@@ -162,11 +162,11 @@ void main() {
     state.controller = web;
     await state.poll();
     await tester.pump();
-    expect(find.text('請在校方頁面完成驗證或登入，完成後會繼續讀取資料。'), findsOneWidget);
-    expect(find.byType(AppLoadingState), findsNothing);
+    expect(find.text('請在學校網頁完成驗證或登入，完成後會自動繼續。'), findsOneWidget);
+    expect(find.byType(NiuLoading), findsNothing);
     expect(tester.element(find.byKey(host)), same(original));
     await tester.pump(const Duration(seconds: 5));
-    expect(find.text('資料載入逾時，可重試或開啟校方頁面。'), findsNothing);
+    expect(find.text('學校系統回應逾時。可以再試一次，或直接開啟學校網頁。'), findsNothing);
     web.replies.addAll([
       'ready',
       jsonEncode({'signature': 'verified', 'value': '{}'}),
@@ -175,7 +175,7 @@ void main() {
     await state.poll();
     await tester.pump();
     expect(find.text('已取得資料'), findsOneWidget);
-    expect(find.text('請在校方頁面完成驗證或登入，完成後會繼續讀取資料。'), findsNothing);
+    expect(find.text('請在學校網頁完成驗證或登入，完成後會自動繼續。'), findsNothing);
     await tester.pumpWidget(const SizedBox());
   });
 
@@ -217,7 +217,7 @@ void main() {
       navigator.currentState!.pop();
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
-      expect(find.text('資料載入逾時，可重試或開啟校方頁面。'), findsNothing);
+      expect(find.text('學校系統回應逾時。可以再試一次，或直接開啟學校網頁。'), findsNothing);
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
       final paused = web.evaluations;
       await tester.pump(const Duration(seconds: 5));
@@ -225,7 +225,7 @@ void main() {
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
       await tester.pump();
       expect(web.evaluations, greaterThan(paused));
-      expect(find.text('資料載入逾時，可重試或開啟校方頁面。'), findsNothing);
+      expect(find.text('學校系統回應逾時。可以再試一次，或直接開啟學校網頁。'), findsNothing);
       await tester.pumpWidget(const SizedBox());
     },
   );
@@ -256,10 +256,10 @@ void main() {
           ),
         );
         await tester.pump();
-        expect(find.byType(AppLoadingState), findsOneWidget);
+        expect(find.byType(NiuLoading), findsOneWidget);
         expect(tester.takeException(), isNull);
         await tester.pump(const Duration(seconds: 3));
-        expect(find.byType(AppErrorState), findsOneWidget);
+        expect(find.byType(NiuError), findsOneWidget);
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox());
       },

@@ -1,8 +1,8 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import '../../shared/shared.dart';
 import 'moodle_repository.dart';
 
+/// One course material inside a week's grouped list.
 class CourseResourceTile extends StatelessWidget {
   const CourseResourceTile({
     super.key,
@@ -11,6 +11,26 @@ class CourseResourceTile extends StatelessWidget {
   });
   final Json module;
   final VoidCallback onTap;
+
+  static (IconData, NiuHue) glyph(Json module) {
+    final files = module['contents'] is List
+        ? (module['contents'] as List).whereType<Map>().toList()
+        : <Map>[];
+    final mime = files.length == 1 ? '${files.first['mimetype']}' : '';
+    return switch ('${module['modname']}') {
+      'folder' => (NiuIcons.folder, NiuHue.amber),
+      'url' => (NiuIcons.link, NiuHue.cyan),
+      'assign' => (NiuIcons.assignment, NiuHue.orange),
+      'forum' => (NiuIcons.forum, NiuHue.purple),
+      'quiz' => (Icons.quiz_outlined, NiuHue.pink),
+      _ when mime == 'application/pdf' => (
+        Icons.picture_as_pdf_outlined,
+        NiuHue.red,
+      ),
+      _ => (NiuIcons.file, NiuHue.blue),
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     final files = module['contents'] is List
@@ -28,45 +48,16 @@ class CourseResourceTile extends StatelessWidget {
               : '${(size / 1024).ceil()} KB',
         );
       }
+    } else if (files.length > 1) {
+      metadata.add('${files.length} 個檔案');
     }
-    return Padding(
-      padding: const EdgeInsets.only(bottom: NiuSpacing.sm),
-      child: AppCard(
-        onTap: onTap,
-        child: Row(
-          children: [
-            Icon(
-              module['modname'] == 'folder'
-                  ? CupertinoIcons.folder
-                  : CupertinoIcons.doc_text,
-              color: NiuColors.of(context).accent,
-            ),
-            const SizedBox(width: NiuSpacing.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    plain(module['name']),
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                  if (metadata.isNotEmpty)
-                    Text(
-                      metadata.join(' · '),
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(width: NiuSpacing.sm),
-            Icon(
-              CupertinoIcons.chevron_right,
-              size: 18,
-              color: NiuColors.of(context).secondary,
-            ),
-          ],
-        ),
-      ),
+    final (icon, hue) = glyph(module);
+    return NiuRow(
+      icon: icon,
+      hue: hue,
+      title: plain(module['name']),
+      subtitle: metadata.join(' · '),
+      onTap: onTap,
     );
   }
 }

@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:collection';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
 
 import '../../shared/shared.dart';
 
@@ -36,7 +35,11 @@ class AcademicPortalScreen extends StatefulWidget {
     this.referer,
     this.webViewBuilder,
     this.loadTimeout = const Duration(seconds: 60),
+    this.header,
   });
+
+  /// Persistent control under the top bar (e.g. a view switcher).
+  final Widget? header;
   final String title;
   final Uri? target;
   final Uri? referer;
@@ -132,7 +135,7 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen>
         if (!mounted) return;
         setState(() {
           loading = false;
-          error = '資料載入逾時，可重試或開啟校方頁面。';
+          error = '學校系統回應逾時。可以再試一次，或直接開啟學校網頁。';
         });
         syncWork();
       });
@@ -151,7 +154,7 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen>
       setState(() {
         snapshot = null;
         entry = null;
-        error = '已登出，請重新登入';
+        error = '已登出，請重新登入。';
         loading = false;
       });
       syncWork();
@@ -226,7 +229,7 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen>
       if (mounted && current == generation) {
         deadline?.cancel();
         setState(() {
-          error = '校務連線未完成，請登入後重試。';
+          error = '沒有連上校務系統，請重新登入後再試。';
           loading = false;
         });
         syncWork();
@@ -245,7 +248,7 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen>
     if (!reusedAcademicSession) {
       setState(() {
         loading = false;
-        error = '登入已過期，請重新登入';
+        error = '校務登入已過期，請重新登入。';
         schoolPage = true;
       });
       syncWork();
@@ -274,7 +277,7 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen>
       if (mounted && current == generation) {
         setState(() {
           loading = false;
-          error = '校務連線未完成，請登入後重試。';
+          error = '沒有連上校務系統，請重新登入後再試。';
         });
         syncWork();
       }
@@ -525,20 +528,20 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen>
         widget.extractScript != null &&
         (snapshot == null || widget.snapshotBuilder == null);
     return Scaffold(
-      appBar: IosPageHeader(
+      appBar: NiuAppBar(
         title: widget.title,
         actions: [
           if (widget.extractScript != null)
-            CircleIconButton(
-              label: schoolPage ? 'App 檢視' : '查看資料來源',
+            NiuIconButton(
+              tooltip: schoolPage ? '回到 App 檢視' : '查看學校網頁',
               icon: schoolPage
-                  ? CupertinoIcons.square_grid_2x2
-                  : CupertinoIcons.globe,
+                  ? Icons.dashboard_rounded
+                  : Icons.language_rounded,
               onPressed: () => setState(() => schoolPage = !schoolPage),
             ),
-          CircleIconButton(
-            label: '重新整理',
-            icon: CupertinoIcons.arrow_clockwise,
+          NiuIconButton(
+            tooltip: '重新整理',
+            icon: NiuIcons.refresh,
             onPressed: loading || reconnecting ? null : start,
           ),
         ],
@@ -547,55 +550,47 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen>
         top: false,
         child: Column(
           children: [
+            if (widget.header != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  NiuSpacing.gutter,
+                  NiuSpacing.xs,
+                  NiuSpacing.gutter,
+                  NiuSpacing.md,
+                ),
+                child: widget.header,
+              ),
             if (eventLoginRequired)
               banner(
-                Column(
-                  children: [
-                    const Text('活動登入尚未建立或已過期。重新連接校務登入後，會自動返回此活動頁面。'),
-                    TextButton(
-                      onPressed: () async {
-                        final ok = await Navigator.of(context).push<bool>(
-                          MaterialPageRoute(
-                            builder: (_) => LoginScreen(session: session),
-                          ),
-                        );
-                        if (ok == true && mounted) start();
-                      },
-                      child: const Text('重新連接活動登入'),
-                    ),
-                  ],
+                NiuBanner(
+                  tone: NiuTone.warning,
+                  message: '活動報名的登入已過期。重新登入後會回到這個頁面。',
+                  actionLabel: '重新登入活動報名',
+                  onAction: signIn,
                 ),
               ),
             if (interactionRequired)
-              banner(const Text('請在校方頁面完成驗證或登入，完成後會繼續讀取資料。')),
+              banner(
+                const NiuBanner(
+                  tone: NiuTone.warning,
+                  message: '請在學校網頁完成驗證或登入，完成後會自動繼續。',
+                ),
+              ),
             if (loading && !nativeCover)
-              const Padding(
-                padding: EdgeInsets.all(NiuSpacing.xl),
-                child: Row(
-                  children: [
-                    CupertinoActivityIndicator(),
-                    SizedBox(width: NiuSpacing.md),
-                    Expanded(child: Text('正在連線校務系統並讀取資料…')),
-                  ],
+              const SizedBox(
+                height: 2,
+                child: LinearProgressIndicator(
+                  minHeight: 2,
+                  borderRadius: BorderRadius.zero,
                 ),
               ),
             if (error != null && !nativeCover)
               banner(
-                Column(
-                  children: [
-                    Text(error!),
-                    TextButton(
-                      onPressed: () async {
-                        final ok = await Navigator.of(context).push<bool>(
-                          MaterialPageRoute(
-                            builder: (_) => LoginScreen(session: session),
-                          ),
-                        );
-                        if (ok == true && mounted) start();
-                      },
-                      child: const Text('登入校務帳號'),
-                    ),
-                  ],
+                NiuBanner(
+                  tone: NiuTone.error,
+                  message: error!,
+                  actionLabel: '重新登入',
+                  onAction: signIn,
                 ),
               ),
             Expanded(
@@ -708,7 +703,7 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen>
                                   deadline?.cancel();
                                   timer?.cancel();
                                   setState(() {
-                                    error = '校方頁面載入失敗，請檢查網路後重試。';
+                                    error = '學校網頁載入失敗，檢查網路後再試一次。';
                                     loading = false;
                                   });
                                   syncWork();
@@ -732,7 +727,7 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen>
                                       return;
                                     }
                                     setState(() {
-                                      error = '校方系統暫時無法提供資料，請稍後重試。';
+                                      error = '學校系統暫時沒有回應，稍後再試。';
                                       loading = false;
                                     });
                                     syncWork();
@@ -757,42 +752,56 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen>
                         color: Theme.of(context).scaffoldBackgroundColor,
                         child: Center(
                           child: SingleChildScrollView(
-                            padding: const EdgeInsets.all(NiuSpacing.xl),
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 if (interactionRequired || eventLoginRequired)
-                                  const Text('請開啟校方頁面完成驗證或登入。')
-                                else if (error == null)
-                                  const AppLoadingState(
-                                    message: '正在連線校務系統並讀取資料…',
+                                  NiuEmpty(
+                                    icon: NiuIcons.lock,
+                                    tone: NiuTone.accent,
+                                    title: '需要在學校網頁完成驗證',
+                                    message: '開啟學校網頁完成登入或驗證後，資料會自動讀取。',
+                                    action: FilledButton(
+                                      onPressed: entry == null
+                                          ? null
+                                          : () => setState(
+                                              () => schoolPage = true,
+                                            ),
+                                      child: const Text('開啟學校網頁'),
+                                    ),
                                   )
-                                else ...[
-                                  AppErrorState(
+                                else if (error == null) ...[
+                                  const NiuLoading(message: '正在向學校系統讀取資料'),
+                                  TextButton(
+                                    onPressed: entry == null
+                                        ? null
+                                        : () =>
+                                              setState(() => schoolPage = true),
+                                    child: const Text('開啟學校網頁'),
+                                  ),
+                                ] else
+                                  NiuError(
+                                    title: '無法取得資料',
                                     message: error!,
                                     onRetry: start,
+                                    secondaryAction: Wrap(
+                                      alignment: WrapAlignment.center,
+                                      children: [
+                                        TextButton(
+                                          onPressed: signIn,
+                                          child: const Text('重新登入'),
+                                        ),
+                                        TextButton(
+                                          onPressed: entry == null
+                                              ? null
+                                              : () => setState(
+                                                  () => schoolPage = true,
+                                                ),
+                                          child: const Text('開啟學校網頁'),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                  TextButton(
-                                    onPressed: () async {
-                                      final ok = await Navigator.of(context)
-                                          .push<bool>(
-                                            MaterialPageRoute(
-                                              builder: (_) =>
-                                                  LoginScreen(session: session),
-                                            ),
-                                          );
-                                      if (ok == true && mounted) start();
-                                    },
-                                    child: const Text('登入校務帳號'),
-                                  ),
-                                ],
-                                TextButton.icon(
-                                  onPressed: entry == null
-                                      ? null
-                                      : () => setState(() => schoolPage = true),
-                                  icon: const Icon(CupertinoIcons.globe),
-                                  label: const Text('開啟校方頁面'),
-                                ),
                               ],
                             ),
                           ),
@@ -800,7 +809,7 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen>
                       ),
                     ),
                   if (entry == null && error == null && !nativeCover)
-                    const Center(child: AppLoadingState(message: '連線中…')),
+                    const Center(child: NiuLoading(message: '正在連線')),
                 ],
               ),
             ),
@@ -815,10 +824,22 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen>
 
   Widget banner(Widget child) => Flexible(
     child: SingleChildScrollView(
-      padding: const EdgeInsets.all(NiuSpacing.md),
+      padding: const EdgeInsets.fromLTRB(
+        NiuSpacing.gutter,
+        NiuSpacing.xs,
+        NiuSpacing.gutter,
+        NiuSpacing.md,
+      ),
       child: child,
     ),
   );
+
+  Future<void> signIn() async {
+    final ok = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => LoginScreen(session: session)),
+    );
+    if (ok == true && mounted) start();
+  }
 }
 
 bool isAcademicSessionExpired(Uri uri) {

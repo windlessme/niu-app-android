@@ -1,7 +1,7 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../shared/shared.dart';
+import 'campus_services.dart';
 
 class HomeCourse {
   const HomeCourse({
@@ -14,9 +14,17 @@ class HomeCourse {
   final String time;
   final String room;
   final bool current;
+
+  /// Start and end clock values when the school time text contains them.
+  (String, String)? get range {
+    final times = RegExp(
+      r'\d{1,2}:\d{2}',
+    ).allMatches(time).map((m) => m.group(0)!).toList();
+    return times.length < 2 ? null : (times.first, times.last);
+  }
 }
 
-/// Home matches the iOS hierarchy: profile, greeting, today, attendance, cards.
+/// Home answers "what's next today?" first, then offers one-tap services.
 class CampusHomeScreen extends StatelessWidget {
   const CampusHomeScreen({
     super.key,
@@ -36,304 +44,126 @@ class CampusHomeScreen extends StatelessWidget {
   final bool ssoNeedsReauthentication;
   final bool hasSchedule;
 
+  static String greeting(DateTime taipei) => switch (taipei.hour) {
+    >= 5 && < 11 => '早安',
+    >= 11 && < 18 => '午安',
+    _ => '晚上好',
+  };
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final accent = theme.colorScheme.primary;
-    final attendanceBackground = NiuColors.of(context).cardSurface;
-    final attendanceInk = NiuColors.of(context).text;
+    final colors = NiuColors.of(context);
     final now = DateTime.now().toUtc().add(const Duration(hours: 8));
-    final date = '${now.month} 月 ${now.day} 日・星期${'一二三四五六日'[now.weekday - 1]}';
+    final date = '${now.month} 月 ${now.day} 日　星期${'一二三四五六日'[now.weekday - 1]}';
     return Scaffold(
       body: SafeArea(
+        bottom: false,
         child: RefreshIndicator(
           onRefresh: () async {
             try {
               await onRefresh?.call();
             } catch (_) {
               if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('暫時無法更新，目前顯示上次資料。')),
-                );
+                showNiuMessage(context, '更新失敗，先顯示上次的資料');
               }
             }
           },
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(NiuSpacing.page),
+            padding: const EdgeInsets.fromLTRB(
+              NiuSpacing.gutter,
+              NiuSpacing.md,
+              NiuSpacing.gutter,
+              NiuSpacing.huge,
+            ),
             children: [
-              Row(
-                children: [
-                  CircleAvatar(
-                    backgroundColor: accent.withValues(alpha: .12),
-                    child: Text(
-                      name?.characters.firstOrNull ?? '宜',
-                      style: TextStyle(color: accent),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          name ?? 'NIU-Life',
-                          style: const TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                        Text(
-                          department?.isNotEmpty == true
-                              ? department!
-                              : '國立宜蘭大學',
-                          style: theme.textTheme.bodySmall,
-                        ),
-                      ],
-                    ),
-                  ),
-                  CircleIconButton(
-                    onPressed: () => context.push('/settings'),
-                    label: '設定',
-                    icon: CupertinoIcons.gear,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 30),
-              Text(
-                name == null ? '歡迎來到' : '歡迎回來',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+              _ProfileHeader(name: name, department: department),
+              const SizedBox(height: NiuSpacing.xxl),
+              Text(date, style: theme.textTheme.labelMedium),
+              const SizedBox(height: NiuSpacing.xs),
+              Semantics(
+                header: true,
+                child: Text(
+                  name == null ? '歡迎使用 NIU-Life' : '${greeting(now)}，$name',
+                  style: theme.textTheme.headlineLarge,
                 ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                name ?? 'NIU-Life',
-                style: theme.textTheme.headlineLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
+              if (ssoNeedsReauthentication) ...[
+                const SizedBox(height: NiuSpacing.lg),
+                NiuBanner(
+                  tone: NiuTone.warning,
+                  title: '校務系統需要重新登入',
+                  message: '課表與個人資料仍保留在裝置上，M 園區等服務不受影響。',
+                  actionLabel: '重新登入',
+                  onAction: () => context.push('/login'),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                date,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+              ],
+              if (offline) ...[
+                const SizedBox(height: NiuSpacing.lg),
+                const NiuBanner(
+                  tone: NiuTone.neutral,
+                  icon: NiuIcons.offline,
+                  message: '目前離線，顯示上次同步的課表。下拉即可重新連線。',
                 ),
-              ),
-              const SizedBox(height: 24),
-              if (ssoNeedsReauthentication)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: NiuSpacing.lg),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('校務登入已過期，已保留個人資料與課表。其他服務可繼續使用各自的登入。'),
-                      TextButton(
-                        onPressed: () => context.push('/login'),
-                        child: const Text('重新連接校務系統'),
-                      ),
-                    ],
-                  ),
-                ),
-              if (offline)
-                const Padding(
-                  padding: EdgeInsets.only(bottom: NiuSpacing.lg),
-                  child: Text('離線模式 · 顯示上次同步的課表，下拉可重新連線。'),
-                ),
-              _HomeCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SectionHeader(
-                      title: '今日課程',
-                      trailing: TextButton(
-                        onPressed: () => context.push('/schedule'),
+              ],
+              NiuSection(
+                title: '今天',
+                action: name == null
+                    ? null
+                    : TextButton(
+                        onPressed: () => context.go('/schedule'),
                         child: const Text('完整課表'),
                       ),
+                child: _TodayCard(
+                  signedIn: name != null,
+                  courses: courses,
+                  hasSchedule: hasSchedule,
+                ),
+              ),
+              const SizedBox(height: NiuSpacing.md),
+              NiuCard(
+                semanticLabel: '點名，掃描課堂 QR Code 簽到',
+                onTap: () => context.push('/attendance'),
+                child: Row(
+                  children: [
+                    const NiuIconTile(
+                      icon: NiuIcons.attendance,
+                      size: NiuSize.iconTileLarge,
                     ),
-                    if (name == null) ...[
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: NiuSpacing.md),
-                        child: Text('登入校務帳號，同步你的課表與校園服務。'),
-                      ),
-                      FilledButton(
-                        onPressed: () => context.push('/login'),
-                        child: const Text('登入校務系統'),
-                      ),
-                    ] else if (courses.isEmpty)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        child: Text(
-                          hasSchedule
-                              ? '今天接下來沒有課程，好好安排你的時間。'
-                              : '尚未同步課表，開啟完整課表即可取得今日安排。',
-                        ),
-                      )
-                    else
-                      ...courses.map(
-                        (course) => Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 4,
-                                height: 48,
-                                decoration: BoxDecoration(
-                                  color: course.current
-                                      ? accent
-                                      : accent.withValues(alpha: .3),
-                                  borderRadius: BorderRadius.circular(3),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      course.name,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      '${course.time}  ${course.room}',
-                                      style: theme.textTheme.bodySmall,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              if (course.current)
-                                Text(
-                                  '上課中',
-                                  style: theme.textTheme.labelMedium?.copyWith(
-                                    color: accent,
-                                  ),
-                                ),
-                            ],
+                    const SizedBox(width: NiuSpacing.lg),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('點名', style: theme.textTheme.titleMedium),
+                          const SizedBox(height: 2),
+                          Text(
+                            '掃描課堂 QR Code 簽到',
+                            style: theme.textTheme.bodySmall,
                           ),
-                        ),
+                        ],
                       ),
+                    ),
+                    Icon(NiuIcons.forward, color: colors.inkTertiary),
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
-              Semantics(
-                button: true,
-                label: '快速點名，開啟 QR Code 掃描器',
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(NiuRadius.hero),
-                  onTap: () => context.push('/attendance'),
-                  child: Ink(
-                    decoration: BoxDecoration(
-                      color: attendanceBackground,
-                      borderRadius: BorderRadius.circular(NiuRadius.hero),
-                    ),
-                    padding: const EdgeInsets.all(NiuSpacing.page),
-                    child: Row(
-                      children: [
-                        Icon(
-                          CupertinoIcons.qrcode_viewfinder,
-                          color: accent,
-                          size: 28,
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '快速點名',
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  color: attendanceInk,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '掃描課堂 QR Code',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: NiuColors.of(context).secondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Icon(
-                          CupertinoIcons.chevron_right,
-                          color: NiuColors.of(context).secondary,
-                          size: 18,
-                        ),
-                      ],
-                    ),
-                  ),
+              NiuSection(
+                title: '校園服務',
+                action: TextButton(
+                  onPressed: () => context.go('/campus'),
+                  child: const Text('全部'),
                 ),
+                child: const _ServiceGrid(services: CampusServices.home),
               ),
-              const SizedBox(height: 26),
+              const SizedBox(height: NiuSpacing.xxxl),
               Text(
-                '校園服務',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 14),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final singleColumn =
-                      MediaQuery.textScalerOf(context).scale(16) > 24 ||
-                      constraints.maxWidth < 300;
-                  final width = singleColumn
-                      ? constraints.maxWidth
-                      : (constraints.maxWidth - 16) / 2;
-                  return Wrap(
-                    spacing: 16,
-                    runSpacing: 16,
-                    children: [
-                      for (final item in const [
-                        ('M 園區', '課程・公告・作業', CupertinoIcons.book, '/moodle'),
-                        ('圖書館', '門禁與借書條碼', CupertinoIcons.barcode, '/library'),
-                        (
-                          '學年度行事曆',
-                          '校園重要日程',
-                          CupertinoIcons.calendar,
-                          '/calendar',
-                        ),
-                        (
-                          '歷年成績',
-                          '學期成績與 GPA',
-                          CupertinoIcons.chart_bar,
-                          '/grades',
-                        ),
-                        (
-                          '畢業門檻',
-                          '多元・英文・體適能',
-                          CupertinoIcons.checkmark_seal,
-                          '/graduation',
-                        ),
-                        ('活動報名', '探索校園活動', CupertinoIcons.ticket, '/events'),
-                        (
-                          '註冊資訊',
-                          '查詢・在學證明',
-                          CupertinoIcons.doc_text,
-                          '/registration',
-                        ),
-                        ('學生請假', '申請・紀錄', CupertinoIcons.calendar, '/leave'),
-                      ])
-                        SizedBox(
-                          width: width,
-                          child: NiuFeatureCard(
-                            title: item.$1,
-                            subtitle: item.$2,
-                            icon: item.$3,
-                            onTap: () => context.push(item.$4),
-                          ),
-                        ),
-                    ],
-                  );
-                },
-              ),
-              const SizedBox(height: 24),
-              Text(
-                '非官方校務工具 · 校務資訊以校方系統為準',
+                '非官方工具，校務資訊以學校系統為準。',
                 textAlign: TextAlign.center,
-                style: theme.textTheme.bodySmall,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: colors.inkTertiary,
+                ),
               ),
             ],
           ),
@@ -343,9 +173,277 @@ class CampusHomeScreen extends StatelessWidget {
   }
 }
 
-class _HomeCard extends StatelessWidget {
-  const _HomeCard({required this.child});
-  final Widget child;
+class _ProfileHeader extends StatelessWidget {
+  const _ProfileHeader({this.name, this.department});
+  final String? name;
+  final String? department;
   @override
-  Widget build(BuildContext context) => AppCard(child: child);
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = NiuColors.of(context);
+    return Row(
+      children: [
+        ExcludeSemantics(
+          child: Container(
+            width: 40,
+            height: 40,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: colors.accent,
+              shape: BoxShape.circle,
+            ),
+            child: Text(
+              name?.characters.firstOrNull ?? '宜',
+              style: theme.textTheme.titleMedium?.copyWith(
+                color: colors.onAccent,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: NiuSpacing.md),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                name ?? 'NIU-Life',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleSmall,
+              ),
+              Text(
+                department?.isNotEmpty == true ? department! : '國立宜蘭大學',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.labelMedium,
+              ),
+            ],
+          ),
+        ),
+        NiuIconButton(
+          icon: NiuIcons.settings,
+          tooltip: '設定',
+          tonal: true,
+          onPressed: () => context.push('/settings'),
+        ),
+      ],
+    );
+  }
+}
+
+class _TodayCard extends StatelessWidget {
+  const _TodayCard({
+    required this.signedIn,
+    required this.courses,
+    required this.hasSchedule,
+  });
+  final bool signedIn;
+  final List<HomeCourse> courses;
+  final bool hasSchedule;
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    if (!signedIn) {
+      return NiuCard(
+        padding: const EdgeInsets.all(NiuSpacing.xl),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('登入後查看今天的課', style: theme.textTheme.titleMedium),
+            const SizedBox(height: NiuSpacing.xs),
+            Text('使用學校帳號登入，同步課表、M 園區與校園服務。', style: theme.textTheme.bodySmall),
+            const SizedBox(height: NiuSpacing.lg),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () => context.push('/login'),
+                child: const Text('登入校務系統'),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    if (courses.isEmpty) {
+      final (icon, title, message) = hasSchedule
+          ? (NiuIcons.rest, '今天沒有接下來的課', '好好安排剩下的時間。')
+          : (NiuIcons.schedule, '還沒有課表', '開啟課表同步一次，這裡就會顯示今天的課。');
+      return NiuCard(
+        onTap: hasSchedule ? null : () => context.go('/schedule'),
+        child: Row(
+          children: [
+            NiuIconTile(icon: icon, hue: NiuHue.amber),
+            const SizedBox(width: NiuSpacing.lg),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: theme.textTheme.titleMedium),
+                  const SizedBox(height: 2),
+                  Text(message, style: theme.textTheme.bodySmall),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    return NiuCard(
+      padding: const EdgeInsets.symmetric(vertical: NiuSpacing.xs),
+      child: Column(
+        children: [
+          for (final (i, course) in courses.indexed) ...[
+            if (i > 0) const Divider(indent: 84),
+            _CourseRow(course: course),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _CourseRow extends StatelessWidget {
+  const _CourseRow({required this.course});
+  final HomeCourse course;
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = NiuColors.of(context);
+    final range = course.range;
+    return InkWell(
+      onTap: () => context.go('/schedule'),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: NiuSpacing.lg,
+          vertical: 14,
+        ),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                width: 52,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      range?.$1 ?? course.time,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontFeatures: tabularFigures,
+                      ),
+                    ),
+                    if (range != null)
+                      Text(
+                        range.$2,
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          fontFeatures: tabularFigures,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              Container(
+                width: 3,
+                margin: const EdgeInsets.symmetric(horizontal: NiuSpacing.md),
+                decoration: BoxDecoration(
+                  color: course.current ? colors.accent : colors.fillStrong,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    NiuBadge(
+                      label: course.current ? '上課中' : '下一堂',
+                      tone: course.current ? NiuTone.accent : NiuTone.neutral,
+                      solid: course.current,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(course.name, style: theme.textTheme.titleMedium),
+                    if (course.room.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Icon(
+                            NiuIcons.location,
+                            size: 15,
+                            color: colors.inkTertiary,
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              course.room,
+                              style: theme.textTheme.bodySmall,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ServiceGrid extends StatelessWidget {
+  const _ServiceGrid({required this.services});
+  final List<CampusService> services;
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final single =
+          MediaQuery.textScalerOf(context).scale(16) > 26 ||
+          constraints.maxWidth < 300;
+      const gap = NiuSpacing.md;
+      final width = single
+          ? constraints.maxWidth
+          : (constraints.maxWidth - gap) / 2;
+      return Wrap(
+        spacing: gap,
+        runSpacing: gap,
+        children: [
+          for (final service in services)
+            SizedBox(
+              width: width,
+              child: _ServiceTile(service: service),
+            ),
+        ],
+      );
+    },
+  );
+}
+
+class _ServiceTile extends StatelessWidget {
+  const _ServiceTile({required this.service});
+  final CampusService service;
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return NiuCard(
+      semanticLabel: '${service.title}，${service.subtitle}',
+      onTap: () => openCampusService(context, service),
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          NiuIconTile(icon: service.icon, hue: service.hue),
+          const SizedBox(height: NiuSpacing.md),
+          Text(service.title, style: theme.textTheme.titleMedium),
+          const SizedBox(height: 2),
+          Text(
+            service.subtitle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.labelMedium,
+          ),
+        ],
+      ),
+    );
+  }
 }

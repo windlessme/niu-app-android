@@ -22,7 +22,7 @@ void main() {
                   onPressed: () => pushMoodle(
                     context,
                     const Scaffold(
-                      appBar: IosPageHeader(title: '課程詳情'),
+                      appBar: NiuAppBar(title: '課程'),
                       body: Text('課程內容'),
                     ),
                   ),

@@ -144,7 +144,7 @@ class _EventsScreenState extends State<EventsScreen> {
         } else {
           notices[tab] = snapshots.containsKey(tab)
               ? '同步未完成，仍顯示上次的活動資料。'
-              : '尚未取得活動資料，請重新同步。';
+              : '還沒有取得活動資料，請再同步一次。';
         }
       });
     } catch (_) {
@@ -152,7 +152,7 @@ class _EventsScreenState extends State<EventsScreen> {
         setState(
           () => notices[tab] = snapshots.containsKey(tab)
               ? '同步失敗，仍顯示上次的活動資料。'
-              : '無法取得活動資料，請稍後重試。',
+              : '無法取得活動資料，稍後再試一次。',
         );
       }
     } finally {
@@ -190,120 +190,75 @@ class _EventsScreenState extends State<EventsScreen> {
           ].any((value) => value.toLowerCase().contains(query)),
         )
         .toList();
-    return Scaffold(
-      appBar: IosPageHeader(
-        title: '活動報名',
-        actions: [
-          CircleIconButton(
-            label: '同步活動',
-            icon: Icons.sync,
-            onPressed: syncing ? null : sync,
-          ),
+    return NiuScrollPage(
+      key: PageStorageKey('events-$applied'),
+      title: '活動報名',
+      actions: [
+        NiuIconButton(
+          tooltip: '同步活動',
+          icon: Icons.sync_rounded,
+          onPressed: syncing ? null : sync,
+        ),
+      ],
+      children: [
+        NiuSegmented<bool>(
+          segments: const [(false, '可報名活動'), (true, '我的報名')],
+          value: applied,
+          onChanged: syncing
+              ? null
+              : (value) {
+                  setState(() => applied = value);
+                  if (!attempted.contains(value)) sync();
+                },
+        ),
+        const SizedBox(height: NiuSpacing.md),
+        NiuSearchField(
+          controller: queries[applied],
+          hint: '搜尋活動、主辦單位或地點',
+          onChanged: (_) => setState(() {}),
+        ),
+        if (notices[applied] case final notice?) ...[
+          const SizedBox(height: NiuSpacing.md),
+          NiuBanner(tone: NiuTone.warning, message: notice),
         ],
-      ),
-      body: SafeArea(
-        top: false,
-        child: CustomScrollView(
-          key: PageStorageKey('events-$applied'),
-          slivers: [
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-              sliver: SliverToBoxAdapter(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    AppSegmentedControl<bool>(
-                      segments: const {
-                        false: Text('可報名活動'),
-                        true: Text('我的報名'),
-                      },
-                      segmentPadding: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 12,
-                      ),
-                      value: applied,
-                      onChanged: syncing
-                          ? null
-                          : (value) {
-                              setState(() => applied = value);
-                              if (!attempted.contains(value)) sync();
-                            },
-                    ),
-                    const SizedBox(height: 16),
-                    AppSearchField(
-                      controller: queries[applied],
-                      hint: '搜尋活動、主辦單位或地點',
-                      onChanged: (_) => setState(() {}),
-                    ),
-                    if (notices[applied] case final notice?) ...[
-                      const SizedBox(height: 12),
-                      Text(
-                        notice,
-                        style: TextStyle(
-                          color: NiuColors.of(context).secondary,
-                        ),
-                      ),
-                    ],
-                  ],
+        const SizedBox(height: NiuSpacing.lg),
+        if (events == null)
+          syncing
+              ? const NiuLoading(message: '正在同步活動')
+              : NiuEmpty(
+                  icon: NiuIcons.events,
+                  tone: NiuTone.accent,
+                  title: '尚未同步活動',
+                  message: '連上學校的活動系統，取得最新活動與你的報名紀錄。',
+                  action: FilledButton.tonal(
+                    onPressed: sync,
+                    child: const Text('同步活動'),
+                  ),
                 ),
+        if (filtered != null && filtered.isEmpty)
+          NiuEmpty(
+            icon: query.isNotEmpty ? NiuIcons.search : NiuIcons.events,
+            title: query.isNotEmpty
+                ? '找不到符合的活動'
+                : applied
+                ? '目前沒有報名紀錄'
+                : '目前沒有開放的活動',
+            message: query.isNotEmpty
+                ? '換個活動名稱、主辦單位或地點試試。'
+                : applied
+                ? '在學校網頁報名後，同步一下就會出現。'
+                : '稍後再同步看看。',
+          ),
+        if (filtered != null)
+          for (final event in filtered)
+            Padding(
+              padding: const EdgeInsets.only(bottom: NiuSpacing.md),
+              child: EventListCard(
+                event: event,
+                onTap: () => openDetail(event),
               ),
             ),
-            if (events == null)
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: NiuSpacing.page,
-                ),
-                sliver: SliverToBoxAdapter(
-                  child: syncing
-                      ? const AppLoadingState(message: '正在同步活動…')
-                      : NiuEmptyState(
-                          title: '尚未同步活動',
-                          message: '連接校方活動系統，取得最新活動與報名紀錄。',
-                          action: TextButton(
-                            onPressed: sync,
-                            child: const Text('同步活動'),
-                          ),
-                        ),
-                ),
-              ),
-            if (filtered != null && filtered.isEmpty)
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: NiuSpacing.page,
-                ),
-                sliver: SliverToBoxAdapter(
-                  child: NiuEmptyState(
-                    title: query.isNotEmpty
-                        ? '找不到符合的活動'
-                        : applied
-                        ? '目前沒有報名紀錄'
-                        : '目前沒有可顯示的活動',
-                    message: query.isNotEmpty
-                        ? '試試其他活動名稱、主辦單位或地點。'
-                        : applied
-                        ? '完成校方報名後，可在這裡同步查看。'
-                        : '稍後可再次同步校方活動資料。',
-                  ),
-                ),
-              ),
-            if (filtered != null && filtered.isNotEmpty)
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: NiuSpacing.page,
-                ),
-                sliver: SliverList.separated(
-                  itemCount: filtered.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 12),
-                  itemBuilder: (_, index) => EventListCard(
-                    event: filtered[index],
-                    onTap: () => openDetail(filtered[index]),
-                  ),
-                ),
-              ),
-            const SliverToBoxAdapter(child: SizedBox(height: 24)),
-          ],
-        ),
-      ),
+      ],
     );
   }
 }
@@ -319,7 +274,7 @@ class EventSyncScreen extends StatelessWidget {
       'https://ccsys.niu.edu.tw/MvcTeam/Act${applied ? '/ApplyMe' : ''}',
     );
     return AcademicPortalScreen(
-      title: '同步活動',
+      title: '活動報名',
       target: target,
       bridge: false,
       entryBuilder: (session) => eventPortalEntry(session, target: target),
@@ -362,7 +317,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         builder: (context) =>
             widget.actionBuilder?.call(context, event, applied) ??
             AcademicPortalScreen(
-              title: applied ? '修改／取消報名' : '報名活動',
+              title: applied ? '修改或取消報名' : '報名',
               target: event.actionUri(applied: applied),
               bridge: false,
               entryBuilder: (session) => eventPortalEntry(
@@ -381,16 +336,16 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
-            title: const Text('已完成報名變更？'),
-            content: const Text('若已在校方頁面送出報名、修改或取消，返回列表時會同步最新紀錄。'),
+            title: const Text('報名有變更嗎？'),
+            content: const Text('如果已在學校網頁送出報名、修改或取消，返回列表時會同步最新紀錄。'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
-                child: const Text('尚未變更'),
+                child: const Text('沒有變更'),
               ),
-              TextButton(
+              FilledButton(
                 onPressed: () => Navigator.pop(context, true),
-                child: const Text('已完成變更'),
+                child: const Text('已送出變更'),
               ),
             ],
           ),
@@ -399,89 +354,92 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
   }
 
   @override
-  Widget build(BuildContext context) => PopScope<bool>(
-    canPop: !changed,
-    onPopInvokedWithResult: (didPop, _) {
-      if (!didPop) Navigator.of(context).pop(true);
-    },
-    child: Scaffold(
-      appBar: const IosPageHeader(title: '活動詳情'),
-      body: SafeArea(
-        top: false,
-        child: ListView(
-          padding: const EdgeInsets.all(NiuSpacing.page),
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return PopScope<bool>(
+      canPop: !changed,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) Navigator.of(context).pop(true);
+      },
+      child: NiuScrollPage(
+        title: '活動詳情',
+        bottomBar: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            HeroCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    event.name.isEmpty ? '-' : event.name,
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const SizedBox(height: 16),
-                  EventStatusPill(status: event.status),
-                ],
-              ),
+            FilledButton(
+              onPressed: event.id.isEmpty || (!applied && !event.canApply)
+                  ? null
+                  : openAction,
+              child: Text(applied ? '修改或取消報名' : '前往報名'),
             ),
-            const SectionHeader(title: '活動資訊'),
-            EventFactGroup(
+            const SizedBox(height: NiuSpacing.sm),
+            Text(
+              '報名與變更在學校網頁送出，結果以學校為準。',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.labelMedium,
+            ),
+          ],
+        ),
+        children: [
+          NiuCard(
+            padding: const EdgeInsets.all(NiuSpacing.xl),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const NiuIconTile(icon: NiuIcons.events, hue: NiuHue.green),
+                const SizedBox(height: NiuSpacing.md),
+                SelectableText(
+                  event.name.isEmpty ? '-' : event.name,
+                  style: theme.textTheme.headlineSmall,
+                ),
+                const SizedBox(height: NiuSpacing.md),
+                EventStatusPill(status: event.status),
+              ],
+            ),
+          ),
+          NiuSection(
+            title: '活動資訊',
+            child: EventFactGroup(
               facts: [
-                ('活動時間', event.time),
+                ('時間', event.time),
                 ('地點', event.location),
                 ('主辦單位', event.department),
                 ('認證時數', event.hours),
               ],
             ),
-            const SectionHeader(title: '活動內容'),
-            AppCard(
+          ),
+          NiuSection(
+            title: '活動內容',
+            child: NiuCard(
               child: SelectableText(
                 event.details.trim().isEmpty ? '-' : event.details,
+                style: theme.textTheme.bodyMedium,
               ),
             ),
-            const SectionHeader(title: '報名資訊'),
-            EventFactGroup(
+          ),
+          NiuSection(
+            title: '報名資訊',
+            child: EventFactGroup(
               facts: [
                 ('報名時間', event.registration),
                 ('參加對象', event.targets),
                 ('人數', event.people),
               ],
             ),
-            if (event.contact.trim().isNotEmpty ||
-                event.remark.trim().isNotEmpty) ...[
-              const SectionHeader(title: '聯絡與備註'),
-              EventFactGroup(
+          ),
+          if (event.contact.trim().isNotEmpty || event.remark.trim().isNotEmpty)
+            NiuSection(
+              title: '聯絡與備註',
+              child: EventFactGroup(
                 facts: [
-                  if (event.contact.trim().isNotEmpty) ('聯絡資訊', event.contact),
+                  if (event.contact.trim().isNotEmpty) ('聯絡方式', event.contact),
                   if (event.remark.trim().isNotEmpty) ('備註', event.remark),
                 ],
               ),
-            ],
-          ],
-        ),
-      ),
-      bottomNavigationBar: SafeArea(
-        top: false,
-        minimum: const EdgeInsets.fromLTRB(20, 12, 20, 12),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              '報名與變更需在校方頁面送出，以校方結果為準。',
-              style: Theme.of(context).textTheme.bodySmall,
             ),
-            const SizedBox(height: 8),
-            FilledButton(
-              style: FilledButton.styleFrom(minimumSize: const Size(48, 48)),
-              onPressed: event.id.isEmpty || (!applied && !event.canApply)
-                  ? null
-                  : openAction,
-              child: Text(applied ? '修改／取消報名' : '前往校方報名'),
-            ),
-          ],
-        ),
+        ],
       ),
-    ),
-  );
+    );
+  }
 }

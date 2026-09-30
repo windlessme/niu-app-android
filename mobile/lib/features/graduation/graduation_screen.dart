@@ -126,50 +126,54 @@ class _GraduationScreenState extends State<GraduationScreen> {
     listenable: session,
     builder: (context, _) {
       if (!session.hasLocalAccount) {
-        return const Scaffold(
-          appBar: IosPageHeader(title: '畢業門檻'),
-          body: SafeArea(child: Center(child: Text('請先登入校務帳號'))),
+        return const NiuScrollPage(
+          title: '畢業門檻',
+          children: [
+            NiuEmpty(
+              icon: NiuIcons.lock,
+              title: '請先登入',
+              message: '登入學校帳號後，就能查看畢業門檻。',
+            ),
+          ],
         );
       }
       final cached = session.cachedGraduation;
       if (cached == null || cached.account != session.account) {
         if (session.isSignedIn && !refreshing) return portal(context);
-        return Scaffold(
-          appBar: const IosPageHeader(title: '畢業門檻'),
-          body: SafeArea(
-            child: SingleChildScrollView(
-              child: NiuEmptyState(
-                title: '尚未儲存畢業門檻',
-                message: '連接校務系統讀取一次後，即可離線查看。',
-                action: TextButton(
-                  onPressed: refreshing ? null : refresh,
-                  child: const Text('登入並讀取資料'),
-                ),
+        return NiuScrollPage(
+          title: '畢業門檻',
+          children: [
+            NiuEmpty(
+              icon: NiuIcons.graduation,
+              tone: NiuTone.accent,
+              title: '還沒有畢業門檻資料',
+              message: '連上校務系統讀取一次，之後離線也能查看。',
+              action: FilledButton(
+                onPressed: refreshing ? null : refresh,
+                child: const Text('登入並讀取'),
               ),
             ),
-          ),
+          ],
         );
       }
-      return Scaffold(
-        appBar: IosPageHeader(
-          title: '畢業門檻',
-          actions: [
-            CircleIconButton(
-              icon: Icons.refresh,
-              tooltip: '更新畢業門檻',
-              onPressed: refreshing ? null : refresh,
-            ),
-          ],
-        ),
-        body: SafeArea(
-          top: false,
-          child: GraduationDashboard(
+      return NiuScrollPage(
+        title: '畢業門檻',
+        actions: [
+          NiuIconButton(
+            icon: NiuIcons.refresh,
+            tooltip: '更新畢業門檻',
+            onPressed: refreshing ? null : refresh,
+          ),
+        ],
+        children: [
+          GraduationDashboard(
             data: GraduationData.fromJson(cached.data),
             updatedAt: cached.fetchedAt,
             offline: session.isOffline,
             needsReauthentication: session.ssoNeedsReauthentication,
+            embedded: true,
           ),
-        ),
+        ],
       );
     },
   );

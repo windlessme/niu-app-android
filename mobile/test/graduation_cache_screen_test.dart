@@ -53,7 +53,7 @@ void main() {
           for (var i = 0; i < 2; i++) {
             await tester.pumpWidget(app(dark: dark, scale: 2));
             expect(find.byType(GraduationDashboard), findsOneWidget);
-            expect(find.byType(RelativeUpdateText), findsOneWidget);
+            expect(find.byType(NiuSyncStatus), findsOneWidget);
             expect(find.byType(AcademicPortalScreen), findsNothing);
             await tester.pump(const Duration(seconds: 2));
             expect(session.portalRequests, 0);
@@ -117,7 +117,7 @@ void main() {
     await tester.tap(find.byTooltip('更新畢業門檻'));
     await tester.pump();
     await tester.pump(const Duration(seconds: 61));
-    expect(find.text('資料載入逾時，可重試或開啟校方頁面。'), findsOneWidget);
+    expect(find.text('學校系統回應逾時。可以再試一次，或直接開啟學校網頁。'), findsOneWidget);
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
     expect(find.byType(GraduationDashboard), findsOneWidget);

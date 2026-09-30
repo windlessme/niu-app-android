@@ -29,7 +29,7 @@ void main() {
         ),
       ),
     );
-    expect(find.text('今日課程'), findsOneWidget);
+    expect(find.text('今天'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }
