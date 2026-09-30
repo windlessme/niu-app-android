@@ -17,10 +17,14 @@ import '../features/graduation/graduation_screen.dart';
 import '../features/home/home_screen.dart';
 import '../features/home/today_courses.dart';
 import '../features/library/library_screen.dart';
+import '../features/moodle/course_matcher.dart';
+import '../features/moodle/course_presentation.dart';
+import '../features/moodle/moodle_login_service.dart';
 import '../features/moodle/moodle_repository.dart';
 import '../features/moodle/moodle_screen.dart';
 import '../features/schedule/schedule_screen.dart';
 import '../features/settings/settings_screen.dart';
+import '../features/postal/postal_screen.dart';
 import '../features/registration/registration_screen.dart';
 import '../features/leave/leave_screen.dart';
 import '../features/settings/credits_repository.dart';
@@ -61,15 +65,16 @@ class _NiuAppState extends State<NiuApp> {
                 offline: session.isOffline,
                 ssoNeedsReauthentication: session.ssoNeedsReauthentication,
                 hasSchedule: session.cachedSchedule != null,
+                onOpenCourse: _openCourse,
               ),
             ),
           ),
           GoRoute(
             path: '/schedule',
-            builder: (_, _) => const AuthGate(
+            builder: (_, _) => AuthGate(
               title: '課表',
               allowLocalAccount: true,
-              child: ScheduleScreen(),
+              child: ScheduleScreen(onOpenCourse: _openCourse),
             ),
           ),
           GoRoute(
@@ -98,6 +103,7 @@ class _NiuAppState extends State<NiuApp> {
         ),
       ),
       GoRoute(path: '/calendar', builder: (_, _) => const CalendarScreen()),
+      GoRoute(path: '/postal', builder: (_, _) => const PostalScreen()),
       GoRoute(
         path: '/leave',
         builder: (_, _) => const AuthGate(
@@ -205,6 +211,57 @@ class _NiuAppState extends State<NiuApp> {
     },
   );
 
+  Future<List<CoursePresentation>>? _courses;
+  MoodleRepository? _coursesOwner;
+  bool _openingCourse = false;
+
+  /// Timetable entry → its M 園區 course. Falls back to the M 園區 tab when
+  /// there is no M 園區 login or no matching course.
+  Future<void> _openCourse(String name) async {
+    if (_openingCourse) return;
+    _openingCourse = true;
+    try {
+      var repo = moodle;
+      if (repo == null && session.hasLocalAccount) {
+        try {
+          repo = await MoodleLoginService(session).restore();
+        } catch (_) {}
+        if (repo != null && mounted) setState(() => moodle = repo);
+      }
+      if (repo == null) {
+        router.go('/moodle');
+        return;
+      }
+      if (!identical(_coursesOwner, repo)) {
+        _coursesOwner = repo;
+        _courses = null;
+      }
+      final load = _courses ??= repo.courses().then(
+        (list) => list.map(CoursePresentation.new).toList(),
+      );
+      List<CoursePresentation> courses;
+      try {
+        courses = await load;
+      } catch (_) {
+        _courses = null;
+        router.go('/moodle');
+        return;
+      }
+      final match = matchMoodleCourse(courses, name);
+      final context = router.routerDelegate.navigatorKey.currentContext;
+      if (match == null || context == null || !context.mounted) {
+        router.go('/moodle');
+        return;
+      }
+      pushMoodle(
+        context,
+        MoodleCourseScreen(repository: repo, course: match.source),
+      );
+    } finally {
+      _openingCourse = false;
+    }
+  }
+
   List<HomeCourse> _todayCourses() {
     return todayCourses(session.cachedSchedule, now: DateTime.now());
   }
@@ -213,6 +270,8 @@ class _NiuAppState extends State<NiuApp> {
     router.go('/');
     await moodle?.invalidate();
     moodle = null;
+    _courses = null;
+    _coursesOwner = null;
     if (mounted) setState(() {});
   }
 
