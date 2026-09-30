@@ -149,6 +149,11 @@ void main() {
     await tester.enterText(find.widgetWithText(TextField, '郵件號碼'), 'RR1');
     await tester.pumpAndSettle();
     expect(find.text('0912'), findsOneWidget);
+    // The floating 手機號碼 label sits below the 更多條件 header.
+    expect(
+      tester.getTopLeft(find.text('手機號碼')).dy,
+      greaterThanOrEqualTo(tester.getBottomLeft(find.byType(ListTile)).dy),
+    );
     expect(find.text('RR1'), findsOneWidget);
     await tester.tap(find.widgetWithText(FilledButton, '查詢'));
     await tester.pumpAndSettle();
