@@ -86,7 +86,7 @@ class _LoginScreenState extends State<LoginScreen> {
         prefillCredentials = saved;
       });
     } catch (_) {
-      if (mounted) setState(() => error = '無法讀取已記住的帳密，請手動輸入。');
+      if (mounted) setState(() => error = '讀不到已保存的帳密，請手動輸入。');
     } finally {
       if (mounted) setState(() => preferenceReady = true);
     }
@@ -175,7 +175,7 @@ class _LoginScreenState extends State<LoginScreen> {
       } catch (_) {
         submittedCredentials = null;
         rejectedToken = token;
-        if (mounted) setState(() => error = '無法驗證登入憑證，請重新載入校方頁面後再試。切換帳號前請先登出。');
+        if (mounted) setState(() => error = '登入沒有完成驗證。請重新載入後再試；要換帳號請先登出。');
         return;
       }
       session.coordinator.requireCurrent(epoch);
@@ -187,7 +187,7 @@ class _LoginScreenState extends State<LoginScreen> {
             consentRevision: consentRevision,
           );
         } catch (_) {
-          if (mounted) setState(() => error = '已登入，但無法安全記住帳密。');
+          if (mounted) setState(() => error = '已登入，但這次無法保存帳密。');
         }
         if (mounted) setState(() => connectingServices = true);
         // Independent services can connect concurrently after SSO verification.
@@ -250,63 +250,103 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  void reload() {
+    submittedCredentials = null;
+    rejectedToken = '';
+    setState(() => error = null);
+    controller?.loadUrl(
+      urlRequest: URLRequest(
+        url: WebUri('https://ccsys1.niu.edu.tw/SSO/login'),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: IosPageHeader(
-      title: '校務登入',
+    appBar: NiuAppBar(
+      title: '登入',
       actions: [
-        CircleIconButton(
-          label: '重新載入',
-          icon: Icons.refresh,
-          onPressed: connectingServices
-              ? null
-              : () {
-                  submittedCredentials = null;
-                  rejectedToken = '';
-                  setState(() => error = null);
-                  controller?.loadUrl(
-                    urlRequest: URLRequest(
-                      url: WebUri('https://ccsys1.niu.edu.tw/SSO/login'),
-                    ),
-                  );
-                },
+        NiuIconButton(
+          tooltip: '重新載入',
+          icon: NiuIcons.refresh,
+          onPressed: connectingServices || recovering ? null : reload,
         ),
       ],
     ),
     body: SafeArea(
       top: false,
       child: recovering
-          ? const Center(child: AppLoadingState(message: '連線中…'))
+          ? const Center(child: NiuLoading(message: '正在用已保存的帳號登入'))
           : complete
-          ? Center(child: Text('已登入：${session.displayName}'))
+          ? Center(
+              child: NiuEmpty(
+                icon: NiuIcons.success,
+                tone: NiuTone.success,
+                title: '已登入',
+                message: session.displayName,
+              ),
+            )
           : Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 8,
+                  padding: const EdgeInsets.fromLTRB(
+                    NiuSpacing.gutter,
+                    NiuSpacing.xs,
+                    NiuSpacing.gutter,
+                    NiuSpacing.md,
                   ),
-                  child: Text(
-                    '登入成功後會在此裝置加密記住帳密，下次自動填入。可於設定清除。',
-                    style: Theme.of(context).textTheme.bodySmall,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(
+                        NiuIcons.lock,
+                        size: 18,
+                        color: NiuColors.of(context).inkSecondary,
+                      ),
+                      const SizedBox(width: NiuSpacing.sm),
+                      Expanded(
+                        child: Text(
+                          '在學校的登入頁輸入帳密。登入後會加密保存在這台裝置，下次自動填入，可在設定中清除。',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 if (connectingServices)
                   const Padding(
-                    padding: EdgeInsets.all(NiuSpacing.page),
-                    child: Text('校務登入成功，正在連接 M 園區與活動系統…'),
+                    padding: EdgeInsets.fromLTRB(
+                      NiuSpacing.gutter,
+                      0,
+                      NiuSpacing.gutter,
+                      NiuSpacing.md,
+                    ),
+                    child: NiuBanner(
+                      icon: NiuIcons.success,
+                      tone: NiuTone.success,
+                      message: '登入成功，正在連接 M 園區與活動報名',
+                    ),
                   ),
                 if (error != null)
                   Padding(
-                    padding: const EdgeInsets.all(NiuSpacing.page),
-                    child: Text(
-                      error!,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.error,
-                      ),
+                    padding: const EdgeInsets.fromLTRB(
+                      NiuSpacing.gutter,
+                      0,
+                      NiuSpacing.gutter,
+                      NiuSpacing.md,
                     ),
+                    child: NiuBanner(tone: NiuTone.error, message: error!),
                   ),
-                if (progress < 1) LinearProgressIndicator(value: progress),
+                SizedBox(
+                  height: 2,
+                  child: progress < 1
+                      ? LinearProgressIndicator(
+                          value: progress,
+                          minHeight: 2,
+                          borderRadius: BorderRadius.zero,
+                        )
+                      : null,
+                ),
                 Expanded(
                   child: InAppWebView(
                     initialUserScripts: UnmodifiableListView([
@@ -376,7 +416,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     },
                     onReceivedError: (_, request, failure) {
                       if (request.isForMainFrame == true && mounted) {
-                        setState(() => error = '校方登入頁載入失敗，請檢查網路後按重新載入。');
+                        setState(() => error = '登入頁載入失敗。檢查網路後點右上角重新載入。');
                       }
                     },
                   ),

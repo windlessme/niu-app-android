@@ -30,11 +30,11 @@ void main() {
         ),
       ),
     );
-    expect(find.textContaining('完成項目依'), findsNothing);
+    expect(find.textContaining('已修數量達到應修門檻'), findsNothing);
     await tester.scrollUntilVisible(find.text('計算方式與資料說明'), 300);
     await tester.tap(find.text('計算方式與資料說明'));
     await tester.pump();
-    expect(find.textContaining('完成項目依'), findsOneWidget);
+    expect(find.textContaining('已修數量達到應修門檻'), findsOneWidget);
     final expandedSize = tester.getSize(find.byType(ExpansionTile));
     await tester.pump(const Duration(milliseconds: 250));
     expect(tester.getSize(find.byType(ExpansionTile)), expandedSize);
@@ -204,7 +204,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('包含尚未完成及資料待確認的項目'), findsOneWidget);
     expect(find.text('— / — 學分'), findsOneWidget);
-    await tester.tap(find.widgetWithText(ChoiceChip, '已完成'));
+    await tester.tap(find.text('已完成'));
     await tester.pumpAndSettle();
     expect(find.text('目前沒有符合的項目'), findsOneWidget);
   });

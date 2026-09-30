@@ -5,6 +5,7 @@ import '../../shared/shared.dart';
 
 enum GradeMode { midterm, finalTerm, history }
 
+/// GPA overview: headline value, progress to 4.3 and supporting totals.
 class GradeSummaryCard extends StatelessWidget {
   const GradeSummaryCard({
     super.key,
@@ -15,29 +16,46 @@ class GradeSummaryCard extends StatelessWidget {
   final String title;
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final stats = GradeStatistics(courses);
-    return Card(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(NiuRadius.card),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(NiuSpacing.page),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: Theme.of(context).textTheme.titleMedium),
-            Text(
-              '${stats.gpa?.toStringAsFixed(2) ?? '—'} / 4.30',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            LinearProgressIndicator(value: (stats.gpa ?? 0) / 4.3),
-            const SizedBox(height: 8),
-            Text(
-              '數字成績學分 ${stats.credits}・及格 ${stats.passedCredits}・加權平均 ${stats.average?.toStringAsFixed(2) ?? '—'}',
-            ),
-            const Text('依數字成績換算；通過、抵免等文字成績不列入 GPA。正式結果以校方為準。'),
-          ],
-        ),
+    String n(double v) =>
+        v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(1);
+    return NiuCard(
+      padding: const EdgeInsets.all(NiuSpacing.xl),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          NiuStat(
+            label: title,
+            value: stats.gpa?.toStringAsFixed(2) ?? '—',
+            unit: '/ 4.30',
+            large: true,
+          ),
+          const SizedBox(height: NiuSpacing.md),
+          NiuProgressBar(value: (stats.gpa ?? 0) / 4.3, semanticLabel: title),
+          const SizedBox(height: NiuSpacing.lg),
+          Row(
+            children: [
+              Expanded(
+                child: NiuStat(label: '計分學分', value: n(stats.credits)),
+              ),
+              Expanded(
+                child: NiuStat(label: '及格學分', value: n(stats.passedCredits)),
+              ),
+              Expanded(
+                child: NiuStat(
+                  label: '加權平均',
+                  value: stats.average?.toStringAsFixed(1) ?? '—',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: NiuSpacing.lg),
+          Text(
+            '依數字成績估算；通過、抵免等文字成績不計入。正式結果以學校為準。',
+            style: theme.textTheme.labelMedium,
+          ),
+        ],
       ),
     );
   }
@@ -116,144 +134,177 @@ class _GradesScreenState extends State<GradesScreen> {
     GradeMode.finalTerm: '學生查詢當學期成績',
     GradeMode.history: '學生歷年學期成績及排名查詢',
   };
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    body: Column(
+  Widget courseGroup(BuildContext context, List<GradeCourse> courses) {
+    final theme = Theme.of(context);
+    final colors = NiuColors.of(context);
+    return NiuGroup(
+      insetDividers: NiuSpacing.lg,
       children: [
-        SafeArea(
-          bottom: false,
-          child: Padding(
-            padding: const EdgeInsets.all(NiuSpacing.page),
-            child: SegmentedButton<GradeMode>(
-              style: const ButtonStyle(
-                minimumSize: WidgetStatePropertyAll(Size(48, 48)),
-              ),
-              segments: labels.entries
-                  .map((e) => ButtonSegment(value: e.key, label: Text(e.value)))
-                  .toList(),
-              selected: {mode},
-              onSelectionChanged: (value) => setState(() => mode = value.first),
+        for (final c in courses)
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: NiuSpacing.lg,
+              vertical: NiuSpacing.md,
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(c.name, style: theme.textTheme.titleMedium),
+                      const SizedBox(height: 2),
+                      Text(
+                        [
+                          if (c.type.isNotEmpty) c.type,
+                          if (mode == GradeMode.history)
+                            '${c.credits.toStringAsFixed(c.credits == c.credits.roundToDouble() ? 0 : 1)} 學分',
+                        ].join(' · '),
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: NiuSpacing.md),
+                Text(
+                  c.score,
+                  style:
+                      (double.tryParse(c.score) == null
+                              ? theme.textTheme.titleSmall?.copyWith(
+                                  color: colors.inkSecondary,
+                                )
+                              : theme.textTheme.titleLarge)
+                          ?.copyWith(
+                            color: c.failed ? colors.error : null,
+                            fontFeatures: tabularFigures,
+                          ),
+                ),
+              ],
             ),
           ),
-        ),
-        Expanded(
-          child: AcademicPortalScreen(
-            key: ValueKey(mode),
-            title: '成績查詢',
-            menuLabel: menus[mode],
-            extractScript: gradeExtractScript(mode),
-            snapshotBuilder: (context, value) {
-              final rows = (value['rows'] as List)
-                  .map((r) => (r as List).map((v) => v.toString()).toList())
-                  .toList();
-              final courses = mode == GradeMode.history
-                  ? GradeCourse.parseHistoryRows(rows)
-                  : rows
-                        .map(
-                          (r) => GradeCourse(
-                            semester: value['title']?.toString() ?? '',
-                            name: r[4],
-                            type: r[3],
-                            score: r[5].isEmpty ? '尚未公布' : r[5],
-                          ),
-                        )
-                        .toList();
-              final semesters = courses.map((c) => c.semester).toSet();
-              return ListView(
-                padding: const EdgeInsets.all(NiuSpacing.page),
-                children: [
-                  if (mode == GradeMode.history)
-                    GradeSummaryCard(courses: courses, title: '累計 GPA（估算）'),
-                  if (value['average'] != null && value['average'] != '')
-                    Card(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(NiuRadius.card),
-                      ),
-                      child: ListTile(
-                        title: const Text('學期平均'),
-                        trailing: Text(value['average'].toString()),
-                      ),
-                    ),
-                  if (value['summary'] is List)
-                    ...((value['summary'] as List).map(
-                      (s) => Card(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(NiuRadius.card),
-                        ),
-                        child: ListTile(
-                          title: Text('${s[0]} 學期'),
-                          subtitle: Text('班級排名 ${s[2]}'),
-                          trailing: Text('平均 ${s[3]}'),
-                        ),
-                      ),
-                    )),
-                  if (value['rank'] != null && value['rank'] != '')
-                    Card(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(NiuRadius.card),
-                      ),
-                      child: ListTile(
-                        title: const Text('班級排名'),
-                        trailing: Text(value['rank'].toString()),
-                      ),
-                    ),
-                  if (courses.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.all(NiuSpacing.section),
-                      child: Text('校方尚未公布成績。'),
-                    ),
-                  for (final semester in semesters) ...[
-                    if (mode == GradeMode.history)
-                      GradeSummaryCard(
-                        courses: courses.where((c) => c.semester == semester),
-                        title: '$semester GPA',
-                      ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: NiuSpacing.compact,
-                      ),
-                      child: Text(
-                        semester,
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                    ),
-                    ...courses
-                        .where((c) => c.semester == semester)
-                        .map(
-                          (c) => Card(
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(
-                                NiuRadius.card,
-                              ),
-                            ),
-                            child: ListTile(
-                              title: Text(
-                                c.name,
-                                style: Theme.of(context).textTheme.titleSmall,
-                              ),
-                              subtitle: Text(
-                                '${c.type}${mode == GradeMode.history ? ' · ${c.credits} 學分' : ''}',
-                                style: Theme.of(context).textTheme.labelMedium,
-                              ),
-                              trailing: Text(
-                                c.score,
-                                style: Theme.of(context).textTheme.titleLarge
-                                    ?.copyWith(
-                                      color: c.failed
-                                          ? Theme.of(context).colorScheme.error
-                                          : null,
-                                    ),
-                              ),
-                            ),
-                          ),
-                        ),
-                  ],
-                ],
-              );
-            },
-          ),
-        ),
       ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => AcademicPortalScreen(
+    key: ValueKey(mode),
+    title: '成績',
+    header: NiuSegmented<GradeMode>(
+      segments: [for (final e in labels.entries) (e.key, e.value)],
+      value: mode,
+      onChanged: (value) => setState(() => mode = value),
     ),
+    menuLabel: menus[mode],
+    extractScript: gradeExtractScript(mode),
+    snapshotBuilder: (context, value) {
+      final theme = Theme.of(context);
+      final rows = (value['rows'] as List)
+          .map((r) => (r as List).map((v) => v.toString()).toList())
+          .toList();
+      final courses = mode == GradeMode.history
+          ? GradeCourse.parseHistoryRows(rows)
+          : rows
+                .map(
+                  (r) => GradeCourse(
+                    semester: value['title']?.toString() ?? '',
+                    name: r[4],
+                    type: r[3],
+                    score: r[5].isEmpty ? '尚未公布' : r[5],
+                  ),
+                )
+                .toList();
+      final semesters = courses.map((c) => c.semester).toSet().toList();
+      if (mode == GradeMode.history) semesters.sort((a, b) => b.compareTo(a));
+      final average = '${value['average'] ?? ''}';
+      final rank = '${value['rank'] ?? ''}';
+      final summary = value['summary'] is List
+          ? (value['summary'] as List).whereType<List>().toList()
+          : const <List>[];
+      return ListView(
+        padding: const EdgeInsets.fromLTRB(
+          NiuSpacing.gutter,
+          NiuSpacing.xs,
+          NiuSpacing.gutter,
+          NiuSpacing.huge,
+        ),
+        children: [
+          if (mode == GradeMode.history)
+            GradeSummaryCard(courses: courses, title: '累計 GPA（估算）'),
+          if (average.isNotEmpty || rank.isNotEmpty)
+            NiuCard(
+              padding: const EdgeInsets.all(NiuSpacing.xl),
+              child: Row(
+                children: [
+                  if (average.isNotEmpty)
+                    Expanded(
+                      child: NiuStat(label: '學期平均', value: average),
+                    ),
+                  if (rank.isNotEmpty)
+                    Expanded(
+                      child: NiuStat(label: '班級排名', value: rank),
+                    ),
+                ],
+              ),
+            ),
+          if (summary.isNotEmpty)
+            NiuSection(
+              title: '各學期排名',
+              child: NiuGroup(
+                insetDividers: NiuSpacing.lg,
+                children: [
+                  for (final s in summary)
+                    if (s.length >= 4)
+                      NiuRow(
+                        title: '${s[0]} 學期',
+                        subtitle: '班級排名 ${s[2]}',
+                        value: '平均 ${s[3]}',
+                      ),
+                ],
+              ),
+            ),
+          if (courses.isEmpty)
+            const NiuEmpty(
+              icon: NiuIcons.grades,
+              title: '還沒有成績',
+              message: '學校公布成績後會出現在這裡。',
+            ),
+          for (final (i, semester) in semesters.indexed)
+            NiuSection(
+              first:
+                  i == 0 &&
+                  mode != GradeMode.history &&
+                  average.isEmpty &&
+                  rank.isEmpty,
+              title: semester.isEmpty ? '本學期' : semester,
+              action: mode == GradeMode.history
+                  ? Builder(
+                      builder: (context) {
+                        final gpa = GradeStatistics(
+                          courses.where((c) => c.semester == semester),
+                        ).gpa;
+                        return gpa == null
+                            ? const SizedBox.shrink()
+                            : NiuBadge(
+                                label: 'GPA ${gpa.toStringAsFixed(2)}',
+                                tone: NiuTone.accent,
+                              );
+                      },
+                    )
+                  : null,
+              child: courseGroup(
+                context,
+                courses.where((c) => c.semester == semester).toList(),
+              ),
+            ),
+          const SizedBox(height: NiuSpacing.xl),
+          Text(
+            '成績以學校系統公告為準',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.labelMedium,
+          ),
+        ],
+      );
+    },
   );
 }

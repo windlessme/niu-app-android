@@ -38,8 +38,8 @@ void main() {
     );
     await tester.tap(find.text('校園'));
     await tester.pumpAndSettle();
-    expect(find.text('校園服務'), findsOneWidget);
-    await tester.tap(find.text('學年度行事曆'));
+    expect(find.text('校園服務'), findsWidgets);
+    await tester.tap(find.text('行事曆'));
     await tester.pumpAndSettle();
     expect(find.text('校曆詳細畫面'), findsOneWidget);
     expect(find.text('首頁'), findsNothing);

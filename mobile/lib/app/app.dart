@@ -67,7 +67,7 @@ class _NiuAppState extends State<NiuApp> {
           GoRoute(
             path: '/schedule',
             builder: (_, _) => const AuthGate(
-              title: '我的課表',
+              title: '課表',
               allowLocalAccount: true,
               child: ScheduleScreen(),
             ),
@@ -105,7 +105,7 @@ class _NiuAppState extends State<NiuApp> {
       GoRoute(
         path: '/leave',
         builder: (_, _) => const AuthGate(
-          title: '學生請假',
+          title: '請假',
           allowLocalAccount: true,
           child: LeaveScreen(),
         ),
@@ -113,11 +113,11 @@ class _NiuAppState extends State<NiuApp> {
       GoRoute(
         path: '/registration',
         builder: (_, _) =>
-            const AuthGate(title: '註冊資訊', child: RegistrationScreen()),
+            const AuthGate(title: '在學證明', child: RegistrationScreen()),
       ),
       GoRoute(
         path: '/grades',
-        builder: (_, _) => const AuthGate(title: '歷年成績', child: GradesScreen()),
+        builder: (_, _) => const AuthGate(title: '成績', child: GradesScreen()),
       ),
       GoRoute(
         path: '/graduation',
@@ -149,7 +149,7 @@ class _NiuAppState extends State<NiuApp> {
       GoRoute(
         path: '/attendance',
         builder: (_, _) => AuthGate(
-          title: '快速點名',
+          title: '點名',
           allowLocalAccount: true,
           child: ListenableBuilder(
             listenable: session,
@@ -278,17 +278,12 @@ class _NiuAppState extends State<NiuApp> {
         ? Duration.zero
         : const Duration(milliseconds: 200),
     builder: (context, child) {
-      final dark = Theme.of(context).brightness == Brightness.dark;
+      final brightness = Theme.of(context).brightness;
       return AnnotatedRegion<SystemUiOverlayStyle>(
-        value: SystemUiOverlayStyle(
-          statusBarColor: Colors.transparent,
-          statusBarIconBrightness: dark ? Brightness.light : Brightness.dark,
-          statusBarBrightness: dark ? Brightness.dark : Brightness.light,
-          systemNavigationBarColor: Theme.of(context).scaffoldBackgroundColor,
-          systemNavigationBarIconBrightness: dark
-              ? Brightness.light
-              : Brightness.dark,
-        ),
+        value: NiuTheme.overlay(
+          brightness,
+          Colors.transparent,
+        ).copyWith(systemNavigationBarContrastEnforced: false),
         child: child ?? const SizedBox.shrink(),
       );
     },

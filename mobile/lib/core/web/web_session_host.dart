@@ -30,21 +30,41 @@ class _WebSessionHostState extends State<WebSessionHost> {
   Widget build(BuildContext context) {
     if (!widget.policy.allows(widget.initialUri)) {
       return Scaffold(
-        appBar: IosPageHeader(title: widget.title),
-        body: const SafeArea(child: Center(child: Text('無法開啟此校務網址'))),
+        appBar: NiuAppBar(title: widget.title),
+        body: const SafeArea(
+          child: Center(
+            child: NiuEmpty(
+              icon: NiuIcons.lock,
+              title: '無法開啟這個網址',
+              message: '為了保護帳號，App 只開啟學校的網站。',
+            ),
+          ),
+        ),
       );
     }
     return Scaffold(
-      appBar: IosPageHeader(title: widget.title),
+      appBar: NiuAppBar(title: widget.title),
       body: SafeArea(
         top: false,
         child: Column(
           children: [
-            if (progress < 1) LinearProgressIndicator(value: progress),
+            SizedBox(
+              height: 2,
+              child: progress < 1
+                  ? LinearProgressIndicator(
+                      value: progress,
+                      minHeight: 2,
+                      borderRadius: BorderRadius.zero,
+                    )
+                  : null,
+            ),
             if (failed)
               const Padding(
-                padding: EdgeInsets.all(20),
-                child: Text('校方頁面無法載入，請返回後重試。'),
+                padding: EdgeInsets.all(NiuSpacing.gutter),
+                child: NiuBanner(
+                  tone: NiuTone.error,
+                  message: '學校網頁載入失敗，返回後再試一次。',
+                ),
               ),
             Expanded(
               child: InAppWebView(

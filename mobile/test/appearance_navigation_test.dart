@@ -13,22 +13,26 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byTooltip('設定'));
       await tester.pumpAndSettle();
-      await tester.tap(find.byType(DropdownButton<ThemeMode>));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('深色').last);
+      await tester.tap(find.text('深色'));
       await tester.pumpAndSettle();
       expect(
         tester
-            .widget<DropdownButton<ThemeMode>>(
-              find.byType(DropdownButton<ThemeMode>),
+            .widget<Semantics>(
+              find
+                  .ancestor(
+                    of: find.text('深色'),
+                    matching: find.byWidgetPredicate(
+                      (w) => w is Semantics && w.properties.selected != null,
+                    ),
+                  )
+                  .first,
             )
-            .value,
-        ThemeMode.dark,
+            .properties
+            .selected,
+        isTrue,
       );
       expect(
-        Theme.of(
-          tester.element(find.byType(DropdownButton<ThemeMode>)),
-        ).brightness,
+        Theme.of(tester.element(find.text('深色'))).brightness,
         Brightness.dark,
       );
       expect(
