@@ -133,20 +133,21 @@ void main() {
         });
         await tester.pumpWidget(app(gateway, dark: dark, scale: 2));
         await tester.pumpAndSettle();
-        expect(find.byType(DropdownButtonFormField<String>), findsOneWidget);
+        expect(find.text('請假內容'), findsOneWidget);
         expect(find.text('公假'), findsNothing);
-        await tester.scrollUntilVisible(
-          find.widgetWithText(FilledButton, '確認申請'),
-          100,
-          scrollable: find.byType(Scrollable).first,
-        );
+        // The primary action is pinned below the form.
         expect(tester.takeException(), isNull);
         final action = find.widgetWithText(FilledButton, '確認申請');
         expect(tester.getSize(action).height, greaterThanOrEqualTo(48));
         await tester.scrollUntilVisible(
           find.byType(TextField),
-          -100,
-          scrollable: find.byType(Scrollable).first,
+          100,
+          scrollable: find
+              .descendant(
+                of: find.byType(ListView),
+                matching: find.byType(Scrollable),
+              )
+              .first,
         );
         await tester.tap(find.byType(TextField));
         await tester.pump();
@@ -177,7 +178,7 @@ void main() {
       await tester.tap(find.text('開始申請'));
       await tester.pumpAndSettle();
       expect(gateway.consents, 1);
-      expect(find.byType(DropdownButtonFormField<String>), findsOneWidget);
+      expect(find.text('請假內容'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
     },
   );
@@ -200,7 +201,8 @@ void main() {
       expect(gateway.submits, 0);
       await tester.tap(find.text('確認申請'));
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(FilledButton, '確認'));
+      expect(find.text('確認送出請假'), findsOneWidget);
+      await tester.tap(find.widgetWithText(FilledButton, '送出申請'));
       await tester.pumpAndSettle();
       expect(gateway.submits, 1);
       expect(find.text('確認申請'), findsNothing);
@@ -214,7 +216,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.runAsync(() => session.logout());
     await tester.pumpAndSettle();
-    expect(find.byType(DropdownButtonFormField<String>), findsNothing);
+    expect(find.text('請假內容'), findsNothing);
     expect(find.text('已登出，請重新開啟申請'), findsOneWidget);
     expect(gateway.disposed, isTrue);
     await tester.pumpWidget(const SizedBox());

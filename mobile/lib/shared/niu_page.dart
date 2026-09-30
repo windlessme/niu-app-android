@@ -188,11 +188,10 @@ class NiuBottomBar extends StatelessWidget {
   const NiuBottomBar({super.key, required this.child});
   final Widget child;
   @override
-  Widget build(BuildContext context) => DecoratedBox(
-    decoration: BoxDecoration(
-      color: NiuColors.of(context).canvas,
-      border: Border(top: BorderSide(color: NiuColors.of(context).hairline)),
-    ),
+  Widget build(BuildContext context) => Material(
+    // A Material surface so rows and checkboxes inside keep their ink.
+    color: NiuColors.of(context).canvas,
+    shape: Border(top: BorderSide(color: NiuColors.of(context).hairline)),
     child: SafeArea(
       top: false,
       child: Padding(
