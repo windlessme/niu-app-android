@@ -21,12 +21,18 @@ String formatRelativeUpdate(DateTime? updatedAt, {DateTime? now}) {
 }
 
 class RelativeUpdateText extends StatelessWidget {
-  const RelativeUpdateText({super.key, required this.updatedAt, this.now});
+  const RelativeUpdateText({
+    super.key,
+    required this.updatedAt,
+    this.now,
+    this.style,
+  });
+  final TextStyle? style;
   final DateTime? updatedAt;
   final DateTime? now;
   @override
   Widget build(BuildContext context) => Text(
     formatRelativeUpdate(updatedAt, now: now),
-    style: Theme.of(context).textTheme.bodySmall,
+    style: style ?? Theme.of(context).textTheme.bodySmall,
   );
 }

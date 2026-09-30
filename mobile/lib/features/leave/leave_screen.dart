@@ -199,6 +199,15 @@ class _LeaveScreenState extends State<LeaveScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final media = MediaQuery.of(context);
+    final bottomInset = [
+      media.padding.bottom,
+      media.viewPadding.bottom,
+      media.systemGestureInsets.bottom,
+    ].reduce((a, b) => a > b ? a : b);
+    final metadataStyle = Theme.of(
+      context,
+    ).textTheme.bodySmall?.copyWith(color: NiuColors.of(context).tertiary);
     final stats = snapshots['statistics'];
     final list = snapshots['list'];
     final periods =
@@ -218,15 +227,16 @@ class _LeaveScreenState extends State<LeaveScreen> {
       appBar: const IosPageHeader(title: '學生請假'),
       body: SafeArea(
         top: false,
+        bottom: false,
         maintainBottomViewPadding: true,
         child: loading
             ? const AppLoadingState()
             : ListView(
-                padding: const EdgeInsets.fromLTRB(
+                padding: EdgeInsets.fromLTRB(
                   NiuSpacing.xl,
                   NiuSpacing.xl,
                   NiuSpacing.xl,
-                  NiuSpacing.xxl,
+                  NiuSpacing.xxl + bottomInset,
                 ),
                 children: [
                   FilledButton.icon(
@@ -237,6 +247,7 @@ class _LeaveScreenState extends State<LeaveScreen> {
                   if (error != null) Text(error!),
                   const SectionHeader(title: '本學期請假'),
                   HeroCard(
+                    padding: const EdgeInsets.all(NiuSpacing.xl),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -247,11 +258,15 @@ class _LeaveScreenState extends State<LeaveScreen> {
                         const SizedBox(height: NiuSpacing.xs),
                         Text(
                           '本學期累計請假',
-                          style: Theme.of(context).textTheme.bodyMedium,
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: NiuColors.of(context).secondary,
+                              ),
                         ),
                         const SizedBox(height: NiuSpacing.sm),
                         if (stats is Map)
                           RelativeUpdateText(
+                            style: metadataStyle,
                             updatedAt: DateTime.tryParse(
                               '${stats['updatedAt']}',
                             ),
@@ -271,6 +286,7 @@ class _LeaveScreenState extends State<LeaveScreen> {
                   ),
                   SectionHeader(
                     title: '請假紀錄',
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     trailing: TextButton(
                       onPressed: busy ? null : () => open(keyName: 'list'),
                       child: const Text('更新'),
@@ -278,13 +294,12 @@ class _LeaveScreenState extends State<LeaveScreen> {
                   ),
                   if (list is Map) ...[
                     RelativeUpdateText(
+                      style: metadataStyle,
                       updatedAt: DateTime.tryParse('${list['updatedAt']}'),
                     ),
                     Text(
                       '第 ${list['data']['page']}／${list['data']['pages']} 頁',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: NiuColors.of(context).secondary,
-                      ),
+                      style: metadataStyle,
                     ),
                     Wrap(
                       children: [
