@@ -36,19 +36,25 @@ assert.equal(eval(${jsonEncode(eventRegisterScript)}),'missing');
 ''');
   });
 
-  test('my registrations lookup matches the event link or exact title', () {
+  test('my registrations lookup finds the row and its cancelled state', () {
     node('''
 const assert=require('node:assert/strict');
-function page(hrefs,titles){return {
-  querySelector:s=>s==='.container.body-content'?{}:null,
-  querySelectorAll:s=>s==='a[href]'?hrefs.map(h=>({getAttribute:()=>h})):titles.map(t=>({textContent:t})),
-};}
-global.document=page(['/MvcTeam/Act/RegData/1234'],[]);
-assert.equal(eval(${jsonEncode(eventListedScript('1234', '工作坊'))}),true);
-global.document=page(['/MvcTeam/Act/RegData/12345'],['另一個活動']);
-assert.equal(eval(${jsonEncode(eventListedScript('1234', '工作坊'))}),false);
-global.document=page([],[' 工作坊 ']);
-assert.equal(eval(${jsonEncode(eventListedScript('', '工作坊'))}),true);
+function page(links,titles){
+  const row=text=>({innerText:text});
+  return {
+    querySelector:s=>s==='.container.body-content'?{}:null,
+    querySelectorAll:s=>s==='a[href]'
+      ? links.map(([h,t])=>({getAttribute:()=>h,closest:()=>row(t)}))
+      : titles.map(([n,t])=>({textContent:n,closest:()=>row(t)})),
+  };
+}
+const run=(id,name)=>JSON.parse(eval(${jsonEncode(eventListedScript('ID', 'NAME'))}.replace('"ID"',JSON.stringify(id)).replace('"NAME"',JSON.stringify(name))));
+global.document=page([['/MvcTeam/Act/RegData/1234','工作坊 報名成功 取消報名']],[]);
+assert.deepEqual(run('1234','工作坊'),{listed:true,cancelled:false});
+global.document=page([['/MvcTeam/Act/RegData/12345','別的活動']],[]);
+assert.deepEqual(run('1234','工作坊'),{listed:false});
+global.document=page([],[[' 工作坊 ','工作坊 已取消']]);
+assert.deepEqual(run('','工作坊'),{listed:true,cancelled:true});
 ''');
   });
 }
