@@ -20,20 +20,45 @@ class _PostalScreenState extends State<PostalScreen> {
   final name = TextEditingController();
   final phone = TextEditingController();
   final tracking = TextEditingController();
-  PostalStatus status = PostalStatus.waiting;
-  PostalService? service;
-  PostalPage? page;
-  List<PostalRecord> records = const [];
-  bool loading = false, more = false;
+
+  /// Null searches every status at once (the school form takes only one).
+  PostalStatus? filter;
+  final clients = <PostalStatus, PostalService>{};
+  final pages = <PostalStatus, PostalPage>{};
+  bool searched = false, loading = false, more = false;
   String? error;
   int generation = 0;
 
-  PostalQuery get query => PostalQuery(
+  List<PostalStatus> get statuses =>
+      filter == null ? PostalStatus.values : [filter!];
+
+  PostalQuery query(PostalStatus status) => PostalQuery(
     name: name.text,
     phone: phone.text,
     trackingNumber: tracking.text,
     status: status,
   );
+
+  bool get canSearch => query(PostalStatus.waiting).canSearch;
+
+  /// 未領取 first, then 退件, then 已領取; newest first within each.
+  List<PostalRecord> get records {
+    const order = [
+      PostalStatus.waiting,
+      PostalStatus.returned,
+      PostalStatus.collected,
+    ];
+    final all = [for (final status in order) ...?pages[status]?.records];
+    all.sort((a, b) {
+      final byStatus = order.indexOf(a.status) - order.indexOf(b.status);
+      return byStatus != 0
+          ? byStatus
+          : b.receivedDate.compareTo(a.receivedDate);
+    });
+    return all;
+  }
+
+  bool get hasMore => pages.values.any((p) => p.nextForm != null);
 
   @override
   void initState() {
@@ -48,65 +73,92 @@ class _PostalScreenState extends State<PostalScreen> {
   @override
   void dispose() {
     generation++;
-    service?.close();
+    for (final c in clients.values) {
+      c.close();
+    }
     name.dispose();
     phone.dispose();
     tracking.dispose();
     super.dispose();
   }
 
+  void _closeClients() {
+    for (final c in clients.values) {
+      c.close();
+    }
+    clients.clear();
+  }
+
   Future<void> search() async {
     FocusScope.of(context).unfocus();
-    final q = query.normalized;
-    if (!q.canSearch) {
+    if (!canSearch) {
       setState(() => error = '請填寫收件人、手機號碼或郵件號碼其中一項。');
       return;
     }
     final current = ++generation;
-    service?.close();
-    final client = service = (widget.service ?? PostalService.new)();
+    _closeClients();
     setState(() {
       loading = true;
       error = null;
-      page = null;
-      records = const [];
+      pages.clear();
     });
-    try {
-      final result = await client.search(q);
-      if (!mounted || current != generation) return;
-      setState(() {
-        page = result;
-        records = result.records;
-      });
-    } catch (e) {
-      if (!mounted || current != generation) return;
-      setState(
-        () => error = e is PostalException ? e.message : '無法取得郵件資料，稍後再試一次。',
-      );
-    } finally {
-      if (mounted && current == generation) setState(() => loading = false);
-    }
+    // One independent school session per status, queried in parallel.
+    var failed = 0;
+    String? message;
+    await Future.wait([
+      for (final status in statuses)
+        () async {
+          final client = clients[status] =
+              (widget.service ?? PostalService.new)();
+          try {
+            final page = await client.search(query(status));
+            if (mounted && current == generation) pages[status] = page;
+          } catch (e) {
+            failed++;
+            message = e is PostalException ? e.message : null;
+          }
+        }(),
+    ]);
+    if (!mounted || current != generation) return;
+    setState(() {
+      loading = false;
+      searched = true;
+      if (failed == statuses.length) {
+        error = message ?? '無法取得郵件資料，稍後再試一次。';
+      } else if (failed > 0) {
+        error = '部分狀態沒有查到，結果可能不完整。';
+      }
+    });
   }
 
   Future<void> loadMore() async {
+    if (more) return;
     final current = generation;
-    final client = service, last = page;
-    if (client == null || last?.nextForm == null || more) return;
     setState(() => more = true);
     try {
-      final next = await client.nextPage(last!);
-      if (!mounted || current != generation) return;
-      final known = records.map((r) => r.id).toSet();
-      setState(() {
-        page = next;
-        records = [
-          ...records,
-          ...next.records.where((r) => !known.contains(r.id)),
-        ];
-      });
+      await Future.wait([
+        for (final entry in pages.entries.toList())
+          if (entry.value.nextForm != null && clients[entry.key] != null)
+            () async {
+              final next = await clients[entry.key]!.nextPage(entry.value);
+              if (!mounted || current != generation) return;
+              final known = entry.value.records.map((r) => r.id).toSet();
+              pages[entry.key] = PostalPage(
+                records: [
+                  ...entry.value.records,
+                  ...next.records.where((r) => !known.contains(r.id)),
+                ],
+                query: next.query,
+                pageIndex: next.pageIndex,
+                pageCount: next.pageCount,
+                nextForm: next.nextForm,
+              );
+            }(),
+      ]);
     } catch (e) {
-      if (!mounted || current != generation) return;
-      setState(() => error = e is PostalException ? e.message : '無法載入更多結果');
+      if (mounted && current == generation) {
+        setState(() => error = e is PostalException ? e.message : '無法載入更多結果');
+      }
     } finally {
       if (mounted && current == generation) setState(() => more = false);
     }
@@ -119,12 +171,15 @@ class _PostalScreenState extends State<PostalScreen> {
       title: '郵件包裹',
       onRefresh: search,
       children: [
-        NiuSegmented<PostalStatus>(
-          segments: [for (final s in PostalStatus.values) (s, s.label)],
-          value: status,
+        NiuSegmented<PostalStatus?>(
+          segments: [
+            (null, '全部'),
+            for (final s in PostalStatus.values) (s, s.label),
+          ],
+          value: filter,
           onChanged: (value) {
-            setState(() => status = value);
-            if (query.canSearch) search();
+            setState(() => filter = value);
+            if (canSearch) search();
           },
         ),
         const SizedBox(height: NiuSpacing.md),
@@ -178,17 +233,17 @@ class _PostalScreenState extends State<PostalScreen> {
           NiuBanner(
             tone: NiuTone.warning,
             message: error!,
-            actionLabel: query.canSearch ? '再試一次' : null,
-            onAction: query.canSearch ? search : null,
+            actionLabel: canSearch ? '再試一次' : null,
+            onAction: canSearch ? search : null,
           ),
         ],
         if (loading)
           const NiuLoading(message: '正在查詢郵件')
-        else if (page != null)
+        else if (searched)
           NiuSection(
             title: records.isEmpty
                 ? '查詢結果'
-                : '${records.length} 件${page!.query.status.label}',
+                : '${records.length} 件${filter?.label ?? ''}',
             child: records.isEmpty
                 ? NiuCard(
                     child: NiuEmpty(
@@ -196,12 +251,12 @@ class _PostalScreenState extends State<PostalScreen> {
                         vertical: NiuSpacing.xl,
                       ),
                       icon: Icons.inventory_2_outlined,
-                      title: switch (page!.query.status) {
+                      title: switch (filter) {
+                        null => '沒有郵件紀錄',
                         PostalStatus.waiting => '沒有待領取的郵件',
                         PostalStatus.collected => '沒有已領取的紀錄',
                         PostalStatus.returned => '沒有退件紀錄',
                       },
-                      message: '有新郵件時，學校通常會另外通知。',
                     ),
                   )
                 : Column(
@@ -212,7 +267,7 @@ class _PostalScreenState extends State<PostalScreen> {
                           padding: const EdgeInsets.only(bottom: NiuSpacing.md),
                           child: _RecordCard(record: record),
                         ),
-                      if (page!.nextForm != null)
+                      if (hasMore)
                         OutlinedButton(
                           onPressed: more ? null : loadMore,
                           child: Text(more ? '載入中' : '載入更多'),
@@ -220,12 +275,6 @@ class _PostalScreenState extends State<PostalScreen> {
                     ],
                   ),
           ),
-        const SizedBox(height: NiuSpacing.xl),
-        Text(
-          '領取地點、時間與所需證件以學校通知為準。\n資料來源：國立宜蘭大學郵務收發管理系統',
-          textAlign: TextAlign.center,
-          style: theme.textTheme.labelMedium,
-        ),
       ],
     );
   }

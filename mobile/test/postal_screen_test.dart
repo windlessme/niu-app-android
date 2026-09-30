@@ -42,7 +42,7 @@ class FakePostal extends PostalService {
 }
 
 void main() {
-  testWidgets('opens with the student\'s own name already searched', (
+  testWidgets('opens with the student\'s own name searched across statuses', (
     tester,
   ) async {
     final queries = <PostalQuery>[];
@@ -60,12 +60,15 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(queries.single.name, '王小明');
-    expect(queries.single.status, PostalStatus.waiting);
+    // 全部 queries every status (the school form accepts one at a time).
+    expect(queries.map((q) => q.status).toSet(), PostalStatus.values.toSet());
+    expect(queries.every((q) => q.name == '王小明'), isTrue);
     expect(find.text('RR123'), findsOneWidget);
+    expect(find.text('1 件'), findsOneWidget);
+    queries.clear();
     await tester.tap(find.text('已領取'));
     await tester.pumpAndSettle();
-    expect(queries.last.status, PostalStatus.collected);
+    expect(queries.single.status, PostalStatus.collected);
     expect(find.text('沒有已領取的紀錄'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
