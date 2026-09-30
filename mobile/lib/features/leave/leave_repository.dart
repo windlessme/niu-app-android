@@ -220,28 +220,62 @@ const leaveStatisticsExtract = r'''
 })()
 ''';
 
+/// Opens one record's detail from the query list, then the school's own
+/// workflow modal. The record may have moved since the list was cached, so
+/// every result page is searched, starting with the page it was seen on.
 String leaveDetailPrepare(String id, int page) =>
     '''
 (() => {
  const docs=[];function collect(w){try{docs.push(w.document);for(let i=0;i<w.frames.length;i++)collect(w.frames[i]);}catch(_){}}collect(window);
-  if(window.__niuLeaveWorkflowDetail)return true;
-  for(const d of docs){
-   if(!d.location.pathname.endsWith('/SEC2010_04.aspx') || d.readyState!=='complete')continue;
-   const raw=(0,eval)(${jsonEncode(leaveDetailExtract)});
-   if(!raw)return false;
-   const button=d.getElementById('FLOW_BTN');
-   window.__niuLeaveWorkflowDetail=JSON.parse(raw);
-   if(!button || button.disabled){window.__niuLeaveWorkflowUnavailable=true;return true;}
-   // Use the school's own modal and parameters in the original frame/session.
-   button.click();return false;
-  }
- for(const d of docs){if(d.location.pathname.endsWith('/SEC4030_01.aspx') && !d.defaultView.eval(${jsonEncode(leavePagePrepare(page))}))return false;}
- const doc=docs.find(d=>d.getElementById('DataGrid'));const table=doc?.getElementById('DataGrid');
- if(!table){for(const d of docs){try{d.defaultView.eval(${jsonEncode(leaveQueryPrepare)});}catch(_){}}return false;}
- const headers=Array.from(table.rows[0].cells,c=>c.textContent.trim());const index=headers.indexOf('假單序號');
- const row=Array.from(table.rows).slice(1).find(r=>r.cells[index]?.textContent.trim()===${jsonEncode(id)});
- const link=row?.querySelector('a[href*="doNewEdit"]');
- if(link && !doc.__niuLeaveDetail){doc.__niuLeaveDetail=true;link.click();}return false;
+ if(window.__niuLeaveWorkflowDetail)return true;
+ for(const d of docs){
+  if(!d.location.pathname.endsWith('/SEC2010_04.aspx') || d.readyState!=='complete')continue;
+  const raw=(0,eval)(${jsonEncode(leaveDetailExtract)});
+  if(!raw)return false;
+  const button=d.getElementById('FLOW_BTN');
+  window.__niuLeaveWorkflowDetail=JSON.parse(raw);
+  if(!button || button.disabled){window.__niuLeaveWorkflowUnavailable=true;return true;}
+  // Use the school's own modal and parameters in the original frame/session.
+  button.click();return false;
+ }
+ const list=docs.find(d=>d.location.pathname.endsWith('/SEC4030_01.aspx'));
+ if(!list)return false;
+ if(!list.defaultView.eval(${jsonEncode(leaveQueryPrepare)}))return false;
+ const manager=list.defaultView.Sys?.WebForms?.PageRequestManager?.getInstance();
+ if(manager?.get_isInAsyncPostBack())return false;
+ const table=list.getElementById('DataGrid');if(!table||!table.rows.length)return false;
+ const clean=v=>String(v||'').replace(/\\s+/g,' ').trim();
+ const now=Date.now();
+ // Session storage survives full-page postbacks while paging.
+ const key='niu.leave.find.'+${jsonEncode(id)};
+ const store=list.defaultView.sessionStorage;
+ let state=window.__niuLeaveFind;
+ if(!state){try{state=JSON.parse(store.getItem(key));}catch(_){}}
+ const run=list.defaultView.__niuAcademicRun||window.__niuAcademicRun||'';
+ if(!state||state.run!==run||now-state.started>90000)state={run,started:now,visited:[],target:null,at:0,clicked:0};
+ window.__niuLeaveFind=state;
+ const save=()=>{try{store.setItem(key,JSON.stringify(state));}catch(_){}};
+ const input=list.getElementById('PC_PageNo');
+ const current=parseInt(input?.value,10)||1;
+ if(state.target!==null && state.target!==current && now-state.at<8000)return false;
+ state.target=null;
+ if(!state.visited.includes(current))state.visited.push(current);
+ const headers=Array.from(table.rows[0].cells,c=>clean(c.textContent));
+ const index=headers.indexOf('假單序號');
+ const row=index<0?null:Array.from(table.rows).slice(1).find(r=>clean(r.cells[index]?.textContent)===${jsonEncode(id)});
+ if(row){
+  const link=row.querySelector('a[href*="doNewEdit"]')||row.querySelector('a[href^="javascript" i],a[onclick],a[href]')||row.querySelector('input[type="button"],input[type="submit"],input[type="image"],button,[onclick]');
+  // Retry if the school page ignored a click; the detail page replaces this list.
+  if(link && now-state.clicked>4000){state.clicked=now;save();link.click();}
+  return false;
+ }
+ const total=parseInt(clean(list.getElementById('PC_TotalPage')?.textContent),10)||1;
+ const order=[$page];for(let p=1;p<=total;p++)order.push(p);
+ const next=order.find(p=>p>=1&&p<=total&&!state.visited.includes(p));
+ const go=list.getElementById('PC_ToGo');
+ if(next===undefined||!input||!go)return false;
+ state.target=next;state.at=now;save();input.value=String(next);go.click();
+ return false;
 })()
 ''';
 
