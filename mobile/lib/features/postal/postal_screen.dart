@@ -60,15 +60,8 @@ class _PostalScreenState extends State<PostalScreen> {
 
   bool get hasMore => pages.values.any((p) => p.nextForm != null);
 
-  @override
-  void initState() {
-    super.initState();
-    final own = session.profile['chName']?.toString().trim() ?? '';
-    name.text = own;
-    if (own.isNotEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => search());
-    }
-  }
+  /// The student's name from the verified school profile, if any.
+  String get ownName => session.profile['chName']?.toString().trim() ?? '';
 
   @override
   void dispose() {
@@ -191,11 +184,22 @@ class _PostalScreenState extends State<PostalScreen> {
                 controller: name,
                 textInputAction: TextInputAction.search,
                 onSubmitted: (_) => search(),
+                onChanged: (_) => setState(() {}),
                 decoration: const InputDecoration(
                   labelText: '收件人',
                   prefixIcon: Icon(NiuIcons.person),
                 ),
               ),
+              if (ownName.isNotEmpty && name.text.trim() != ownName)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                    onPressed: () => setState(() => name.text = ownName),
+                    icon: const Icon(Icons.person_add_alt_1_outlined, size: 18),
+                    label: const Text('帶入我的姓名'),
+                  ),
+                ),
               Theme(
                 data: theme.copyWith(dividerColor: Colors.transparent),
                 child: ExpansionTile(
