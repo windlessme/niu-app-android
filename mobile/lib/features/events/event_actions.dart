@@ -90,6 +90,8 @@ class WebEventActions implements EventActions {
   @override
   Future<EventActionResult> register(CampusEvent event) => _run(
     event.actionUri(applied: false),
+    event: event,
+    expectRegistered: true,
     submit: eventRegisterScript,
     success: const ['報名成功', '已報名', '完成報名'],
     fallbackSuccess: '學校已收到報名。',
@@ -135,6 +137,8 @@ class WebEventActions implements EventActions {
   @override
   Future<EventActionResult> cancel(CampusEvent event) => _run(
     event.actionUri(applied: true),
+    event: event,
+    expectRegistered: false,
     submit: eventCancelScript,
     success: const ['取消成功', '已取消', '報名已取消'],
     successMessage: '已取消報名',
@@ -149,12 +153,22 @@ class WebEventActions implements EventActions {
     required String successMessage,
     String? fallbackSuccess,
     String? successPath,
+    CampusEvent? event,
+    bool? expectRegistered,
   }) async {
     _EventPage? page;
     try {
       page = await _EventPage.open(session, target);
       final submitted = await page.submit(submit);
       if (submitted == null) {
+        // No button because the student is already registered?
+        if (event != null && expectRegistered == true) {
+          try {
+            if (await page.isListed(event) == true) {
+              return const EventActionResult(true, '你已經報名過這個活動。');
+            }
+          } catch (_) {}
+        }
         return const EventActionResult(
           false,
           '學校頁面上找不到對應的按鈕，請在學校網頁操作。',
@@ -162,6 +176,18 @@ class WebEventActions implements EventActions {
         );
       }
       final text = '${page.alert ?? ''}\n${submitted.text}';
+      // The authoritative answer is the student's own 「我的報名」 list.
+      if (event != null && expectRegistered != null) {
+        bool? listed;
+        try {
+          listed = await page.isListed(event);
+        } catch (_) {
+          listed = null; // Fall back to the school's own reply below.
+        }
+        if (listed == expectRegistered) {
+          return EventActionResult(true, successMessage);
+        }
+      }
       if (success.any(text.contains) ||
           (successPath != null &&
               submitted.url.path.toLowerCase() == successPath)) {
@@ -303,11 +329,26 @@ class _EventPage {
   Future<_Submitted?> submit(String script) async {
     _load = Completer<Uri>();
     final status = await eval(script);
-    if (status != 'submitted') return null;
+    // Only an explicit "missing" means nothing was pressed. Anything else
+    // (including a reply lost to navigation) waits for the school's page.
+    if (status == 'missing') return null;
     final url = await _load!.future.timeout(const Duration(seconds: 20));
     session.coordinator.requireCurrent(epoch);
     final text = await eval("document.body ? document.body.innerText : ''");
     return _Submitted(url, text is String ? text : '');
+  }
+
+  /// Whether [event] appears in 「我的報名」; null when the list is unreadable.
+  Future<bool?> isListed(CampusEvent event) async {
+    _load = Completer<Uri>();
+    await web?.loadUrl(
+      urlRequest: URLRequest(url: WebUri('$eventVerificationUri')),
+    );
+    final url = await _load!.future.timeout(const Duration(seconds: 20));
+    session.coordinator.requireCurrent(epoch);
+    if (url.path.toLowerCase() != '/mvcteam/act/applyme') return null;
+    final found = await eval(eventListedScript(event.id, event.name));
+    return found is bool ? found : null;
   }
 
   Future<void> dispose() async {
@@ -329,7 +370,8 @@ const eventRegisterScript = r'''
     const button = Array.from(form.querySelectorAll('button[type="submit"],input[type="submit"],button:not([type])'))
       .find(b => /報名/.test(b.value || b.textContent || '') && !/取消/.test(b.value || b.textContent || ''));
     if (!button || button.disabled) continue;
-    button.click();
+    // Reply before navigating; the page unload would discard the result.
+    setTimeout(() => button.click(), 0);
     return 'submitted';
   }
   return 'missing';
@@ -384,7 +426,8 @@ String eventFormSaveScript({
   const button = Array.from(form.querySelectorAll('button[type="submit"],input[type="submit"],button:not([type])'))
     .find(b => /儲存|修改/.test(b.value || b.textContent || ''));
   if (!button || button.disabled) return 'missing';
-  button.click();
+  // Reply before navigating; the page unload would discard the result.
+  setTimeout(() => button.click(), 0);
   return 'submitted';
 })()
 ''';
@@ -398,9 +441,23 @@ const eventCancelScript = r'''
     const button = Array.from(form.querySelectorAll('button[type="submit"],input[type="submit"],button:not([type])'))
       .find(b => /取消/.test(b.value || b.textContent || ''));
     if (!button || button.disabled) continue;
-    button.click();
+    // Reply before navigating; the page unload would discard the result.
+    setTimeout(() => button.click(), 0);
     return 'submitted';
   }
   return 'missing';
+})()
+''';
+
+/// Looks for one event in the 「我的報名」 page by its ID link or exact name.
+String eventListedScript(String id, String name) =>
+    '''
+(() => {
+  if (!document.querySelector('.container.body-content')) return null;
+  const id = ${jsonEncode(id)};
+  const name = ${jsonEncode(name.trim())};
+  if (id && Array.from(document.querySelectorAll('a[href]')).some(a =>
+      new RegExp('/Act/(RegData|Apply)/' + id + '(?:[/?#]|\$)', 'i').test(a.getAttribute('href')))) return true;
+  return !!name && Array.from(document.querySelectorAll('h3')).some(h => h.textContent.trim() === name);
 })()
 ''';
