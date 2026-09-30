@@ -432,22 +432,7 @@ class _CreditsScreenState extends State<CreditsScreen> {
       title: '特別感謝',
       onRefresh: _load,
       children: [
-        NiuGroup(
-          children: [
-            NiuRow(
-              icon: NiuIcons.code,
-              hue: NiuHue.indigo,
-              title: 'qian403 · NIU-app',
-              subtitle: '原始校園 App 專案，提供功能設計與實作參考',
-              onTap: () => openPublicUrl(
-                context,
-                Uri.parse('https://github.com/qian403/niu-app'),
-              ),
-            ),
-          ],
-        ),
         if (snapshot != null) ...[
-          const SizedBox(height: NiuSpacing.xl),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: NiuSpacing.xs),
             child: Text(

@@ -46,7 +46,7 @@ docs/                   架構、設計、資料研究與開發紀錄
 .github/workflows/      Android CI
 ```
 
-保留 `mobile/` 路徑以相容既有 CI 與工具。校曆與致謝目前仍從原專案公開 GitHub JSON 來源更新；不是此repository提供私人校務後端。
+保留 `mobile/` 路徑以相容既有 CI 與工具。校曆目前仍從原專案公開 GitHub JSON 來源更新，致謝名單從本 repository 的 `app-content/credits.json` 更新；不是此repository提供私人校務後端。
 Android applicationId 目前為開發識別碼 `dev.niulife.prototype.niu_mobile`；正式Play發行前確認永久識別碼與簽署設定。
 
 ## 授權與致謝

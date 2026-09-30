@@ -38,14 +38,14 @@ void main() {
     await tester.pumpWidget(
       MaterialApp.router(theme: NiuTheme.light, routerConfig: router),
     );
-    expect(find.text('校園'), findsOneWidget);
+    expect(find.byType(NavigationBar), findsOneWidget);
     await tester.tap(find.text('開啟課程'));
     await tester.pumpAndSettle();
     expect(find.text('課程內容'), findsOneWidget);
-    expect(find.text('校園'), findsNothing);
+    expect(find.byType(NavigationBar), findsNothing);
     await tester.tap(find.byTooltip('返回'));
     await tester.pumpAndSettle();
     expect(find.text('開啟課程'), findsOneWidget);
-    expect(find.text('校園'), findsOneWidget);
+    expect(find.byType(NavigationBar), findsOneWidget);
   });
 }

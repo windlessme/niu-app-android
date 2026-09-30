@@ -10,8 +10,6 @@ abstract final class NiuIcons {
   static const scheduleSelected = Icons.view_agenda_rounded;
   static const moodle = Icons.auto_stories_outlined;
   static const moodleSelected = Icons.auto_stories_rounded;
-  static const campus = Icons.apps_rounded;
-  static const campusSelected = Icons.apps_rounded;
 
   // Features
   static const calendar = Icons.event_note_rounded;

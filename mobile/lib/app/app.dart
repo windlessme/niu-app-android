@@ -83,10 +83,6 @@ class _NiuAppState extends State<NiuApp> {
               ),
             ),
           ),
-          GoRoute(
-            path: '/campus',
-            builder: (_, _) => const CampusServicesScreen(),
-          ),
         ],
       ),
       GoRoute(

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../features/home/campus_services.dart';
 import '../shared/shared.dart';
 
 class CampusShell extends StatelessWidget {
@@ -12,7 +11,6 @@ class CampusShell extends StatelessWidget {
     ('首頁', NiuIcons.home, NiuIcons.homeSelected, '/'),
     ('課表', NiuIcons.schedule, NiuIcons.scheduleSelected, '/schedule'),
     ('M 園區', NiuIcons.moodle, NiuIcons.moodleSelected, '/moodle'),
-    ('校園', NiuIcons.campus, NiuIcons.campusSelected, '/campus'),
   ];
 
   @override
@@ -41,53 +39,4 @@ class CampusShell extends StatelessWidget {
       ),
     );
   }
-}
-
-class CampusServicesScreen extends StatelessWidget {
-  const CampusServicesScreen({super.key});
-  @override
-  Widget build(BuildContext context) => NiuScrollPage(
-    title: '校園服務',
-    large: true,
-    showBack: false,
-    children: [
-      for (final (i, group) in CampusServices.groups.indexed) ...[
-        Padding(
-          padding: EdgeInsets.fromLTRB(
-            NiuSpacing.xs,
-            i == 0 ? NiuSpacing.sm : NiuSpacing.section,
-            NiuSpacing.xs,
-            NiuSpacing.md,
-          ),
-          child: Semantics(
-            header: true,
-            child: Text(
-              group.$1,
-              style: Theme.of(
-                context,
-              ).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700),
-            ),
-          ),
-        ),
-        NiuGroup(
-          children: [
-            for (final service in group.$2)
-              NiuRow(
-                title: service.title,
-                subtitle: service.subtitle,
-                icon: service.icon,
-                hue: service.hue,
-                onTap: () => openCampusService(context, service),
-              ),
-          ],
-        ),
-      ],
-      const SizedBox(height: NiuSpacing.xxl),
-      Text(
-        '非官方工具，校務資訊以學校系統為準。',
-        textAlign: TextAlign.center,
-        style: Theme.of(context).textTheme.bodySmall,
-      ),
-    ],
-  );
 }
