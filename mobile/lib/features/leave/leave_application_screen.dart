@@ -11,6 +11,7 @@ import '../authentication/login_screen.dart';
 import '../authentication/school_reauthorization.dart';
 import 'leave_application_data.dart';
 import 'leave_application_service.dart';
+import 'leave_notice.dart';
 
 /// The school form stays mounted behind the native UI, including its upload and
 /// period-picker frames. No saved Cookie fixture or school credentials are used.
@@ -36,6 +37,9 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen>
   bool busy = true, showWeb = false, agreed = false, deferAttachment = false;
   bool foreground = true, dirty = false, sent = false, blocked = false;
   bool mutationConsent = false;
+
+  /// Agreed to the in-app notice; the school's own 同意 follows automatically.
+  bool accepted = false;
   bool schoolDialog = false;
   String? error, schoolMessage;
 
@@ -141,6 +145,11 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen>
     try {
       final initial = await gateway!.initialize();
       if (current) setState(() => accept(initial, first: true));
+      // Agreed while the school page was loading: send its 同意 now.
+      if (current && accepted && initial.notice != null) {
+        setState(() => busy = false);
+        await change(() => gateway!.agree(initial));
+      }
     } catch (_) {
       if (current) {
         setState(() {
@@ -530,11 +539,20 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen>
     await change(() => gateway!.changeType(form, value));
   }
 
+  /// Agree in the app; the school's 同意 is sent as soon as it is shown.
+  void acceptNotice() {
+    setState(() => accepted = true);
+    final form = data;
+    if (form?.notice != null && editable) {
+      unawaited(change(() => gateway!.agree(form!)));
+    }
+  }
+
   /// Sticky primary action for the current step.
   Widget? actionBar(BuildContext context) {
     final form = data;
-    if (result != null || form == null) return null;
-    if (form.notice != null) {
+    if (result != null) return null;
+    if (!accepted) {
       return NiuBottomBar(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -543,22 +561,19 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen>
             CheckboxListTile(
               value: agreed,
               contentPadding: EdgeInsets.zero,
-              onChanged: busy
-                  ? null
-                  : (v) => setState(() => agreed = v == true),
-              title: const Text('我已閱讀並同意請假注意事項'),
+              onChanged: (v) => setState(() => agreed = v == true),
+              title: const Text('我已閱讀並同意注意事項與聲明'),
               controlAffinity: ListTileControlAffinity.leading,
             ),
             FilledButton(
-              onPressed: editable && agreed
-                  ? () => change(() => gateway!.agree(form))
-                  : null,
-              child: const Text('開始申請'),
+              onPressed: agreed && !blocked ? acceptNotice : null,
+              child: const Text('同意並開始申請'),
             ),
           ],
         ),
       );
     }
+    if (form == null || form.notice != null) return null;
     if (sent) return null;
     final missing = form.validate(reason.text);
     return NiuBottomBar(
@@ -587,8 +602,11 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen>
     final form = data;
     final theme = Theme.of(context);
     final colors = NiuColors.of(context);
-    if (form == null && result == null && error == null) {
-      return const Center(child: NiuLoading(message: '正在開啟請假申請'));
+    if (accepted &&
+        result == null &&
+        error == null &&
+        (form == null || form.notice != null)) {
+      return const Center(child: NiuLoading(message: '正在開啟請假表單'));
     }
     final banners = <Widget>[
       if (error != null)
@@ -648,14 +666,53 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen>
           child: const Text('返回請假紀錄'),
         ),
       ];
-    } else if (form?.notice case final String notice) {
+    } else if (!accepted) {
       content = [
-        Text('申請前請先閱讀', style: theme.textTheme.headlineSmall),
-        const SizedBox(height: NiuSpacing.xs),
-        Text('以下是學校的請假注意事項。', style: theme.textTheme.bodySmall),
+        Text('請假注意事項', style: theme.textTheme.headlineSmall),
         const SizedBox(height: NiuSpacing.lg),
         NiuCard(
-          child: SelectableText(notice, style: theme.textTheme.bodyMedium),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (final (i, (title, items))
+                  in leaveNoticeSections.indexed) ...[
+                if (i > 0) const SizedBox(height: NiuSpacing.lg),
+                Text(title, style: theme.textTheme.titleSmall),
+                for (final item in items)
+                  Padding(
+                    padding: const EdgeInsets.only(top: NiuSpacing.xs),
+                    child: Text('・$item', style: theme.textTheme.bodyMedium),
+                  ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: NiuSpacing.lg),
+        Container(
+          padding: const EdgeInsets.all(NiuSpacing.lg),
+          decoration: BoxDecoration(
+            color: NiuTone.error.background(context),
+            borderRadius: BorderRadius.circular(NiuRadius.card),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '重要聲明',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: colors.error,
+                ),
+              ),
+              const SizedBox(height: NiuSpacing.xs),
+              Text(
+                leaveDisclaimer,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colors.error,
+                  height: 1.6,
+                ),
+              ),
+            ],
+          ),
         ),
       ];
     } else if (form != null) {

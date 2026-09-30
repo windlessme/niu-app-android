@@ -46,6 +46,13 @@ const leaveApplicationRuntime = r'''
  function revision(d){return track(d);}
  function newReceipt(d){state.receipt={id:String(++state.sequence),revision:revision(d)};return state.receipt;}
  function uploadDoc(){return docs.find(d=>path(d)==='/NIU/utility/UploadFile_HasUseId.aspx');}
+ // The school grid shows [delete, 預覽 link, 說明]; the file's label is 說明.
+ function uploadNames(upload){
+   const tables=Array.from(upload.querySelectorAll('table')).filter(t=>t.id==='UploadGrid');
+   const grid=tables[tables.length-1];if(!grid)return [];
+   return Array.from(grid.rows).filter(r=>!r.querySelector('th')&&r.cells.length>=3)
+     .map(r=>clean(r.cells[r.cells.length-1].innerText)||clean(r.querySelector('a')?.textContent)).filter(Boolean);
+ }
  function snapshot(){
    if(notice&&!pending(notice))return {revision:revision(notice),notice:notice.body.innerText.trim()};
    if(!main||pending(main))return null;
@@ -60,7 +67,7 @@ const leaveApplicationRuntime = r'''
    const countLabel=Array.from(main.querySelectorAll('[ml]')).find(e=>clean(e.textContent)==='本次請假總節數');
    const total=clean(countLabel?.closest('td')?.nextElementSibling?.innerText)||null;
    const upload=uploadDoc();
-   const attachments=upload?Array.from(upload.querySelectorAll('#UploadGrid a')).filter(a=>!/^javascript:/i.test(a.getAttribute('href')||'')).map(a=>clean(a.textContent)).filter(Boolean):[];
+   const attachments=upload?uploadNames(upload):[];
    const extensions=(upload?value(upload,'filter'):'').split(',').map(s=>s.trim().toLowerCase()).filter(s=>/^[a-z0-9]+$/.test(s));
    const later=main.getElementById('CheckBox1');
    return {revision:revision(main),choices:Array.from(type.options).filter(o=>!o.disabled).map(o=>({value:o.value,label:o.text})),type:type.value,
@@ -168,13 +175,20 @@ const leaveApplicationRuntime = r'''
    const w=upload.defaultView;
    const bytes=Uint8Array.from(atob(file.parts.join('')),c=>c.charCodeAt(0));
    const transfer=new w.DataTransfer();transfer.items.add(new w.File([bytes],file.name));input.files=transfer.files;
-   file.parts=[];state.uploadAttempt={name:file.name,revision:file.revision};state.upload=null;
+   // The school page fills 說明 from the file name on blur; do the same.
+   const remark=upload.getElementById('remark');
+   const label=file.name.replace(/\.[^.]*$/,'').slice(0,200);
+   if(remark&&!remark.value)remark.value=label;
+   file.parts=[];state.uploadAttempt={name:file.name,label:remark?remark.value:label,before:uploadNames(upload).length,revision:file.revision};state.upload=null;
    w.setTimeout(()=>button.click(),0);return JSON.stringify({ok:true});
  }
  if(op==='uploadResult'){
-   const upload=uploadDoc();if(!upload||pending(upload)||!state.uploadAttempt||revision(upload)===state.uploadAttempt.revision)return null;
-   const names=Array.from(upload.querySelectorAll('#UploadGrid a'),a=>clean(a.textContent));
-   return names.includes(state.uploadAttempt.name)?JSON.stringify(snapshot()):null;
+   const upload=uploadDoc(), attempt=state.uploadAttempt;
+   if(!upload||pending(upload)||!attempt||revision(upload)===attempt.revision)return null;
+   // The frame reloaded after 附加: a new row (or our label) means it was kept.
+   const names=uploadNames(upload);
+   if(names.length>attempt.before||names.includes(attempt.label))return JSON.stringify(snapshot());
+   return error('學校沒有收到附件，請到學校網頁確認');
  }
  if(op==='submit'){
    const type=main.getElementById('M_HOLIDAY_CODE');

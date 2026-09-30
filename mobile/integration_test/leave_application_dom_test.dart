@@ -84,7 +84,7 @@ void main() {
         'fixture.pdf',
         Uint8List.fromList(utf8.encode('%PDF-fixture')),
       );
-      expect(form.attachments, ['fixture.pdf']);
+      expect(form.attachments, ['fixture']);
       expect(await web.evaluateJavascript(source: 'window.submitCount'), 0);
       form = await service.draft(form, '合成測試事由', true);
       expect(form.reason, '合成測試事由');
@@ -154,12 +154,15 @@ document.getElementById('QUERY').addEventListener('submit',e=>{
 
 const _upload = r'''<!doctype html><html><body>
 <form method="post" action="/NIU/utility/UploadFile_HasUseId.aspx" enctype="multipart/form-data">
-<input id="filter" type="hidden" value="PDF"><input id="tmpfile" type="file"><input id="attach" type="submit" value="附加">
-</form><table id="UploadGrid"></table>
+<input id="filter" type="hidden" value="PDF"><input id="tmpfile" type="file"><input id="remark" type="text"><input id="attach" type="submit" value="附加">
+</form><table id="UploadGrid"><tr><th></th><th>預覽</th><th>說明</th></tr></table>
 <script>
+// Mirrors the school grid: [delete, 預覽 link, 說明 remark].
 document.querySelector('form').addEventListener('submit',e=>{
- e.preventDefault();const f=document.getElementById('tmpfile').files[0];
- const row=document.getElementById('UploadGrid').insertRow();const a=document.createElement('a');a.href='#download';a.textContent=f.name;row.insertCell().appendChild(a);
+ e.preventDefault();
+ const row=document.getElementById('UploadGrid').insertRow();row.insertCell().textContent='刪';
+ const a=document.createElement('a');a.href='#download';a.textContent='預覽';row.insertCell().appendChild(a);
+ row.insertCell().textContent=document.getElementById('remark').value;
  document.__niuLeaveRevision.count++;
 });
 </script></body></html>''';

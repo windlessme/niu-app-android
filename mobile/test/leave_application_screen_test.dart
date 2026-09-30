@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -10,20 +11,27 @@ import 'features/authentication_session_test.dart' show MemoryVault;
 import 'leave_application_test.dart' show applicationFixture;
 
 class FixtureLeaveGateway implements LeaveApplicationGateway {
-  FixtureLeaveGateway({this.notice = false});
+  FixtureLeaveGateway({this.notice = false, this.loading});
   bool notice;
+
+  /// Holds [initialize] until completed, like a slow school page.
+  Completer<void>? loading;
   bool disposed = false;
   int submits = 0, consents = 0, selections = 0;
   LeaveApplicationData data = LeaveApplicationData.fromJson(
     applicationFixture(),
   );
   @override
-  Future<LeaveApplicationData> initialize() async => notice
-      ? const LeaveApplicationData(
-          revision: 'notice',
-          notice: '校方請假注意事項（合成測試資料）',
-        )
-      : data;
+  Future<LeaveApplicationData> initialize() async {
+    await loading?.future;
+    return notice
+        ? const LeaveApplicationData(
+            revision: 'notice',
+            notice: '校方請假注意事項（合成測試資料）',
+          )
+        : data;
+  }
+
   @override
   Future<LeaveApplicationData> agree(LeaveApplicationData data) async {
     consents++;
@@ -98,6 +106,13 @@ void main() {
           ..account = 'b123',
   );
   tearDown(() => session.dispose());
+  Future<void> agree(WidgetTester tester) async {
+    await tester.tap(find.byType(CheckboxListTile));
+    await tester.pump();
+    await tester.tap(find.text('同意並開始申請'));
+    await tester.pumpAndSettle();
+  }
+
   Widget app(
     FixtureLeaveGateway gateway, {
     bool dark = false,
@@ -133,6 +148,7 @@ void main() {
         });
         await tester.pumpWidget(app(gateway, dark: dark, scale: 2));
         await tester.pumpAndSettle();
+        await agree(tester);
         expect(find.text('請假內容'), findsOneWidget);
         expect(find.text('公假'), findsNothing);
         // The primary action is pinned below the form.
@@ -160,34 +176,52 @@ void main() {
       });
     }
   }
-  testWidgets(
-    'notice requires explicit consent and only then opens native form',
-    (tester) async {
-      final gateway = FixtureLeaveGateway(notice: true);
-      await tester.pumpWidget(app(gateway));
-      await tester.pumpAndSettle();
-      expect(
-        tester
-            .widget<FilledButton>(find.widgetWithText(FilledButton, '開始申請'))
-            .onPressed,
-        isNull,
-      );
-      expect(gateway.consents, 0);
-      await tester.tap(find.byType(CheckboxListTile));
-      await tester.pump();
-      await tester.tap(find.text('開始申請'));
-      await tester.pumpAndSettle();
-      expect(gateway.consents, 1);
-      expect(find.text('請假內容'), findsOneWidget);
-      await tester.pumpWidget(const SizedBox());
-    },
-  );
+  testWidgets('in-app notice needs consent, then agrees on the school page', (
+    tester,
+  ) async {
+    final gateway = FixtureLeaveGateway(notice: true);
+    await tester.pumpWidget(app(gateway));
+    await tester.pumpAndSettle();
+    expect(find.text('請假注意事項'), findsOneWidget);
+    expect(find.text('考試週請假'), findsOneWidget);
+    expect(
+      tester
+          .widget<FilledButton>(find.widgetWithText(FilledButton, '同意並開始申請'))
+          .onPressed,
+      isNull,
+    );
+    expect(gateway.consents, 0);
+    await agree(tester);
+    expect(gateway.consents, 1);
+    expect(find.text('請假內容'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
+  testWidgets('consent given while the school loads is sent on arrival', (
+    tester,
+  ) async {
+    final loading = Completer<void>();
+    final gateway = FixtureLeaveGateway(notice: true, loading: loading);
+    await tester.pumpWidget(app(gateway));
+    await tester.pump();
+    await tester.tap(find.byType(CheckboxListTile));
+    await tester.pump();
+    await tester.tap(find.text('同意並開始申請'));
+    await tester.pump();
+    expect(find.text('正在開啟請假表單'), findsOneWidget);
+    expect(gateway.consents, 0);
+    loading.complete();
+    await tester.pumpAndSettle();
+    expect(gateway.consents, 1);
+    expect(find.text('請假內容'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
   testWidgets(
     'submit requires confirmation and unknown result cannot be resent',
     (tester) async {
       final gateway = FixtureLeaveGateway();
       await tester.pumpWidget(app(gateway));
       await tester.pumpAndSettle();
+      await agree(tester);
       await tester.scrollUntilVisible(
         find.text('確認申請'),
         150,
@@ -214,6 +248,7 @@ void main() {
     final gateway = FixtureLeaveGateway();
     await tester.pumpWidget(app(gateway));
     await tester.pumpAndSettle();
+    await agree(tester);
     await tester.runAsync(() => session.logout());
     await tester.pumpAndSettle();
     expect(find.text('請假內容'), findsNothing);
@@ -240,6 +275,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await agree(tester);
     await tester.scrollUntilVisible(
       find.byType(TextField),
       100,
