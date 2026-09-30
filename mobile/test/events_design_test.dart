@@ -86,7 +86,7 @@ void main() {
     'department': '學務處',
     'location': '圖書館',
     'time': '2026/10/01 14:00',
-    'hours': '2 小時',
+    'hours': '專業進取（已認證，2 小時）',
   });
   for (final dark in [false, true]) {
     testWidgets(
@@ -135,6 +135,14 @@ void main() {
         expect(find.byType(NiuScrollPage), findsOneWidget);
         expect(find.text('-'), findsOneWidget);
         expect(find.text('編號 11205'), findsOneWidget);
+        // 多元認證 is one plain metadata line, not a tag.
+        expect(find.text('專業進取　2 小時'), findsOneWidget);
+        expect(find.textContaining('已認證'), findsNothing);
+        await tester.tap(find.text('專業進取'));
+        await tester.pumpAndSettle();
+        expect(find.byType(EventListCard), findsOneWidget);
+        await tester.tap(find.text('全部認證'));
+        await tester.pumpAndSettle();
         expect(tester.takeException(), isNull);
         for (final query in ['學務處', '圖書館', '永續', '11205', '#112', 'No.11205']) {
           await tester.enterText(find.byType(TextField), query);
