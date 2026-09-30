@@ -227,9 +227,13 @@ class _GradesScreenState extends State<GradesScreen> {
                               ),
                             ),
                             child: ListTile(
-                              title: Text(c.name),
+                              title: Text(
+                                c.name,
+                                style: Theme.of(context).textTheme.titleSmall,
+                              ),
                               subtitle: Text(
                                 '${c.type}${mode == GradeMode.history ? ' · ${c.credits} 學分' : ''}',
+                                style: Theme.of(context).textTheme.labelMedium,
                               ),
                               trailing: Text(
                                 c.score,

@@ -293,7 +293,7 @@ class _Action extends StatelessWidget {
       child: ListTile(
         leading: Icon(icon, color: Theme.of(context).colorScheme.primary),
         title: Text(title),
-        subtitle: Text(subtitle),
+        subtitle: Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
         trailing: const Icon(CupertinoIcons.chevron_right, size: 16),
         onTap: onTap,
       ),
