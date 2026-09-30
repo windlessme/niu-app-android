@@ -136,6 +136,8 @@ String leaveMenuNavigation(
     '''
 (() => {
  const docs=[];function collect(w){try{docs.push(w.document);for(let i=0;i<w.frames.length;i++)collect(w.frames[i]);}catch(_){}}collect(window);
+ for(const d of docs){if(new URL(d.location.href).pathname.toLowerCase().endsWith('/timeoutpage.aspx'))return 'session-expired';}
+ if(window.__niuLeaveWorkflowDetail)return 'ready';
  for(const d of docs){
   const path=new URL(d.location.href).pathname;
   if(path.includes('/SEC/')) {
@@ -222,7 +224,17 @@ String leaveDetailPrepare(String id, int page) =>
     '''
 (() => {
  const docs=[];function collect(w){try{docs.push(w.document);for(let i=0;i<w.frames.length;i++)collect(w.frames[i]);}catch(_){}}collect(window);
- for(const d of docs){if(d.location.pathname.endsWith('/SEC2010_04.aspx'))return d.readyState==='complete';}
+  if(window.__niuLeaveWorkflowDetail)return true;
+  for(const d of docs){
+   if(!d.location.pathname.endsWith('/SEC2010_04.aspx') || d.readyState!=='complete')continue;
+   const raw=(0,eval)(${jsonEncode(leaveDetailExtract)});
+   if(!raw)return false;
+   const button=d.getElementById('FLOW_BTN');
+   window.__niuLeaveWorkflowDetail=JSON.parse(raw);
+   if(!button || button.disabled){window.__niuLeaveWorkflowUnavailable=true;return true;}
+   // Use the school's own modal and parameters in the original frame/session.
+   button.click();return false;
+  }
  for(const d of docs){if(d.location.pathname.endsWith('/SEC4030_01.aspx') && !d.defaultView.eval(${jsonEncode(leavePagePrepare(page))}))return false;}
  const doc=docs.find(d=>d.getElementById('DataGrid'));const table=doc?.getElementById('DataGrid');
  if(!table){for(const d of docs){try{d.defaultView.eval(${jsonEncode(leaveQueryPrepare)});}catch(_){}}return false;}
@@ -238,6 +250,18 @@ String leaveInFrames(String script) =>
 (() => {
  function run(w){try {const value=w.eval(${jsonEncode(script)});if(value)return value;for(let i=0;i<w.frames.length;i++){const result=run(w.frames[i]);if(result)return result;}}catch(_){}return null;}
  return run(window);
+})()
+''';
+
+String leaveDetailWithWorkflowExtract() =>
+    '''
+(() => {
+ const detail=window.__niuLeaveWorkflowDetail;
+ if(!detail)return null;
+ if(window.__niuLeaveWorkflowUnavailable)return JSON.stringify(detail);
+ const result=(0,eval)(${jsonEncode(leaveInFrames(leaveWorkflowExtract))});
+ if(!result)return null;
+ return JSON.stringify({...detail,...JSON.parse(result)});
 })()
 ''';
 

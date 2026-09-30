@@ -10,6 +10,29 @@ import 'package:niu_mobile/shared/shared.dart';
 import 'features/authentication_session_test.dart' show MemoryVault;
 
 void main() {
+  test(
+    'detail workflow waits for the existing frame and retains captured detail',
+    () {
+      final result = Process.runSync('node', [
+        '-e',
+        '''
+const assert=require('node:assert/strict');
+const script=${jsonEncode(leaveDetailWithWorkflowExtract())};
+global.window={frames:[],eval:()=>null};
+assert.equal(eval(script),null);
+window.__niuLeaveWorkflowDetail={fields:{'請假事由':'fixture'},periods:[]};
+assert.equal(eval(script),null);
+window.frames=[{frames:[],eval:()=>JSON.stringify({workflow:[{'簽核狀況':'待簽核'}]})}];
+const value=JSON.parse(eval(script));
+assert.equal(value.fields['請假事由'],'fixture');
+assert.equal(value.workflow[0]['簽核狀況'],'待簽核');
+window.__niuLeaveWorkflowUnavailable=true;
+assert.equal(JSON.parse(eval(script)).workflow,undefined);
+''',
+      ]);
+      expect(result.exitCode, 0, reason: result.stderr.toString());
+    },
+  );
   test('workflow accepts only the school read-only endpoint', () {
     expect(
       isLeaveWorkflowUri(
