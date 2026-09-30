@@ -110,6 +110,47 @@ class _LeaveScreenState extends State<LeaveScreen> {
       );
       if (value == null) return;
       repository.guard(epoch, owner);
+      if (record != null && mounted) {
+        final uri = Uri.tryParse('${value['workflowUrl'] ?? ''}');
+        if (uri != null && isLeaveWorkflowUri(uri)) {
+          final workflow = await Navigator.of(context)
+              .push<Map<String, dynamic>>(
+                MaterialPageRoute(
+                  builder: (context) => AcademicPortalScreen(
+                    title: '簽核流程',
+                    session: session,
+                    bridge: false,
+                    target: uri,
+                    extractScript: leaveWorkflowExtract,
+                    onSnapshot: (data, _) async {
+                      if (context.mounted) {
+                        Navigator.pop(
+                          context,
+                          Map<String, dynamic>.from(data as Map),
+                        );
+                      }
+                    },
+                  ),
+                ),
+              );
+          repository.guard(epoch, owner);
+          if (workflow != null) value.addAll(workflow);
+        }
+        if (!value.containsKey('workflow')) {
+          final previous = snapshots['detail:${record['假單序號']}'];
+          if (previous is Map &&
+              previous['data'] is Map &&
+              previous['data']['workflow'] is List) {
+            value['workflow'] = previous['data']['workflow'];
+            value['workflowUpdatedAt'] =
+                previous['data']['workflowUpdatedAt'] ?? previous['updatedAt'];
+          }
+          value['workflowStale'] = true;
+        } else {
+          value['workflowUpdatedAt'] = DateTime.now().toUtc().toIso8601String();
+          value['workflowStale'] = false;
+        }
+      }
       final key = keyName ?? 'detail:${record!['假單序號']}';
       final next = {
         ...snapshots,
@@ -177,6 +218,37 @@ class _LeaveScreenState extends State<LeaveScreen> {
                     },
               child: const Text('更新明細'),
             ),
+            const SectionHeader(title: '簽核流程'),
+            if (data is Map && data['workflowUpdatedAt'] != null)
+              RelativeUpdateText(
+                updatedAt: DateTime.tryParse('${data['workflowUpdatedAt']}'),
+              ),
+            if (data is Map && data['workflowStale'] == true)
+              const Text('流程尚未更新'),
+            if (data is! Map || data['workflow'] is! List)
+              const NiuEmptyState(title: '尚未讀取簽核流程', message: '更新明細即可讀取。'),
+            if (data is Map && data['workflow'] is List) ...[
+              if ((data['workflow'] as List).isEmpty)
+                const NiuEmptyState(title: '目前沒有簽核紀錄', message: '校方尚未列出流程紀錄。'),
+              for (final step in data['workflow'] as List)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: NiuSpacing.md),
+                  child: AppCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${step['關卡說明'] ?? '-'}',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: NiuSpacing.sm),
+                        for (final key in ['簽核狀況', '簽核日期', '簽核單位'])
+                          fact(key, step[key]),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
           ],
         ),
       ),
