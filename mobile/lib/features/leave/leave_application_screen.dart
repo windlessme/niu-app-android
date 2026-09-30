@@ -668,26 +668,6 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen>
       ];
     } else if (!accepted) {
       content = [
-        Text('請假注意事項', style: theme.textTheme.headlineSmall),
-        const SizedBox(height: NiuSpacing.lg),
-        NiuCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              for (final (i, (title, items))
-                  in leaveNoticeSections.indexed) ...[
-                if (i > 0) const SizedBox(height: NiuSpacing.lg),
-                Text(title, style: theme.textTheme.titleSmall),
-                for (final item in items)
-                  Padding(
-                    padding: const EdgeInsets.only(top: NiuSpacing.xs),
-                    child: Text('・$item', style: theme.textTheme.bodyMedium),
-                  ),
-              ],
-            ],
-          ),
-        ),
-        const SizedBox(height: NiuSpacing.lg),
         Container(
           padding: const EdgeInsets.all(NiuSpacing.lg),
           decoration: BoxDecoration(
@@ -711,6 +691,26 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen>
                   height: 1.6,
                 ),
               ),
+            ],
+          ),
+        ),
+        const SizedBox(height: NiuSpacing.xl),
+        Text('請假注意事項', style: theme.textTheme.headlineSmall),
+        const SizedBox(height: NiuSpacing.lg),
+        NiuCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (final (i, (title, items))
+                  in leaveNoticeSections.indexed) ...[
+                if (i > 0) const SizedBox(height: NiuSpacing.lg),
+                Text(title, style: theme.textTheme.titleSmall),
+                for (final item in items)
+                  Padding(
+                    padding: const EdgeInsets.only(top: NiuSpacing.xs),
+                    child: Text('・$item', style: theme.textTheme.bodyMedium),
+                  ),
+              ],
             ],
           ),
         ),
@@ -878,7 +878,8 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen>
         ),
         Expanded(
           child: AbsorbPointer(
-            absorbing: busy,
+            // The notice stays readable while the school page loads.
+            absorbing: busy && accepted,
             child: ListView(
               padding: const EdgeInsets.fromLTRB(
                 NiuSpacing.gutter,
