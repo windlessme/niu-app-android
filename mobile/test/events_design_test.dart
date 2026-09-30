@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:niu_mobile/features/events/event_actions.dart';
 import 'package:niu_mobile/features/events/events_screen.dart';
 import 'package:niu_mobile/features/events/event_widgets.dart';
 import 'package:niu_mobile/shared/shared.dart';
@@ -22,6 +23,54 @@ class _SnapshotRouteState extends State<SnapshotRoute> {
 
   @override
   Widget build(BuildContext context) => const Scaffold(body: Text('同步中'));
+}
+
+class FakeEventActions implements EventActions {
+  final calls = <String>[];
+  Map<String, Object?> saved = {};
+  @override
+  Future<EventActionResult> register(CampusEvent event) async {
+    calls.add('register');
+    return const EventActionResult(true, '報名成功');
+  }
+
+  @override
+  Future<EventRegistrationForm> loadForm(CampusEvent event) async {
+    calls.add('load');
+    return EventRegistrationForm.fromJson({
+      'tel': '0900',
+      'email': 'a@b.c',
+      'memo': '',
+      'food': [
+        {'value': '3', 'label': '不用餐', 'checked': true},
+        {'value': '2', 'label': '素食', 'checked': false},
+      ],
+      'proof': [],
+      'info': [
+        ['學號', 'B000'],
+      ],
+    });
+  }
+
+  @override
+  Future<EventActionResult> save(
+    CampusEvent event, {
+    required String tel,
+    required String email,
+    required String memo,
+    String? food,
+    String? proof,
+  }) async {
+    calls.add('save');
+    saved = {'tel': tel, 'email': email, 'food': food};
+    return const EventActionResult(true, '已儲存修改');
+  }
+
+  @override
+  Future<EventActionResult> cancel(CampusEvent event) async {
+    calls.add('cancel');
+    return const EventActionResult(true, '已取消報名');
+  }
 }
 
 void main() {
@@ -53,6 +102,7 @@ void main() {
               child: child!,
             ),
             home: EventsScreen(
+              actions: FakeEventActions(),
               loaderBuilder: (_, applied) {
                 calls.add(applied);
                 return SnapshotRoute(
@@ -100,7 +150,7 @@ void main() {
         await tester.tap(find.text(event.name));
         await tester.pumpAndSettle();
         expect(find.byType(NiuCard), findsWidgets);
-        final action = find.widgetWithText(FilledButton, '前往報名');
+        final action = find.widgetWithText(FilledButton, '報名');
         expect(tester.getSize(action).height, greaterThanOrEqualTo(48));
         expect(tester.takeException(), isNull);
         await tester.tap(find.byTooltip('返回'));
@@ -111,8 +161,11 @@ void main() {
         await tester.pumpAndSettle();
         await tester.tap(action);
         await tester.pumpAndSettle();
-        await tester.tap(find.text('完成變更'));
+        // Native confirmation, then the (fake) school submission.
+        await tester.tap(find.widgetWithText(FilledButton, '報名').last);
         await tester.pumpAndSettle();
+        expect(find.text('報名成功'), findsOneWidget);
+        expect(find.widgetWithText(FilledButton, '已報名'), findsOneWidget);
         await tester.tap(find.byTooltip('返回'));
         await tester.pumpAndSettle();
         expect(calls, [false, true, false]);
@@ -153,20 +206,14 @@ void main() {
     'initial cancelled sync can retry and unchanged action does not reload',
     (tester) async {
       var calls = 0;
+      final actions = FakeEventActions();
       await tester.pumpWidget(
         MaterialApp(
           theme: NiuTheme.light,
           home: EventsScreen(
+            actions: actions,
             loaderBuilder: (_, _) =>
                 SnapshotRoute(events: ++calls == 1 ? null : [event]),
-            actionBuilder: (context, _, _) => Scaffold(
-              body: Center(
-                child: TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: const Text('取消操作'),
-                ),
-              ),
-            ),
           ),
         ),
       );
@@ -178,14 +225,46 @@ void main() {
       expect(calls, 2);
       await tester.tap(find.text(event.name));
       await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(FilledButton, '前往報名'));
+      await tester.tap(find.widgetWithText(FilledButton, '報名'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('取消操作'));
+      await tester.tap(find.text('取消'));
       await tester.pumpAndSettle();
+      expect(actions.calls, isEmpty);
       await tester.tap(find.byTooltip('返回'));
       await tester.pumpAndSettle();
       expect(calls, 2);
       expect(find.byType(EventListCard), findsOneWidget);
     },
   );
+
+  testWidgets('registered event edits and cancels natively', (tester) async {
+    final actions = FakeEventActions();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: NiuTheme.light,
+        home: EventDetailScreen(event: event, applied: true, actions: actions),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, '修改資料'));
+    await tester.pumpAndSettle();
+    expect(find.text('B000'), findsOneWidget);
+    await tester.enterText(find.widgetWithText(TextField, '電話'), '0911');
+    await tester.ensureVisible(find.text('素食'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('素食'));
+    await tester.pump();
+    await tester.tap(find.widgetWithText(FilledButton, '儲存修改'));
+    await tester.pumpAndSettle();
+    expect(actions.saved, {'tel': '0911', 'email': 'a@b.c', 'food': '2'});
+    expect(find.text('已儲存修改'), findsOneWidget);
+    await tester.tap(find.widgetWithText(OutlinedButton, '取消報名'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, '取消報名'));
+    await tester.pumpAndSettle();
+    expect(actions.calls, ['load', 'save', 'cancel']);
+    expect(find.text('已取消報名'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, '修改資料'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 }
