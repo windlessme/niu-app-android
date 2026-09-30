@@ -26,7 +26,13 @@ class _SnapshotRouteState extends State<SnapshotRoute> {
 }
 
 class FakeEventActions implements EventActions {
+  FakeEventActions([this.mine = const []]);
+  final List<CampusEvent> mine;
   final calls = <String>[];
+
+  @override
+  Future<List<CampusEvent>> registrations() async => mine;
+
   Map<String, Object?> saved = {};
   @override
   Future<EventActionResult> register(CampusEvent event) async {
@@ -266,5 +272,27 @@ void main() {
     expect(find.text('已取消報名'), findsOneWidget);
     expect(find.widgetWithText(FilledButton, '修改資料'), findsNothing);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('already registered events are hidden from available ones', (
+    tester,
+  ) async {
+    final other = CampusEvent.fromJson({'id': '2', 'name': '職涯講座'});
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: NiuTheme.light,
+        home: EventsScreen(
+          actions: FakeEventActions([event]),
+          loaderBuilder: (_, applied) =>
+              SnapshotRoute(events: applied ? [event] : [event, other]),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('職涯講座'), findsOneWidget);
+    expect(find.text(event.name), findsNothing);
+    await tester.tap(find.text('我的報名'));
+    await tester.pumpAndSettle();
+    expect(find.text(event.name), findsOneWidget);
   });
 }

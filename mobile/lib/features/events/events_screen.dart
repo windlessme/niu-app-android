@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -112,6 +113,34 @@ class _EventsScreenState extends State<EventsScreen> {
   final snapshots = <bool, List<CampusEvent>>{};
   final attempted = <bool>{};
   final notices = <bool, String>{};
+  late final EventActions actions = widget.actions ?? WebEventActions();
+  bool refreshingApplied = false;
+
+  /// Keeps 「我的報名」 current in the background so 可報名活動 can hide
+  /// events the student already joined.
+  Future<void> refreshApplied() async {
+    if (refreshingApplied) return;
+    refreshingApplied = true;
+    try {
+      final result = await actions.registrations();
+      if (mounted) setState(() => snapshots[true] = result);
+    } catch (_) {
+      // The 我的報名 tab can still sync explicitly.
+    } finally {
+      refreshingApplied = false;
+    }
+  }
+
+  bool registered(CampusEvent event) {
+    final mine = snapshots[true];
+    if (mine == null) return false;
+    return mine.any(
+      (e) =>
+          (e.id.isNotEmpty && e.id == event.id) ||
+          (e.name.trim().isNotEmpty && e.name.trim() == event.name.trim()),
+    );
+  }
+
   final queries = {
     false: TextEditingController(),
     true: TextEditingController(),
@@ -153,6 +182,7 @@ class _EventsScreenState extends State<EventsScreen> {
         if (result != null) {
           snapshots[tab] = result;
           notices.remove(tab);
+          if (!tab && !attempted.contains(true)) unawaited(refreshApplied());
         } else {
           notices[tab] = snapshots.containsKey(tab)
               ? '同步未完成，仍顯示上次的活動資料。'
@@ -179,13 +209,14 @@ class _EventsScreenState extends State<EventsScreen> {
           event: event,
           applied: applied,
           actionBuilder: widget.actionBuilder,
-          actions: widget.actions,
+          actions: actions,
         ),
       ),
     );
     if (mounted && changed == true) {
-      // A registration change can affect both lists. Refresh the visible tab;
-      // retain the other snapshot until its next explicit sync.
+      // A registration change affects both lists: refresh the visible tab
+      // and, in the background, 「我的報名」.
+      if (!applied) unawaited(refreshApplied());
       await sync();
     }
   }
@@ -195,7 +226,8 @@ class _EventsScreenState extends State<EventsScreen> {
     final events = snapshots[applied];
     final query = queries[applied]!.text.trim().toLowerCase();
     final filtered = events
-        ?.where(
+        ?.where((event) => applied || !registered(event))
+        .where(
           (event) => [
             event.name,
             event.department,
