@@ -95,7 +95,7 @@ class EventFactGroup extends StatelessWidget {
             ),
           Text(
             facts[index].$1,
-            style: Theme.of(context).textTheme.labelLarge?.copyWith(
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
               color: NiuColors.of(context).secondary,
             ),
           ),

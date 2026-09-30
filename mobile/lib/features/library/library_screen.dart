@@ -287,6 +287,7 @@ class _LibraryScreenState extends State<LibraryScreen>
           Text(
             kind == LibraryCodeKind.entrance ? '僅限當日進出圖書館使用' : '請向圖書館櫃台出示此條碼',
             textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: 24),
           if (image != null)
@@ -342,7 +343,7 @@ class _LibraryScreenState extends State<LibraryScreen>
               child: Text(
                 '最後更新：${formatTaipeiClock(updated!)}',
                 textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodySmall,
+                style: Theme.of(context).textTheme.labelMedium,
               ),
             ),
           const SizedBox(height: 16),

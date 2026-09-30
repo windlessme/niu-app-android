@@ -2,6 +2,7 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../shared/shared.dart';
+import '../../shared/app_fact.dart';
 import 'course_presentation.dart';
 import 'course_widgets.dart';
 import 'course_resource_tile.dart';
@@ -745,9 +746,12 @@ class MoodleCourseScreen extends StatelessWidget {
                 '成績：${gradeValue(g['gradeformatted']) == '未提供' ? '尚未公布' : gradeValue(g['gradeformatted'])}',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
-              Text('範圍：${gradeValue(g['rangeformatted'])}'),
-              Text('百分比：${gradeValue(g['percentageformatted'])}'),
-              Text('權重：${gradeValue(g['weightformatted'])}'),
+              AppFact(label: '範圍', value: gradeValue(g['rangeformatted'])),
+              AppFact(
+                label: '百分比',
+                value: gradeValue(g['percentageformatted']),
+              ),
+              AppFact(label: '權重', value: gradeValue(g['weightformatted'])),
               if (plain(g['feedback']).isNotEmpty) ...[
                 const SizedBox(height: NiuSpacing.md),
                 Text('老師回饋', style: Theme.of(context).textTheme.titleSmall),
@@ -779,7 +783,7 @@ class MoodleModuleScreen extends StatelessWidget {
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: Text(plain(module['name']))),
     body: ListView(
-      padding: const EdgeInsets.all(NiuSpacing.lg),
+      padding: const EdgeInsets.all(NiuSpacing.page),
       children: [
         SelectableText(plain(module['description'])),
         for (final content in objects(module['contents'] ?? []))
@@ -902,6 +906,7 @@ class MoodleDiscussionScreen extends StatelessWidget {
               ),
               Text(
                 '${plain(p['author'] is Map ? p['author']['fullname'] : '')}　${campusTime(p['timecreated'])}',
+                style: Theme.of(context).textTheme.labelMedium,
               ),
               const Divider(),
               SelectableText(plain(p['message'])),
@@ -1027,7 +1032,7 @@ class _MoodleAssignmentScreenState extends State<MoodleAssignmentScreen> {
     body: ListView(
       padding: const EdgeInsets.all(NiuSpacing.xl),
       children: [
-        Text('截止時間：${campusTime(widget.assignment['duedate'])}'),
+        AppFact(label: '截止時間', value: campusTime(widget.assignment['duedate'])),
         const SizedBox(height: NiuSpacing.lg),
         SelectableText(plain(widget.assignment['intro'])),
         if (message != null)
@@ -1067,8 +1072,15 @@ class _MoodleAssignmentScreenState extends State<MoodleAssignmentScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('繳交狀態：${submissionLabel(status)}'),
-                        Text('最後修改：${campusTime(submission['timemodified'])}'),
+                        Text(
+                          '繳交狀態：${submissionLabel(status)}',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: NiuSpacing.sm),
+                        Text(
+                          '最後修改：${campusTime(submission['timemodified'])}',
+                          style: Theme.of(context).textTheme.labelMedium,
+                        ),
                         Text(
                           '評分：${switch (attempt['graded']) {
                             true => '已評分',

@@ -168,7 +168,12 @@ class RegistrationDashboard extends StatelessWidget {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(child: Text(label)),
+                      Expanded(
+                        child: Text(
+                          label,
+                          style: Theme.of(context).textTheme.labelMedium,
+                        ),
+                      ),
                       const SizedBox(width: 16),
                       Expanded(
                         child: Text(

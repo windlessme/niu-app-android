@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/session/campus_session.dart';
 import '../../core/web/academic_portal_screen.dart';
 import '../../shared/shared.dart';
+import '../../shared/app_fact.dart';
 import 'leave_repository.dart';
 import 'leave_widgets.dart';
 
@@ -230,19 +231,8 @@ class _LeaveScreenState extends State<LeaveScreen> {
     );
   }
 
-  Widget fact(String label, Object? value) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: NiuSpacing.sm),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: Theme.of(context).textTheme.bodySmall),
-        Text(
-          value == null || '$value'.trim().isEmpty ? '-' : '$value',
-          style: Theme.of(context).textTheme.bodyLarge,
-        ),
-      ],
-    ),
-  );
+  Widget fact(String label, Object? value) =>
+      AppFact(label: label, value: value == null ? '-' : '$value');
 
   @override
   Widget build(BuildContext context) {

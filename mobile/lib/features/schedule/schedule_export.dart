@@ -179,7 +179,10 @@ class _ScheduleExportBarState extends State<ScheduleExportBar> {
           dense: true,
           contentPadding: EdgeInsets.zero,
           title: const Text('上課前 10 分鐘提醒'),
-          subtitle: const Text('依每週課表提醒；假日與停課需自行調整。'),
+          subtitle: Text(
+            '依每週課表提醒；假日與停課需自行調整。',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
           value: reminders,
           onChanged: busy
               ? null

@@ -273,14 +273,14 @@ class _QuantityRow extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(requirement.label, style: text.titleMedium),
-        const SizedBox(height: 6),
+        const SizedBox(height: NiuSpacing.xs),
         Text(
           requirement.nonApplicable
               ? '${_quantity(requirement.earned)} $unit・不計入'
               : '${_quantity(requirement.earned)} / ${_quantity(requirement.required)} $unit',
           style: text.bodyMedium?.copyWith(color: colors.secondary),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: NiuSpacing.sm),
         if (progress != null) ...[
           LinearProgressIndicator(
             value: progress,
@@ -295,7 +295,7 @@ class _QuantityRow extends StatelessWidget {
             requirement.isComplete
                 ? '已完成'
                 : '尚差 ${_quantity(requirement.remaining)} $unit',
-            style: text.bodyMedium,
+            style: text.bodySmall,
           ),
         ] else
           Text(

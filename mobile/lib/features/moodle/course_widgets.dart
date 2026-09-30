@@ -30,10 +30,19 @@ class MoodleCourseCard extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(
-                    CupertinoIcons.book,
-                    color: theme.colorScheme.primary,
-                    size: NiuSize.toolbarIcon,
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: NiuColors.of(context).accentSoft,
+                      borderRadius: BorderRadius.circular(NiuRadius.control),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(NiuSpacing.sm),
+                      child: Icon(
+                        Icons.menu_book_outlined,
+                        color: theme.colorScheme.primary,
+                        size: NiuSize.toolbarIcon,
+                      ),
+                    ),
                   ),
                   const SizedBox(width: NiuSpacing.md),
                   Expanded(
@@ -50,49 +59,23 @@ class MoodleCourseCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    CupertinoIcons.person,
-                    size: 18,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: NiuSpacing.sm),
-                  Expanded(
-                    child: Text(
-                      course.teacher,
-                      style: theme.textTheme.labelMedium,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: NiuSpacing.xs),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    CupertinoIcons.book,
-                    size: 18,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: NiuSpacing.sm),
-                  Expanded(
-                    child: Text(
-                      course.credits,
-                      style: theme.textTheme.labelMedium,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              Text(
-                course.code.isEmpty ? '課程代碼未提供' : course.code,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+              if (course.teacher != '教師未提供' || course.credits != '學分未提供') ...[
+                const SizedBox(height: NiuSpacing.md),
+                Wrap(
+                  spacing: NiuSpacing.md,
+                  runSpacing: NiuSpacing.xs,
+                  children: [
+                    if (course.teacher != '教師未提供')
+                      Text(course.teacher, style: theme.textTheme.labelMedium),
+                    if (course.credits != '學分未提供')
+                      Text(course.credits, style: theme.textTheme.labelMedium),
+                  ],
                 ),
-              ),
+              ],
+              if (course.code.isNotEmpty) ...[
+                const SizedBox(height: NiuSpacing.sm),
+                Text(course.code, style: theme.textTheme.labelSmall),
+              ],
             ],
           ),
         ),

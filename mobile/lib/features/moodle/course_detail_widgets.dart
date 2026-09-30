@@ -181,13 +181,13 @@ class CourseDetailItem extends StatelessWidget {
             const SizedBox(height: NiuSpacing.sm),
             Text(
               metadata!,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
           ],
           if (excerpt != null && excerpt!.isNotEmpty) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: NiuSpacing.md),
             Text(excerpt!, maxLines: 3, overflow: TextOverflow.ellipsis),
           ],
           ...children,

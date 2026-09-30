@@ -604,7 +604,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
             children: [
               Text(
                 calendarCategories[event.category] ?? event.category,
-                style: TextStyle(color: _color(event.category)),
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: _color(event.category),
+                ),
               ),
               const SizedBox(height: NiuSpacing.md),
               Text(
@@ -618,7 +620,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
                 Text(event.note!),
               ],
               const SizedBox(height: NiuSpacing.xxl),
-              const Text('校方原文', style: TextStyle(fontWeight: FontWeight.bold)),
+              Text('校方原文', style: Theme.of(context).textTheme.titleSmall),
               const SizedBox(height: NiuSpacing.sm),
               SelectableText(event.sourceText),
               const SizedBox(height: NiuSpacing.md),
