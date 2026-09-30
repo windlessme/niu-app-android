@@ -39,6 +39,26 @@ Riverpod 管理校曆資料來源與非同步狀態；CampusSession 使用 Chang
 
 ## 驗證
 
+### 一般學生請假申請
+
+`features/leave/leave_application_screen.dart` 為原生申請表單；
+`leave_application_service.dart` 序列化校方表單操作，
+`leave_application_scripts.dart` 只在同一個已登入 WebView 的指定校方頁面執行。
+假別、民國日期、可選節次與附件限制從校方表單取得，公假選項不提供。
+保留校方注意事項的明確同意、節次帶回、附件附加與最終送出的區別。
+日期 postback 必須等待上一個表單版本更新完成，不重疊請求。
+
+草稿僅在目前頁面記憶體內，不存入請假查詢快取；離開或登出清除 App 中的草稿。
+檔案經系統選擇器讀取，使用者確認後才上傳；App 暫設 10 MB 傳輸上限，
+不把校方隱藏欄位的未確認單位當成正式限制。上傳透過分段資料傳入原校方附件表單，
+校方回傳附件列表後才標記完成；不自動刪除或重送附件。
+送出前再次確認，送出呼叫後立即鎖定重送；新假單號與校方簽核入口就緒才顯示已建立，
+其餘情況回到既有查詢確認，不以跳頁或逾時推定成功。校方網頁仍可在同一 WebView 開啟。
+
+`leave_application_test.dart`、`leave_application_screen_test.dart` 與
+`integration_test/leave_application_dom_test.dart` 使用合成資料。
+真實假單送出、附件保存、各假別完整規則仍需帳號／裝置驗收，不在自動測試中執行。
+
 `mobile/tool/verify.sh` 執行資料同步、工具版本、DOM fixtures、格式、分析與 Flutter 測試。自動化測試使用合成資料，不送出實際校務操作。
 
 - [在學證明裝置驗收](registration-device-checks.md)
