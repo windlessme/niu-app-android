@@ -60,7 +60,7 @@ class CampusHomeScreen extends StatelessWidget {
           },
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(NiuSpacing.page),
             children: [
               Row(
                 children: [
@@ -120,7 +120,7 @@ class CampusHomeScreen extends StatelessWidget {
               const SizedBox(height: 24),
               if (ssoNeedsReauthentication)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.only(bottom: NiuSpacing.lg),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -134,32 +134,23 @@ class CampusHomeScreen extends StatelessWidget {
                 ),
               if (offline)
                 const Padding(
-                  padding: EdgeInsets.only(bottom: 16),
+                  padding: EdgeInsets.only(bottom: NiuSpacing.lg),
                   child: Text('離線模式 · 顯示上次同步的課表，下拉可重新連線。'),
                 ),
               _HomeCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Icon(CupertinoIcons.calendar, color: accent, size: 20),
-                        const SizedBox(width: 8),
-                        const Expanded(
-                          child: Text(
-                            '今日課程',
-                            style: TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                        ),
-                        TextButton(
-                          onPressed: () => context.push('/schedule'),
-                          child: const Text('完整課表'),
-                        ),
-                      ],
+                    SectionHeader(
+                      title: '今日課程',
+                      trailing: TextButton(
+                        onPressed: () => context.push('/schedule'),
+                        child: const Text('完整課表'),
+                      ),
                     ),
                     if (name == null) ...[
                       const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 12),
+                        padding: EdgeInsets.symmetric(vertical: NiuSpacing.md),
                         child: Text('登入校務帳號，同步你的課表與校園服務。'),
                       ),
                       FilledButton(
@@ -229,7 +220,7 @@ class CampusHomeScreen extends StatelessWidget {
                 button: true,
                 label: '快速點名，開啟 QR Code 掃描器',
                 child: InkWell(
-                  borderRadius: BorderRadius.circular(28),
+                  borderRadius: BorderRadius.circular(NiuRadius.hero),
                   onTap: () => context.push('/attendance'),
                   child: Ink(
                     decoration: BoxDecoration(
@@ -243,9 +234,9 @@ class CampusHomeScreen extends StatelessWidget {
                           )!,
                         ],
                       ),
-                      borderRadius: BorderRadius.circular(28),
+                      borderRadius: BorderRadius.circular(NiuRadius.hero),
                     ),
-                    padding: const EdgeInsets.all(22),
+                    padding: const EdgeInsets.all(NiuSpacing.page),
                     child: Row(
                       children: [
                         Icon(

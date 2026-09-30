@@ -250,7 +250,9 @@ class _EventsScreenState extends State<EventsScreen> {
             ),
             if (events == null)
               SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: NiuSpacing.page,
+                ),
                 sliver: SliverToBoxAdapter(
                   child: syncing
                       ? const AppLoadingState(message: '正在同步活動…')
@@ -266,7 +268,9 @@ class _EventsScreenState extends State<EventsScreen> {
               ),
             if (filtered != null && filtered.isEmpty)
               SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: NiuSpacing.page,
+                ),
                 sliver: SliverToBoxAdapter(
                   child: NiuEmptyState(
                     title: query.isNotEmpty
@@ -284,7 +288,9 @@ class _EventsScreenState extends State<EventsScreen> {
               ),
             if (filtered != null && filtered.isNotEmpty)
               SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: NiuSpacing.page,
+                ),
                 sliver: SliverList.separated(
                   itemCount: filtered.length,
                   separatorBuilder: (_, _) => const SizedBox(height: 12),
@@ -403,7 +409,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       body: SafeArea(
         top: false,
         child: ListView(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(NiuSpacing.page),
           children: [
             HeroCard(
               child: Column(

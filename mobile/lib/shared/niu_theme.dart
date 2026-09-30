@@ -105,7 +105,46 @@ abstract final class NiuTheme {
         style: IconButton.styleFrom(minimumSize: const Size(50, 50)),
       ),
       textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(minimumSize: const Size(50, 50)),
+        style: TextButton.styleFrom(
+          minimumSize: const Size(NiuSize.touchTarget, NiuSize.touchTarget),
+          foregroundColor: colors.secondary,
+          padding: const EdgeInsets.symmetric(
+            horizontal: NiuSpacing.content,
+            vertical: NiuSpacing.compact,
+          ),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          minimumSize: const Size(NiuSize.touchTarget, NiuSize.touchTarget),
+          padding: const EdgeInsets.symmetric(
+            horizontal: NiuSpacing.page,
+            vertical: NiuSpacing.compact,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(NiuRadius.control),
+          ),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(NiuSize.touchTarget, NiuSize.touchTarget),
+          foregroundColor: colors.text,
+          side: BorderSide(color: colors.separator),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(NiuRadius.control),
+          ),
+        ),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: colors.surfaceSecondary,
+        selectedColor: colors.accentSoft,
+        side: BorderSide.none,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(NiuRadius.control),
+        ),
+        labelStyle: TextStyle(color: colors.secondary),
+        secondaryLabelStyle: TextStyle(color: colors.accent),
       ),
       scaffoldBackgroundColor: background,
       splashFactory: NoSplash.splashFactory,
@@ -142,11 +181,6 @@ abstract final class NiuTheme {
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(NiuRadius.card),
-          side: BorderSide(
-            color: dark
-                ? scheme.outlineVariant.withValues(alpha: .25)
-                : Colors.transparent,
-          ),
         ),
       ),
       dividerTheme: DividerThemeData(
@@ -174,7 +208,7 @@ abstract final class NiuTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: scheme.surfaceContainerHighest,
+        fillColor: colors.surfaceSecondary,
         hintStyle: TextStyle(color: scheme.onSurfaceVariant),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(NiuRadius.control),

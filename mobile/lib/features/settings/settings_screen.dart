@@ -35,7 +35,7 @@ class SettingsScreen extends StatelessWidget {
     body: SafeArea(
       top: false,
       child: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(NiuSpacing.page),
         children: [
           if (username != null || name != null) ...[
             NiuCard(
@@ -287,7 +287,7 @@ class _Action extends StatelessWidget {
   final VoidCallback onTap;
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
+    padding: const EdgeInsets.only(bottom: NiuSpacing.sm),
     child: AppCard(
       padding: EdgeInsets.zero,
       child: ListTile(
@@ -309,7 +309,7 @@ class PrivacyScreen extends StatelessWidget {
     body: SafeArea(
       top: false,
       child: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(NiuSpacing.page),
         children: const [
           NiuCard(
             child: Column(
@@ -411,7 +411,7 @@ class _CreditsScreenState extends State<CreditsScreen> {
         onRefresh: _load,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(NiuSpacing.page),
           children: [
             Icon(
               CupertinoIcons.heart,
@@ -447,13 +447,13 @@ class _CreditsScreenState extends State<CreditsScreen> {
               ),
               if (snapshot!.message != null)
                 Padding(
-                  padding: const EdgeInsets.only(top: 12),
+                  padding: const EdgeInsets.only(top: NiuSpacing.md),
                   child: Text(snapshot!.message!),
                 ),
             ],
             if (loading)
               const Padding(
-                padding: EdgeInsets.all(24),
+                padding: EdgeInsets.all(NiuSpacing.section),
                 child: CupertinoActivityIndicator(),
               ),
             if (error != null) ...[
