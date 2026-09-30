@@ -23,7 +23,7 @@ class MoodleCourseCard extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(NiuSpacing.xl),
+          padding: const EdgeInsets.all(NiuSpacing.content),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -33,7 +33,7 @@ class MoodleCourseCard extends StatelessWidget {
                   Icon(
                     CupertinoIcons.book,
                     color: theme.colorScheme.primary,
-                    size: 24,
+                    size: NiuSize.toolbarIcon,
                   ),
                   const SizedBox(width: NiuSpacing.md),
                   Expanded(
@@ -63,7 +63,7 @@ class MoodleCourseCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       course.teacher,
-                      style: theme.textTheme.bodySmall,
+                      style: theme.textTheme.labelMedium,
                     ),
                   ),
                 ],
@@ -81,7 +81,7 @@ class MoodleCourseCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       course.credits,
-                      style: theme.textTheme.bodySmall,
+                      style: theme.textTheme.labelMedium,
                     ),
                   ),
                 ],

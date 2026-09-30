@@ -30,14 +30,20 @@ class AppTabButton extends StatelessWidget {
           ),
         ),
         onPressed: onPressed,
-        child: Row(
+        child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (icon != null) ...[
-              Icon(icon),
-              const SizedBox(width: NiuSpacing.sm),
+              Icon(icon, size: NiuSize.tabIcon),
+              const SizedBox(height: NiuSpacing.xs),
             ],
-            Text(label),
+            Text(
+              label,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: selected ? colors.accent : colors.secondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ],
         ),
       ),

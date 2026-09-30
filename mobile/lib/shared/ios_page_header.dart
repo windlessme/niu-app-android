@@ -24,8 +24,9 @@ class CircleIconButton extends StatelessWidget {
       minimumSize: const Size(NiuSize.touchTarget, NiuSize.touchTarget),
       backgroundColor: NiuColors.of(context).surfaceSecondary,
       foregroundColor: NiuColors.of(context).text,
+      disabledForegroundColor: NiuColors.of(context).tertiary,
     ),
-    icon: Icon(icon, size: 21),
+    icon: Icon(icon, size: NiuSize.toolbarIcon),
   );
 }
 
@@ -40,7 +41,7 @@ class IosPageHeader extends StatelessWidget implements PreferredSizeWidget {
   final List<Widget> actions;
   final Widget? leading;
   @override
-  Size get preferredSize => const Size.fromHeight(76);
+  Size get preferredSize => const Size.fromHeight(NiuSize.toolbar);
   @override
   Widget build(BuildContext context) {
     final largeText = MediaQuery.textScalerOf(context).scale(26) > 34;
@@ -48,13 +49,17 @@ class IosPageHeader extends StatelessWidget implements PreferredSizeWidget {
     final titleWidget = Text(
       title,
       textAlign: TextAlign.center,
-      style: Theme.of(context).textTheme.headlineSmall,
+      style: Theme.of(context).textTheme.titleMedium,
     );
     return AppBar(
-      toolbarHeight: 76,
-      leadingWidth: 70,
+      toolbarHeight: NiuSize.toolbar,
+      leadingWidth: NiuSize.touchTarget + NiuSpacing.lg,
       leading: Padding(
-        padding: const EdgeInsets.only(left: 16, top: 13, bottom: 13),
+        padding: const EdgeInsets.only(
+          left: NiuSpacing.sm,
+          top: NiuSpacing.sm,
+          bottom: NiuSpacing.sm,
+        ),
         child:
             leading ??
             CircleIconButton(
