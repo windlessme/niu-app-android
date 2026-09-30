@@ -142,8 +142,8 @@ class WebEventActions implements EventActions {
     submit: eventCancelScript,
     success: const ['取消成功', '已取消', '報名已取消'],
     successMessage: '已取消報名',
-    // The school returns to the list after a successful cancellation.
-    successPath: '/mvcteam/act/applyme',
+    // As on iOS: after cancelling, the school leaves RegData for a list page.
+    leftRegData: true,
   );
 
   Future<EventActionResult> _run(
@@ -152,7 +152,7 @@ class WebEventActions implements EventActions {
     required List<String> success,
     required String successMessage,
     String? fallbackSuccess,
-    String? successPath,
+    bool leftRegData = false,
     CampusEvent? event,
     bool? expectRegistered,
   }) async {
@@ -189,8 +189,9 @@ class WebEventActions implements EventActions {
         }
       }
       if (success.any(text.contains) ||
-          (successPath != null &&
-              submitted.url.path.toLowerCase() == successPath)) {
+          (leftRegData &&
+              submitted.url.path.toLowerCase().startsWith('/mvcteam/act') &&
+              !submitted.url.path.toLowerCase().contains('/regdata/'))) {
         return EventActionResult(true, page.alert?.trim() ?? successMessage);
       }
       for (final word in const ['失敗', '錯誤', '額滿', '截止', '不符', '無法']) {
@@ -347,8 +348,12 @@ class _EventPage {
     final url = await _load!.future.timeout(const Duration(seconds: 20));
     session.coordinator.requireCurrent(epoch);
     if (url.path.toLowerCase() != '/mvcteam/act/applyme') return null;
-    final found = await eval(eventListedScript(event.id, event.name));
-    return found is bool ? found : null;
+    final raw = await eval(eventListedScript(event.id, event.name));
+    if (raw is! String) return null;
+    final state = jsonDecode(raw);
+    if (state is! Map) return null;
+    // A cancelled entry may stay in the list, marked as cancelled.
+    return state['listed'] == true && state['cancelled'] != true;
   }
 
   Future<void> dispose() async {
@@ -439,6 +444,7 @@ const eventCancelScript = r'''
     f.querySelector('input[name="__RequestVerificationToken"]') && f.querySelector('[name="SignId"]'));
   for (const form of forms) {
     const button = Array.from(form.querySelectorAll('button[type="submit"],input[type="submit"],button:not([type])'))
+      .sort((a, b) => /取消報名/.test(b.value || b.textContent || '') - /取消報名/.test(a.value || a.textContent || ''))
       .find(b => /取消/.test(b.value || b.textContent || ''));
     if (!button || button.disabled) continue;
     // Reply before navigating; the page unload would discard the result.
@@ -449,15 +455,21 @@ const eventCancelScript = r'''
 })()
 ''';
 
-/// Looks for one event in the 「我的報名」 page by its ID link or exact name.
+/// Finds one event in 「我的報名」 by its ID link or exact title and reports
+/// whether its row is marked as cancelled. JSON, or null when unreadable.
 String eventListedScript(String id, String name) =>
     '''
 (() => {
   if (!document.querySelector('.container.body-content')) return null;
   const id = ${jsonEncode(id)};
   const name = ${jsonEncode(name.trim())};
-  if (id && Array.from(document.querySelectorAll('a[href]')).some(a =>
-      new RegExp('/Act/(RegData|Apply)/' + id + '(?:[/?#]|\$)', 'i').test(a.getAttribute('href')))) return true;
-  return !!name && Array.from(document.querySelectorAll('h3')).some(h => h.textContent.trim() === name);
+  const byLink = id ? Array.from(document.querySelectorAll('a[href]')).find(a =>
+      new RegExp('/Act/(RegData|Apply)/' + id + '(?:[/?#]|\\\$)', 'i').test(a.getAttribute('href'))) : null;
+  const byTitle = !byLink && name ? Array.from(document.querySelectorAll('h3')).find(h => h.textContent.trim() === name) : null;
+  const hit = byLink || byTitle;
+  if (!hit) return JSON.stringify({listed:false});
+  const row = hit.closest ? (hit.closest('.enr-list-sec') || hit.closest('.row')) : null;
+  const text = row ? (row.innerText || row.textContent || '') : '';
+  return JSON.stringify({listed:true, cancelled:/已取消|取消報名成功|報名已取消|已退出/.test(text)});
 })()
 ''';
