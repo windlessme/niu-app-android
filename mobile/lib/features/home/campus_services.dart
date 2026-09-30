@@ -1,4 +1,4 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../shared/shared.dart';
 
@@ -75,8 +75,15 @@ abstract final class CampusServices {
     '/registration',
   );
 
+  static const postal = CampusService(
+    '郵件包裹',
+    '收件與領取狀態',
+    Icons.inventory_2_rounded,
+    NiuHue.amber,
+    '/postal',
+  );
+
   static const home = [
-    moodle,
     grades,
     library,
     calendar,
@@ -84,6 +91,7 @@ abstract final class CampusServices {
     leave,
     events,
     registration,
+    postal,
   ];
 }
 

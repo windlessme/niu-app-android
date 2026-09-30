@@ -1,0 +1,282 @@
+
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head><meta http-equiv="Content-Type" content="text/html; charset=utf-8" /><meta http-equiv="X-UA-Compatible" content="IE=edge" /><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, shrink-to-fit=no" /><meta name="description" content="國立宜蘭大學 郵務收發管理系統" /><title>
+	國立宜蘭大學 郵務收發管理系統
+</title><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.4.1/dist/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous" /><link href="CSS/myNIU.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.4.1/dist/jquery.slim.min.js" integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.4.1/dist/js/bootstrap.min.js" integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/sweetalert@2.1.2/dist/sweetalert.min.js"></script>
+    <link href="Content/fontawesome-all.min.css" rel="stylesheet" />
+    <script type='text/javascript' src='https://Webfont.niu.edu.tw/FontSubsetOutput/WebFontStd-BBBFFD8F3296479BB605F7D3A0193B28/WebFontStd-BBBFFD8F3296479BB605F7D3A0193B28.js?9461168492'></script>
+    <script>
+        function doFresh() {
+            if (arphicWebFontApi) {
+                arphicWebFontApi.load();
+            } else {
+                alert("WebFont js 尚未載入完畢");
+            }
+        }
+    </script>
+    <style>
+        .title{
+            font-family:jfopenhuninn;
+        }
+        .n > label {
+            padding-right:1em;
+        }
+
+    </style>
+<link href="/GA/Postal/WebResource.axd?d=b8adWYak0tImLef4A3fc9SI3s3ieM72EKhHTDTaA5i7hC3X0taQ_Kf112o2EuAvY_Jq2Yfv0q3x5-foDloIdg9LD2wpZ4Y9a9bmhil9JyYdtM1b8mf1hfFn02ezn1ABPfz_LVlxfU9OWaexQCIjPBg2&amp;t=638804055800000000" type="text/css" rel="stylesheet" class="Telerik_stylesheet" /><link href="/GA/Postal/WebResource.axd?d=2LtZVYi89WHmqQf2LLpp896qXIVZv6zAng-zW_TFsGRy8olSIP_mwHcCAieDcdNvrYKaP_7NSjJBV3gRStVBIBZ84DbKz5KklgehfWgWbokaxt0YpbhMmCCsU3ZiAX6zKWzP3zsukpFOhZmYs4nMuCCZ1KfsnF6iwhwVD62MiUk1&amp;t=638804055800000000" type="text/css" rel="stylesheet" class="Telerik_stylesheet" /><link href="/GA/Postal/WebResource.axd?d=Nhf6TpUj19KZ9rhEj2xtdd82n6zRBFpDh1ovVJiEFxzZ_j40GvatXFC-69u0KCbdWb97gxznvn5azhJRv6e8wJWocMLk1929vxjS12qnPcmoxqwLqF61oRtnqVPfnEK40&amp;t=638804055800000000" type="text/css" rel="stylesheet" class="Telerik_stylesheet" /><link href="/GA/Postal/WebResource.axd?d=0NMpxx239ts8mdD-HPE6bK2Xo-yOTIadMZEL3Q6jBdU9GdICQ2Hz-duefESkkEQ9AgWz91bLdV2SrPcexvOvvX3zKnNaugC61b6oRc0iaU0_ETmSyDBX9hcuwAal_ClLD1NdR6xPn8KRK1QAr-2Lza1g8VX7qyejYccnL3OfBMU1&amp;t=638804055800000000" type="text/css" rel="stylesheet" class="Telerik_stylesheet" /></head>
+<body>
+    <form method="post" action="./" id="form1">
+<div class="aspNetHidden">
+<input type="hidden" name="RadScriptManager1_TSM" id="RadScriptManager1_TSM" value="" />
+<input type="hidden" name="__EVENTTARGET" id="__EVENTTARGET" value="" />
+<input type="hidden" name="__EVENTARGUMENT" id="__EVENTARGUMENT" value="" />
+<input type="hidden" name="__LASTFOCUS" id="__LASTFOCUS" value="" />
+<input type="hidden" name="__VIEWSTATE" id="__VIEWSTATE" value="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" />
+</div>
+
+<script type="text/javascript">
+//<![CDATA[
+var theForm = document.forms['form1'];
+if (!theForm) {
+    theForm = document.form1;
+}
+function __doPostBack(eventTarget, eventArgument) {
+    if (!theForm.onsubmit || (theForm.onsubmit() != false)) {
+        theForm.__EVENTTARGET.value = eventTarget;
+        theForm.__EVENTARGUMENT.value = eventArgument;
+        theForm.submit();
+    }
+}
+//]]>
+</script>
+
+
+<script src="/GA/Postal/WebResource.axd?d=pynGkmcFUV13He1Qd6_TZEQ5Jm-I0N_E8rCXRfJ2s4Rt1aIyEYIgvmj81adwu6Qs-9z0QjAvNtQruKgXTK-1bA2&amp;t=639191121332169432" type="text/javascript"></script>
+
+
+<script src="/GA/Postal/Telerik.Web.UI.WebResource.axd?_TSM_HiddenField_=RadScriptManager1_TSM&amp;compress=1&amp;_TSM_CombinedScripts_=%3b%3bSystem.Web.Extensions%2c+Version%3d4.0.0.0%2c+Culture%3dneutral%2c+PublicKeyToken%3d31bf3856ad364e35%3azh-TW%3add3ac3d5-1e29-4112-8fed-529caffa8f24%3aea597d4b%3ab25378d2%3bTelerik.Web.UI%2c+Version%3d2025.1.416.462%2c+Culture%3dneutral%2c+PublicKeyToken%3d121fae78165ba3d4%3azh-TW%3aced1f735-5c2a-4218-bd68-1813924fe936%3a16e4e7cd%3af7645509%3a2003d0b8%3a24ee1bba%3ac128760b%3a1e771326%3a88144a7a%3af46195d3%3a33715776%3aaa288e2d%3a258f1c72%3a58366029" type="text/javascript"></script>
+<div class="aspNetHidden">
+
+	<input type="hidden" name="__VIEWSTATEGENERATOR" id="__VIEWSTATEGENERATOR" value="32235211" />
+	<input type="hidden" name="__EVENTVALIDATION" id="__EVENTVALIDATION" value="uvnnjsvJkSvJ4qVHlHvmryoduzktj9kre8mBCRfspwEw0cgzkKSyyjLdm4rMdGZjUIJKBaT8wqGKzGOq3YeeY+HJnEetXpoDMWnkPXeCZs1AW9bCM+xhAXz0SkUIo0CONNmrcuZmrkLkNZ6pIRpJdGyAYRozpef3ExakaI+4GpKuMF+gNIKqnEknKNDx1UTzXv11sEZ4ymIX3IrEZL1lVSHVSg7ySLXKXoWXGUdYj3A6svrJShhzJh1QnnVxY9ZG0Z99DJrHmytC/y/zxertvsOoXSLqdg5M6jScK23bnLFnnmRoAlYO6ADb1ZK9tktz" />
+</div>
+    <script type="text/javascript">
+//<![CDATA[
+Sys.WebForms.PageRequestManager._initialize('RadScriptManager1', 'form1', [], [], [], 90, '');
+//]]>
+</script>
+
+        
+        <div class="container">
+            <div class="row mt-4">
+                <div class="col-xs-12 col-sm-12" style="margin: 10px 0 10px 0">
+                    <img src="images/NIU_LOG_TP_SM.png" alt="NIU_LOGO" role="img" style="width: 45px; height: 35px; vertical-align: middle" />
+                    <span class="text-center h2" style="color: #04177e; font-family: jfopenhuninn; font-weight: bold; vertical-align: middle;">
+                        國立宜蘭大學 郵務收發管理系統</span>
+                </div>
+            </div>
+        </div>
+        <div id="Normal_View" class="container" style="min-height:700px;">
+        
+            <div class="row mt-4">
+                <div class="col-sm-12">
+                    <div class="alert alert-secondary">
+                        
+                        <div class="col-sm-12">
+                            <div class="form-group">
+                                <div class="form-row">
+                                    <label class="col-form-label font-weight-bold col-auto">領取狀態：</label>
+                                    <div class="col-auto">
+                                        <select name="DL_Status" id="DL_Status" class="form-control">
+	<option selected="selected" value="">未領取</option>
+	<option value="Y">已領取</option>
+	<option value="R">退件</option>
+
+</select>
+                                    </div>
+                                    <label class="col-form-label font-weight-bold ml-3 col-auto">物流類別：</label>
+                                    <div class="col-auto">
+                                        <div id="CB_Kind" class="RadComboBox RadComboBox_Bootstrap" style="width:160px;">
+	<!-- 2025.1.416.462 --><table summary="combobox" style="border-width:0;border-collapse:collapse;width:100%">
+		<tr>
+			<td class="rcbInputCell rcbInputCellLeft" style="width:100%;"><input name="CB_Kind" type="text" class="rcbInput radPreventDecorate rcbEmptyMessage" id="CB_Kind_Input" value="...請選擇..." /></td><td class="rcbArrowCell rcbArrowCellRight"><a id="CB_Kind_Arrow" style="overflow: hidden;display: block;position: relative;outline: none;">select</a></td>
+		</tr>
+	</table><div class="rcbSlide" style="z-index:6000;display:none;"><div id="CB_Kind_DropDown" class="RadComboBoxDropDown RadComboBoxDropDown_Bootstrap "><div class="rcbScroll rcbWidth"><ul class="rcbList"><li class="rcbItem">掛號郵件</li><li class="rcbItem">限時掛號</li><li class="rcbItem">國內包裹</li><li class="rcbItem">國內快捷</li><li class="rcbItem">國際郵件</li><li class="rcbItem">國際包裹</li><li class="rcbItem">新竹貨運</li><li class="rcbItem">大榮貨運</li><li class="rcbItem">新竹小件</li><li class="rcbItem">便利帶</li><li class="rcbItem">宅急便</li><li class="rcbItem">宅配通</li><li class="rcbItem">祥億貨運</li><li class="rcbItem">通盈貨運</li><li class="rcbItem">穩達配</li><li class="rcbItem">順豐快遞</li><li class="rcbItem">神行快遞</li><li class="rcbItem">鑫達快遞</li><li class="rcbItem">新航快遞</li><li class="rcbItem">速立快遞</li><li class="rcbItem">全統快遞</li><li class="rcbItem">新宇快遞</li><li class="rcbItem">超峰快遞</li><li class="rcbItem">聯新快遞</li><li class="rcbItem">巨航快遞</li><li class="rcbItem">大誠快遞</li><li class="rcbItem">龍鐽物流</li><li class="rcbItem">利飛快遞</li><li class="rcbItem">天成快遞</li><li class="rcbItem">長旺貨運</li><li class="rcbItem">來速捷物流</li><li class="rcbItem">全速配</li><li class="rcbItem">中天快遞</li><li class="rcbItem">聯強國際</li><li class="rcbItem">FedEX</li><li class="rcbItem">DHL</li><li class="rcbItem">精技電腦</li><li class="rcbItem">親送</li><li class="rcbItem">其他</li><li class="rcbItem">有朋公司</li><li class="rcbItem">宏順馳通運</li><li class="rcbItem">玲瓏快遞</li><li class="rcbItem">蝦皮物流</li><li class="rcbItem">速配通</li><li class="rcbItem">JUDTDELIVERY</li></ul></div><div class="rcbMoreResults" id="CB_Kind_MoreResultsBox"><a id="CB_Kind_MoreResultsBoxImage" title="Show more results"><span class="p-icon p-i-arrow-60-down"></span></a><span></span></div></div></div><input id="CB_Kind_ClientState" name="CB_Kind_ClientState" type="hidden" />
+</div>
+                                    </div>
+                                    <label class="col-form-label font-weight-bold ml-3 col-auto">日期：</label>
+                                    <div class="col-auto mt-2">
+                                        <span id="RB_Date" class="n"><input id="RB_Date_0" type="radio" name="RB_Date" value="0" checked="checked" /><label for="RB_Date_0">不限</label><input id="RB_Date_1" type="radio" name="RB_Date" value="1" onclick="javascript:setTimeout(&#39;__doPostBack(\&#39;RB_Date$1\&#39;,\&#39;\&#39;)&#39;, 0)" /><label for="RB_Date_1">設定</label></span>
+                                    </div>
+                                    
+                                </div>
+
+                            </div>
+                        </div>
+
+                        
+                        <div class="col-sm-12">
+                            <div class="form-group">
+                                <div class="form-row">
+                                    <label class="col-form-label font-weight-bold col-auto">收件單位：</label>
+                                    <div class="col-auto">
+                                        <div id="CB_Unit" class="RadComboBox RadComboBox_Bootstrap" style="width:160px;">
+	<table summary="combobox" style="border-width:0;border-collapse:collapse;width:100%">
+		<tr>
+			<td class="rcbInputCell rcbInputCellLeft" style="width:100%;"><input name="CB_Unit" type="text" class="rcbInput radPreventDecorate rcbEmptyMessage" id="CB_Unit_Input" value="...請選擇..." /></td><td class="rcbArrowCell rcbArrowCellRight"><a id="CB_Unit_Arrow" style="overflow: hidden;display: block;position: relative;outline: none;">select</a></td>
+		</tr>
+	</table><div class="rcbSlide" style="z-index:6000;display:none;"><div id="CB_Unit_DropDown" class="RadComboBoxDropDown RadComboBoxDropDown_Bootstrap "><div class="rcbScroll rcbWidth"><ul class="rcbList"><li class="rcbItem">學生</li><li class="rcbItem">校長室</li><li class="rcbItem">副校長室</li><li class="rcbItem">秘書室</li><li class="rcbItem">校友中心</li><li class="rcbItem">人事室</li><li class="rcbItem">主計室</li><li class="rcbItem">教務處</li><li class="rcbItem">綜合組</li><li class="rcbItem">註冊課務組</li><li class="rcbItem">進修組</li><li class="rcbItem">數位中心</li><li class="rcbItem">學務處</li><li class="rcbItem">課外組</li><li class="rcbItem">生輔組</li><li class="rcbItem">諮商組</li><li class="rcbItem">衛保組</li><li class="rcbItem">職涯中心</li><li class="rcbItem">原資中心</li><li class="rcbItem">圖資館</li><li class="rcbItem">總務處</li><li class="rcbItem">事務組</li><li class="rcbItem">出納組</li><li class="rcbItem">經保組</li><li class="rcbItem">營繕組</li><li class="rcbItem">採購組</li><li class="rcbItem">文書組</li><li class="rcbItem">研發處</li><li class="rcbItem">產學聯盟</li><li class="rcbItem">休產中心</li><li class="rcbItem">育成中心</li><li class="rcbItem">有機中心</li><li class="rcbItem">環教中心</li><li class="rcbItem">奈米中心</li><li class="rcbItem">永續中心</li><li class="rcbItem">檢驗及技術服務中心</li><li class="rcbItem">無人機中心</li><li class="rcbItem">土材實驗室</li><li class="rcbItem">無人機學程</li><li class="rcbItem">國際處</li><li class="rcbItem">環安中心</li><li class="rcbItem">教發中心</li><li class="rcbItem">生資院</li><li class="rcbItem">生動系</li><li class="rcbItem">食品系</li><li class="rcbItem">森林系</li><li class="rcbItem">木材實驗室</li><li class="rcbItem">生機系</li><li class="rcbItem">園藝系</li><li class="rcbItem">實習場區管發中心</li><li class="rcbItem">農推會</li><li class="rcbItem">生資院碩專班</li><li class="rcbItem">工學院</li><li class="rcbItem">機械系</li><li class="rcbItem">環工系</li><li class="rcbItem">化材系</li><li class="rcbItem">土木系</li><li class="rcbItem">建研所</li><li class="rcbItem">人管院</li><li class="rcbItem">經管系</li><li class="rcbItem">休健系</li><li class="rcbItem">外文系</li><li class="rcbItem">EMBA</li><li class="rcbItem">智農學程</li><li class="rcbItem">電資院</li><li class="rcbItem">電子系</li><li class="rcbItem">資工系</li><li class="rcbItem">電機系</li><li class="rcbItem">博雅學部</li><li class="rcbItem">通識中心</li><li class="rcbItem">運動中心</li><li class="rcbItem">語言中心</li><li class="rcbItem">物理教室</li><li class="rcbItem">警衛室</li><li class="rcbItem">男生宿舍</li><li class="rcbItem">女生宿舍</li><li class="rcbItem">合作社</li><li class="rcbItem">宜蘭空大</li><li class="rcbItem">黃大魚基金會</li><li class="rcbItem">麥當勞</li><li class="rcbItem">黃大魚劇團</li><li class="rcbItem">遠傳電信</li><li class="rcbItem">永齡希望小學</li><li class="rcbItem">其它</li><li class="rcbItem">能源中心</li><li class="rcbItem">永續暨校務中心</li></ul></div><div class="rcbMoreResults" id="CB_Unit_MoreResultsBox"><a id="CB_Unit_MoreResultsBoxImage" title="Show more results"><span class="p-icon p-i-arrow-60-down"></span></a><span></span></div></div></div><input id="CB_Unit_ClientState" name="CB_Unit_ClientState" type="hidden" />
+</div>
+                                    </div>
+                                    <label class="col-form-label font-weight-bold ml-2 col-auto">收件人：</label>
+                                    <div class="col-auto">
+                                        <input name="Key_name" type="text" id="Key_name" class="form-control" style="width:120px" value="查無此人測試甲乙" />
+                                    </div>
+                                    <label class="col-form-label font-weight-bold ml-2 col-auto">手機號碼：</label>
+                                    <div class="col-auto">
+                                        <input name="Key_Phone" type="text" id="Key_Phone" class="form-control" style="width:120px" />
+                                    </div>
+                                    <label class="col-form-label font-weight-bold col-auto">包裹/郵件號碼：</label>
+                                    <div class="col-auto">
+                                        <input name="Key_BillID" type="text" id="Key_BillID" class="form-control" style="width:200px" />
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        
+                        <div class="col-sm-12">
+                            <div class="form-group">
+                                <div class="text-right">
+                                    <div class="col-auto text-right">
+                                        <input type="submit" name="Btn_Search" value="開始查詢" id="Btn_Search" class="btn btn-secondary" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        
+
+        
+            <div class="row mt-2">
+                
+                <div class="col-sm-12">
+                    <div id="RadGrid1" class="RadGrid RadGrid_Bootstrap">
+
+<table class="rgMasterTable" id="RadGrid1_ctl00" style="width:100%;table-layout:auto;empty-cells:show;">
+	<colgroup>
+        <col style="width:50px" />
+        <col  />
+        <col style="width:200px" />
+        <col  />
+        <col  />
+        <col  />
+        <col style="width:50px" />
+        <col style="width:100px" />
+        <col style="width:150px" />
+        <col  />
+    </colgroup>
+<thead>
+		<tr>
+			<th scope="col" class="rgHeader bg-info text-light font-weight-bold" style="font-size:16px;height:40px;text-align:center;">序號</th><th scope="col" class="rgHeader bg-info text-light font-weight-bold" style="font-size:16px;height:40px;text-align:center;">收件日期</th><th scope="col" class="rgHeader bg-info text-light font-weight-bold" style="font-size:16px;height:40px;text-align:center;">郵件號碼</th><th scope="col" class="rgHeader bg-info text-light font-weight-bold" style="font-size:16px;height:40px;text-align:center;">收件單位</th><th scope="col" class="rgHeader bg-info text-light font-weight-bold" style="font-size:16px;height:40px;text-align:center;">收件者</th><th scope="col" class="rgHeader bg-info text-light font-weight-bold" style="font-size:16px;height:40px;text-align:center;">類別</th><th scope="col" class="rgHeader bg-info text-light font-weight-bold" style="font-size:16px;height:40px;text-align:center;">數量</th><th scope="col" class="rgHeader bg-info text-light font-weight-bold" style="font-size:16px;height:40px;text-align:center;">是否簽收</th><th scope="col" class="rgHeader bg-info text-light font-weight-bold" style="font-size:16px;height:40px;text-align:center;">簽收(退件)日期</th><th scope="col" class="rgHeader bg-info text-light font-weight-bold" style="font-size:16px;height:40px;text-align:center;">備註</th>
+		</tr>
+	</thead><tbody>
+	<tr class="rgNoRecords">
+		<td colspan="10" style="text-align:left;">
+                                <div class="text-center bg-secondary" style="padding:8px 8px;">
+                                    <span class="text-light" style="font-size:1.1rem">查無資料</span>
+                                </div>
+                            </td>
+	</tr>
+	</tbody>
+
+</table><div id="RadGrid1_SharedCalendarContainer" style="display:none;">
+
+</div><input id="RadGrid1_ClientState" name="RadGrid1_ClientState" type="hidden" />    </div>
+
+                    
+
+                </div>
+            </div>
+        
+
+        
+            <div class="row mt-3 mt-5">
+                <div class="col-sm-12 bg-primary text-light h5 title" style="padding-top:5px; padding-bottom:5px;">領取注意事項</div>
+                <div class="col-sm-12" style="font-size:1.1rem">
+                    <label id="Memo"><ol style="list-style-type:trad-chinese-informal"><li>因上午時段需執行信件及貨運清消工作，且信件、包裹送達尚需作登錄及分類等程序；另下午3點半後為配合郵局特約戶郵件交件時間，需處理郵件寄送打包作業，故各單位派員領取時間為上班日：<span style="color: rgb(255, 0, 0);"><strong><span style="color: rgb(255, 0, 0);">13:30-17:00<span style="color: rgb(0, 0, 0);">(其它時段恕不開放領取)。</span></span></strong></span><br></li><li>掛號郵件、包裹（貨運）領取：
+		                    <ul style="list-style-type: square">
+			                    <li>宿舍學生（來信有載明者）：<br>
+			                       請逕至各宿舍管理員室領取（每日會由宿舍管理室派員至文書組統一領回）。 </li>
+			                    <li>教職員工（含來信已載明各系所實驗室、研究室之研究生或助理）：<br>
+			                       請親自或由單位派員至文書組簽收領取。</li>
+			                    <li>一般學生（非住宿生或住宿生未載明者）：<br>
+   				                    請攜帶本人<span style="color: rgb(255, 0, 0);"><strong><span style="text-decoration: underline;">學生證</span></strong></span>至文書組領取， 若非本人領取請攜帶收件人及代領人<span style="text-decoration: underline; color: rgb(255, 0, 0);"><strong>雙方學生證</strong></span>以供查驗。</li>
+	                    </ul>
+	                    </li><li>一般信件（平信）領取：
+		                    <ul style="list-style-type: square">
+			                    <li>學生（含住宿生）：<br>
+		   		                    請至學務處生活輔導組領取。</li>
+
+		                        <li>教職員工（含來信已載明各系所實驗室、研究室之研究生或助理）：<br>
+		                       逕投遞至各單位信箱（文書組外之單位信箱區）。</li>
+		                    </ul>
+	                    </li><li>文書組每日收受郵件、包裹及貨運件數甚多，請務必要求寄件單位(人)載明收件人單位或科系班別，經查無法分類通知者皆以退件處理。</li><li>掛號郵件、包裹請於送達登記系統日起<span style="color: rgb(255, 0, 0);"><strong>7</strong></span>日內領取 ，逾期將以退件處理。</li><li>不代收冷藏冷凍物品、大型物品、具異味物品、貨款。</li><li>郵件查詢相關問題可電洽：<br>
+	                    校外：<strong><span style="color: rgb(0, 112, 192);">03-9317266</span></strong>　校內分機:<strong><span style="color: rgb(0, 112, 192);">7266</span></strong>。</li></ol><p>&nbsp;</p><p>相關連結：<a href="https://postserv.post.gov.tw/pstmail/main_mail.html" target="_blank">郵件掛號查詢</a>&nbsp;| <a href="https://www.post.gov.tw/post/internet/Postal/index.jsp?ID=1396069527419" target="_blank">郵件資費查詢</a></p></label>
+                </div>
+            </div>
+        
+
+        </div>
+        
+
+        
+        
+        
+
+        <!-- 註腳區-->
+        <footer id="footer" class="hidden-print">
+            <div class="container">
+                <div class="col-xs-12 col-sm-12">
+                    <label style="color: #fff">
+                        <span>郵務收發管理系統</span><br />
+                        業務承辦單位：總務處文書組 位置 <a href="https://letter.niu.edu.tw/letter/map.jpg" target="_blank">請按此</a>，郵件查詢相關問題可電洽：校外：03-9317266　校內分機:7266。<br />
+                        Copyright &copy; 2021 國立宜蘭大學 National Ilan University.
+                        <span id="lab_version">version.</span>
+                    </label>
+                </div>
+            </div>
+        </footer>
+        <!-- 註腳區結束 -->
+
+    
+
+<script type="text/javascript">
+//<![CDATA[
+window.__TsmHiddenField = $get('RadScriptManager1_TSM');
+var callBackFrameUrl='/GA/Postal/WebResource.axd?d=beToSAE3vdsL1QUQUxjWdQNG8tul188OMeNezIYnFFfhbNX6moF-7Gm8ivRLe64xqcSZ7wRaxD_eMElqSU894g2&t=639191121332169432';
+WebForm_InitCallback();Sys.Application.add_init(function() {
+    $create(Telerik.Web.UI.RadComboBox, {"_dropDownWidth":0,"_height":0,"_showMoreResultsBox":true,"_skin":"Bootstrap","_uniqueId":"CB_Kind","clientStateFieldID":"CB_Kind_ClientState","collapseAnimation":"{\"duration\":450}","emptyMessage":"...請選擇...","enableLoadOnDemand":true,"expandAnimation":"{\"duration\":450}","filter":1,"itemData":[{"value":"1"},{"value":"45"},{"value":"2"},{"value":"4"},{"value":"5"},{"value":"3"},{"value":"6"},{"value":"7"},{"value":"51"},{"value":"8"},{"value":"9"},{"value":"10"},{"value":"12"},{"value":"13"},{"value":"40"},{"value":"24"},{"value":"16"},{"value":"17"},{"value":"18"},{"value":"19"},{"value":"20"},{"value":"21"},{"value":"22"},{"value":"23"},{"value":"25"},{"value":"26"},{"value":"27"},{"value":"28"},{"value":"29"},{"value":"30"},{"value":"31"},{"value":"32"},{"value":"38"},{"value":"39"},{"value":"33"},{"value":"34"},{"value":"41"},{"value":"36"},{"value":"37"},{"value":"15"},{"value":"47"},{"value":"49"},{"value":"53"},{"value":"54"},{"value":"55"}],"localization":"{\"AllItemsCheckedString\":\"All items checked\",\"ItemsCheckedString\":\"items checked\",\"CheckAllString\":\"Check All\"}"}, null, null, $get("CB_Kind"));
+});
+Sys.Application.add_init(function() {
+    $create(Telerik.Web.UI.RadComboBox, {"_dropDownWidth":0,"_height":0,"_showMoreResultsBox":true,"_skin":"Bootstrap","_uniqueId":"CB_Unit","clientStateFieldID":"CB_Unit_ClientState","collapseAnimation":"{\"duration\":450}","emptyMessage":"...請選擇...","enableLoadOnDemand":true,"expandAnimation":"{\"duration\":450}","filter":1,"itemData":[{"value":"1"},{"value":"2"},{"value":"3"},{"value":"4"},{"value":"30"},{"value":"5"},{"value":"6"},{"value":"7"},{"value":"31"},{"value":"32"},{"value":"33"},{"value":"85"},{"value":"8"},{"value":"34"},{"value":"35"},{"value":"36"},{"value":"37"},{"value":"38"},{"value":"39"},{"value":"12"},{"value":"9"},{"value":"40"},{"value":"41"},{"value":"42"},{"value":"43"},{"value":"44"},{"value":"45"},{"value":"10"},{"value":"86"},{"value":"46"},{"value":"47"},{"value":"48"},{"value":"49"},{"value":"51"},{"value":"50"},{"value":"52"},{"value":"80"},{"value":"82"},{"value":"81"},{"value":"11"},{"value":"14"},{"value":"15"},{"value":"16"},{"value":"57"},{"value":"58"},{"value":"54"},{"value":"83"},{"value":"55"},{"value":"56"},{"value":"59"},{"value":"60"},{"value":"53"},{"value":"17"},{"value":"62"},{"value":"61"},{"value":"64"},{"value":"63"},{"value":"65"},{"value":"18"},{"value":"67"},{"value":"68"},{"value":"66"},{"value":"69"},{"value":"70"},{"value":"19"},{"value":"71"},{"value":"72"},{"value":"73"},{"value":"20"},{"value":"74"},{"value":"75"},{"value":"76"},{"value":"77"},{"value":"28"},{"value":"22"},{"value":"21"},{"value":"23"},{"value":"24"},{"value":"78"},{"value":"84"},{"value":"27"},{"value":"25"},{"value":"26"},{"value":"29"},{"value":"88"},{"value":"89"}],"localization":"{\"AllItemsCheckedString\":\"All items checked\",\"ItemsCheckedString\":\"items checked\",\"CheckAllString\":\"Check All\"}"}, null, null, $get("CB_Unit"));
+});
+Sys.Application.add_init(function() {
+    $create(Telerik.Web.UI.RadGrid, {"ClientID":"RadGrid1","ClientSettings":{"AllowAutoScrollOnDragDrop":true,"EnableRowHoverStyle":true,"ShouldCreateRows":true,"DataBinding":{},"Selecting":{"CellSelectionMode":0},"Scrolling":{},"Resizing":{},"ClientMessages":{},"KeyboardNavigationSettings":{"AllowActiveRowCycle":false,"EnableKeyboardShortcuts":true,"FocusKey":89,"InitInsertKey":73,"RebindKey":82,"ExitEditInsertModeKey":27,"UpdateInsertItemKey":13,"DeleteActiveRow":127,"ExpandDetailTableKey":39,"CollapseDetailTableKey":37,"MoveDownKey":40,"MoveUpKey":38,"SaveChangesKey":85,"CancelChangesKey":81},"Animation":{},"Virtualization":{}},"Skin":"Bootstrap","UniqueID":"RadGrid1","_activeRowIndex":"","_controlToFocus":"","_currentPageIndex":0,"_defaultDateTimeFormat":"yyyy/M/d tt hh:mm:ss","_editIndexes":"[]","_embeddedSkin":true,"_freezeText":"Freeze","_gridTableViewsData":"[{\"ClientID\":\"RadGrid1_ctl00\",\"UniqueID\":\"RadGrid1$ctl00\",\"PageSize\":10,\"PageCount\":1,\"EditMode\":\"EditForms\",\"AllowPaging\":true,\"CurrentPageIndex\":0,\"VirtualItemCount\":0,\"AllowMultiColumnSorting\":false,\"AllowNaturalSort\":true,\"AllowFilteringByColumn\":false,\"PageButtonCount\":10,\"HasDetailTables\":false,\"HasMultiHeaders\":false,\"CheckListWebServicePath\":\"\",\"GroupLoadMode\":\"Server\",\"PagerAlwaysVisible\":false,\"IsItemInserted\":false,\"clientDataKeyNames\":[],\"hasDetailItemTemplate\":false,\"_dataBindTemplates\":false,\"_selectedItemStyle\":\"\",\"_selectedItemStyleClass\":\"rgSelectedRow\",\"_columnsData\":[{\"UniqueName\":\"TemplateColumn\",\"Resizable\":true,\"Reorderable\":true,\"Selectable\":true,\"Groupable\":true,\"ColumnType\":\"GridTemplateColumn\",\"ColumnGroupName\":\"\",\"Editable\":false,\"DataTypeName\":\"System.Int32\",\"DataField\":\"\",\"Display\":true},{\"UniqueName\":\"InDate\",\"Resizable\":true,\"Reorderable\":true,\"Selectable\":true,\"Groupable\":true,\"ColumnType\":\"GridBoundColumn\",\"ColumnGroupName\":\"\",\"Editable\":true,\"DataTypeName\":\"System.DateTime\",\"DataField\":\"InDate\",\"DataFormatString\":\"{0:d}\",\"Display\":true},{\"UniqueName\":\"BillID\",\"Resizable\":true,\"Reorderable\":true,\"Selectable\":true,\"Groupable\":true,\"ColumnType\":\"GridBoundColumn\",\"ColumnGroupName\":\"\",\"Editable\":true,\"DataTypeName\":\"System.String\",\"DataField\":\"BillID\",\"Display\":true},{\"UniqueName\":\"Unit_NM\",\"Resizable\":true,\"Reorderable\":true,\"Selectable\":true,\"Groupable\":true,\"ColumnType\":\"GridBoundColumn\",\"ColumnGroupName\":\"\",\"Editable\":true,\"DataTypeName\":\"System.String\",\"DataField\":\"Unit_NM\",\"Display\":true},{\"UniqueName\":\"Recipient\",\"Resizable\":true,\"Reorderable\":true,\"Selectable\":true,\"Groupable\":true,\"ColumnType\":\"GridBoundColumn\",\"ColumnGroupName\":\"\",\"Editable\":true,\"DataTypeName\":\"System.String\",\"DataField\":\"Recipient\",\"Display\":true},{\"UniqueName\":\"Company_Name\",\"Resizable\":true,\"Reorderable\":true,\"Selectable\":true,\"Groupable\":true,\"ColumnType\":\"GridBoundColumn\",\"ColumnGroupName\":\"\",\"Editable\":true,\"DataTypeName\":\"System.String\",\"DataField\":\"Company_Name\",\"Display\":true},{\"UniqueName\":\"Bill_Num\",\"Resizable\":true,\"Reorderable\":true,\"Selectable\":true,\"Groupable\":true,\"ColumnType\":\"GridBoundColumn\",\"ColumnGroupName\":\"\",\"Editable\":true,\"DataTypeName\":\"System.Int32\",\"DataField\":\"Bill_Num\",\"Display\":true},{\"UniqueName\":\"TemplateColumn1\",\"Resizable\":true,\"Reorderable\":true,\"Selectable\":true,\"Groupable\":true,\"ColumnType\":\"GridTemplateColumn\",\"ColumnGroupName\":\"\",\"Editable\":false,\"DataTypeName\":\"System.String\",\"DataField\":\"\",\"Display\":true},{\"UniqueName\":\"OutDate\",\"Resizable\":true,\"Reorderable\":true,\"Selectable\":true,\"Groupable\":true,\"ColumnType\":\"GridBoundColumn\",\"ColumnGroupName\":\"\",\"Editable\":true,\"DataTypeName\":\"System.DateTime\",\"DataField\":\"OutDate\",\"DataFormatString\":\"{0:d}\",\"Display\":true},{\"UniqueName\":\"Memo\",\"Resizable\":true,\"Reorderable\":true,\"Selectable\":true,\"Groupable\":true,\"ColumnType\":\"GridBoundColumn\",\"ColumnGroupName\":\"\",\"Editable\":true,\"DataTypeName\":\"System.String\",\"DataField\":\"Memo\",\"Display\":true}]}]","_masterClientID":"RadGrid1_ctl00","_shouldFocusOnPage":false,"_unfreezeText":"Unfreeze","allowMultiRowSelection":false,"clientStateFieldID":"RadGrid1_ClientState","renderMode":1}, null, null, $get("RadGrid1"));
+});
+//]]>
+</script>
+</form>
+    <script src="Scripts/fontawesome/fontawesome.min.js"></script>
+</body>
+</html>
