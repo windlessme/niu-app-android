@@ -9,6 +9,7 @@ import 'attendance_repository.dart';
 import 'attendance_open_flow.dart';
 import 'attendance_result_screen.dart';
 import '../demo/demo_services.dart';
+import '../../core/demo/demo_account.dart';
 
 class AttendanceScannerScreen extends StatefulWidget {
   const AttendanceScannerScreen({super.key, required this.repository});
@@ -282,7 +283,8 @@ class _AttendanceScannerScreenState extends State<AttendanceScannerScreen>
                         ),
                       ],
                       const Spacer(),
-                      if (widget.repository is DemoMoodleRepository)
+                      if (widget.repository is DemoMoodleRepository &&
+                          !storeScreenshots)
                         Padding(
                           padding: const EdgeInsets.only(bottom: NiuSpacing.md),
                           child: FilledButton.icon(

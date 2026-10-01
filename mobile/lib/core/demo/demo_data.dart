@@ -213,6 +213,16 @@ abstract final class DemoData {
     final approved = record['審核結果'] == '核准';
     return {
       'fields': {'請假事由': record['請假事由'], '證明文件': approved ? '診斷證明.pdf' : '無'},
+      'periods': [
+        [
+          for (
+            var p = int.parse('${record['起始節次']}');
+            p <= int.parse('${record['迄止節次']}');
+            p++
+          )
+            ['${record['請假起日']}', '第$p節', approved ? '資料結構' : '計算機組織'],
+        ],
+      ],
       'workflow': [
         {'簽核狀況': '核准', '簽核日期': record['申請日期'], '關卡說明': '導師', '簽核單位': '資訊工程學系'},
         {
