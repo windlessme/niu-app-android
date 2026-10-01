@@ -208,7 +208,9 @@ class _AttendanceResultScreenState extends State<AttendanceResultScreen> {
     if (demo) {
       setState(() {
         verification = _Verification.verified;
-        verificationText = '示範模式：模擬查核完成';
+        verificationText = storeScreenshots
+            ? '已用同一個登入重新向 M 園區查核'
+            : '示範模式：模擬查核完成';
       });
       return;
     }

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
@@ -12,6 +14,7 @@ import 'package:niu_mobile/features/events/events_screen.dart';
 import 'package:niu_mobile/features/graduation/graduation_screen.dart';
 import 'package:niu_mobile/features/grades/grades_screen.dart';
 import 'package:niu_mobile/features/leave/leave_application_data.dart';
+import 'package:niu_mobile/features/leave/leave_repository.dart';
 import 'package:niu_mobile/features/postal/postal_models.dart';
 import 'package:niu_mobile/features/registration/certificate_service.dart';
 import 'package:niu_mobile/features/registration/registration_data.dart';
@@ -97,6 +100,18 @@ void main() {
     );
     expect(DemoData.leaveList['records'], isNotEmpty);
     expect(DemoData.leaveDetail('D1150915')['workflow'], hasLength(2));
+    // The leave screen caches every snapshot through the real validator.
+    LeaveRepository.validate({
+      for (final (key, data) in [
+        ('statistics', DemoData.leaveStatistics),
+        ('list', DemoData.leaveList),
+        ('detail:D1150915', DemoData.leaveDetail('D1150915')),
+        ('detail:D1150928', DemoData.leaveDetail('D1150928')),
+      ])
+        key: jsonDecode(
+          jsonEncode({'updatedAt': '2026-10-01T00:00:00Z', 'data': data}),
+        ),
+    });
   });
 
   testWidgets('school pages show demo data and never create a WebView', (

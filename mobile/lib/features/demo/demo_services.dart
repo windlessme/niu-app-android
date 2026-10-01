@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/demo/demo_account.dart';
 import '../../core/demo/demo_data.dart';
 import '../../core/network/school_clients.dart';
 import '../events/event_actions.dart';
@@ -46,6 +47,9 @@ Uint8List demoPdf(String title) {
   return Uint8List.fromList(ascii.encode(out.toString()));
 }
 
+/// Demo result text; store screenshots show what a student would see.
+String _note(String text) => storeScreenshots ? text : '$text（示範模式，未送出到學校）';
+
 // ── 活動報名 ──────────────────────────────────────────────────────────────
 
 /// Registrations made during the demo, kept in memory only.
@@ -67,14 +71,14 @@ class DemoEventActions implements EventActions {
   Future<EventActionResult> register(CampusEvent event) async {
     await Future<void>.delayed(const Duration(milliseconds: 600));
     DemoEvents.registered.add(event.id);
-    return const EventActionResult(true, '報名成功（示範模式，未送出到學校）');
+    return EventActionResult(true, _note('報名成功'));
   }
 
   @override
   Future<EventActionResult> cancel(CampusEvent event) async {
     await Future<void>.delayed(const Duration(milliseconds: 600));
     DemoEvents.registered.remove(event.id);
-    return const EventActionResult(true, '已取消報名（示範模式，未送出到學校）');
+    return EventActionResult(true, _note('已取消報名'));
   }
 
   @override
@@ -109,7 +113,7 @@ class DemoEventActions implements EventActions {
     String? proof,
   }) async {
     await Future<void>.delayed(const Duration(milliseconds: 600));
-    return const EventActionResult(true, '已儲存修改（示範模式，未送出到學校）');
+    return EventActionResult(true, _note('已儲存修改'));
   }
 
   @override
@@ -247,7 +251,8 @@ class DemoLeaveGateway implements LeaveApplicationGateway {
     'type': '023',
     'start': DemoData.rocDate(1),
     'end': DemoData.rocDate(1),
-    'reason': '',
+    // adb cannot type Chinese; screenshots start with a typical reason.
+    'reason': storeScreenshots ? '家中有事需返鄉處理' : '',
     'reasonLimit': 1000,
     'later': false,
     'canDeferAttachment': true,
@@ -267,8 +272,10 @@ class DemoLeaveGateway implements LeaveApplicationGateway {
   }
 
   @override
-  Future<LeaveApplicationData> initialize() async =>
-      const LeaveApplicationData(revision: 'demo:0', notice: '請假注意事項');
+  Future<LeaveApplicationData> initialize() async => storeScreenshots
+      // The first form carries the reason the screen fills in once.
+      ? _next()
+      : const LeaveApplicationData(revision: 'demo:0', notice: '請假注意事項');
 
   @override
   Future<LeaveApplicationData> agree(LeaveApplicationData data) => _next();
@@ -359,9 +366,11 @@ class DemoLeaveGateway implements LeaveApplicationGateway {
   @override
   Future<LeaveSubmitResult> submit(LeaveApplicationData data) async {
     await Future<void>.delayed(const Duration(milliseconds: 800));
-    return const LeaveSubmitResult(
-      applicationId: 'DEMO-0001',
-      message: '示範模式：已模擬送出，沒有傳送到學校請假系統。',
+    return LeaveSubmitResult(
+      applicationId: storeScreenshots ? 'D1151002' : 'DEMO-0001',
+      message: storeScreenshots
+          ? '學校已收到你的請假申請，審核結果可在請假紀錄查看。'
+          : '示範模式：已模擬送出，沒有傳送到學校請假系統。',
     );
   }
 
