@@ -1,6 +1,6 @@
 # HANDOFF
 
-給接手的 Claude Code session。最後更新：2026-10-01。目前版本：**0.13.7+68**（`main` 上的 `1e3f05b`）。
+給接手的 Claude Code session。最後更新：2026-10-01。目前版本：**0.13.8+69**（`main` 上的 `2e2a3e1`）。
 
 ## 專案概況
 
@@ -23,6 +23,13 @@
 6. `python3 tool/publish_preview.py --apk build/app/outputs/flutter-apk/app-debug.apk --version X.Y.Z`
 7. 給使用者下載連結：`http://<preview-server>:8080/NIU-Life-X.Y.Z-preview.apk`
 
+## Release 簽章與 Play 上傳
+
+- Upload key 在 repo 外面：`/root/.config/niulife-signing/upload-keystore.jks`，`key.properties` 也在同一個資料夾，密碼存在 `key.properties` 裡，權限是 600。可以用環境變數 `NIULIFE_KEY_PROPERTIES` 改路徑；找不到檔案時，release 會退回 debug 簽章。
+- Upload key 的 SHA-256 指紋：`95:04:DD:13:D3:38:D6:E5:7C:83:89:42:9F:B0:A0:AB:25:4E:F1:1F:95:CE:AB:DC:5E:4B:B4:04:46:C8:4B:FA`。已經請使用者另外備份。
+- 已啟用 Play 應用程式簽署：發布用的金鑰由 Google 保管，這把只是 upload key。
+- 上傳流程：`flutter build appbundle --release`，然後用 MCP 依序 `edits_insert` → `bundles_upload` → `tracks_update`（internal，status `completed`）→ `edits_commit`。
+
 其他慣例：
 
 - 回覆一律用**繁體中文**。
@@ -39,11 +46,12 @@
 | 0.13.5 | `e884a7d` | Google Play In-App Updates（彈性更新）。見 `lib/core/platform/play_update.dart` |
 | 0.13.6 | `0f7e25a` | `NiuRow` 的值改成貼齊右側；版本號改用半形括號，顯示為 `0.13.6 (67)` |
 | 0.13.7 | `1e3f05b` | 通知設定，功能和 iOS 版一致（見下節） |
+| 0.13.8 | `2e2a3e1` | Release 簽章；第一個 AAB（versionCode 69）已上 Play internal 軌道 |
 
 另外：
 
 - google-play-developer MCP 已登記帳號 `niu-app`（金鑰在 `/root/.config/google-play-developer-mcp/service-account.json`），是目前使用中的帳號。
-- MCP 伺服器在 `claude mcp list` 裡顯示已連線，但上一個 session 沒有載入它的工具，當時是用 stdio 直接對 `google-play-developer-mcp` 送 JSON-RPC。**重新啟動 session 後應該就能直接用它的工具。**
+- MCP 工具已經可以直接用，服務帳號對 `me.windless.niulife` 有權限。
 
 ## 通知系統（0.13.7）
 
@@ -80,7 +88,7 @@
 ## 可以接著做的事
 
 1. 在實機上驗證三種通知和點通知後的跳轉，必要時調整文案或時間。
-2. 重新啟動 session 讓 google-play-developer MCP 的工具載入，再確認服務帳號對 `me.windless.niulife` 有權限（例如查詢 tracks 或 edits）。
+2. 等使用者把測試人員加進 internal 名單，再推版本號更大的 build，在實機上測 In-App Updates。
 3. 用 release 版上 Play 內部測試軌道，驗證 In-App Updates。
 4. 遠端彈窗公告，使用者問過，還沒做：建議做法是 `app-content/announcements.json` 加 revision，同一個 revision 只跳一次。
 5. 決定行事曆資料來源要不要改成本 repo。
