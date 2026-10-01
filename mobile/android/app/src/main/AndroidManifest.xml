@@ -53,6 +53,7 @@
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/schedule_widget_info" />
         </receiver>
         <receiver android:name=".ScheduleAlarmReceiver" android:exported="false" />
+        <receiver android:name=".CampusNotificationReceiver" android:exported="false" />
         <receiver android:name=".ScheduleRestoreReceiver" android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />

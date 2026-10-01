@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 
 import '../core/platform/play_update.dart';
+import '../core/session/cached_schedule.dart';
 import '../core/session/campus_session.dart';
 import '../features/academic_calendar/calendar_screen.dart';
 import '../features/authentication/login_screen.dart';
@@ -23,6 +24,7 @@ import '../features/moodle/course_presentation.dart';
 import '../features/moodle/moodle_login_service.dart';
 import '../features/moodle/moodle_repository.dart';
 import '../features/moodle/moodle_screen.dart';
+import '../features/notifications/campus_notifications.dart';
 import '../features/schedule/schedule_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/postal/postal_screen.dart';
@@ -33,6 +35,7 @@ import '../shared/niu_theme.dart';
 import 'auth_gate.dart';
 import 'campus_shell.dart';
 import 'deep_links.dart';
+import 'providers.dart';
 
 class NiuApp extends StatefulWidget {
   const NiuApp({super.key});
@@ -47,6 +50,11 @@ class _NiuAppState extends State<NiuApp> {
   ThemeMode get mode => appearance.value;
   CreditsRepository? credits;
   final messenger = GlobalKey<ScaffoldMessengerState>();
+  late final notifications = CampusNotifications(
+    session: session,
+    moodle: _restoreMoodle,
+    calendar: AppCalendarRepository(),
+  );
   late final GoRouter router = GoRouter(
     observers: [libraryRouteObserver],
     redirect: (_, state) => campusDeepLink(state.uri),
@@ -182,6 +190,7 @@ class _NiuAppState extends State<NiuApp> {
               grade: session.profile['grade']?.toString(),
               themeMode: selectedMode,
               creditsRepository: credits,
+              notifications: notifications,
               onThemeModeChanged: _setTheme,
               onForgetSchoolLogin: RememberSchoolLogin.forSession(
                 session,
@@ -265,6 +274,28 @@ class _NiuAppState extends State<NiuApp> {
     }
   }
 
+  Future<MoodleRepository?> _restoreMoodle() async {
+    if (moodle != null || !session.hasLocalAccount) return moodle;
+    final repo = await MoodleLoginService(session).restore();
+    if (repo != null && mounted) setState(() => moodle = repo);
+    return repo;
+  }
+
+  String? _notifiedAccount;
+  CachedSchedule? _notifiedSchedule;
+
+  /// Reschedules after sign-in, restore and timetable updates, as on iOS.
+  void _syncNotifications() {
+    final account = session.hasLocalAccount ? session.account : null;
+    final schedule = session.cachedSchedule;
+    if (account == _notifiedAccount && identical(schedule, _notifiedSchedule)) {
+      return;
+    }
+    _notifiedAccount = account;
+    _notifiedSchedule = schedule;
+    if (account != null) notifications.refresh().catchError((Object _) {});
+  }
+
   List<HomeCourse> _todayCourses() {
     return todayCourses(session.cachedSchedule, now: DateTime.now());
   }
@@ -282,6 +313,7 @@ class _NiuAppState extends State<NiuApp> {
   void initState() {
     super.initState();
     session.registerCleanup(_clearMoodle);
+    session.addListener(_syncNotifications);
     _restorePreferences();
     session.restore().catchError((Object _) {});
     PlayUpdate(messenger).check();
@@ -317,6 +349,7 @@ class _NiuAppState extends State<NiuApp> {
   @override
   void dispose() {
     session.unregisterCleanup(_clearMoodle);
+    session.removeListener(_syncNotifications);
     router.dispose();
     appearance.dispose();
     super.dispose();

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/platform/app_version.dart';
+import '../notifications/campus_notifications.dart';
+import '../notifications/notification_settings_screen.dart';
 import '../../shared/shared.dart';
 import 'credits_repository.dart';
 
@@ -19,6 +21,7 @@ class SettingsScreen extends StatelessWidget {
     this.ssoNeedsReauthentication = false,
     this.onReconnect,
     this.onForgetSchoolLogin,
+    this.notifications,
   });
   final String? name, username, department, grade;
   final Future<void> Function()? onLogout, onRefreshProfile;
@@ -28,6 +31,9 @@ class SettingsScreen extends StatelessWidget {
   final bool offline, ssoNeedsReauthentication;
   final VoidCallback? onReconnect;
   final Future<void> Function()? onForgetSchoolLogin;
+
+  /// Shown only for a signed-in account; reminders need its data.
+  final CampusNotifications? notifications;
 
   Future<void> _run(
     BuildContext context,
@@ -211,6 +217,26 @@ class SettingsScreen extends StatelessWidget {
             ],
           ),
         ],
+        if (notifications != null && signedIn) ...[
+          const NiuEyebrow('通知'),
+          NiuGroup(
+            children: [
+              NiuRow(
+                icon: NiuIcons.notifications,
+                hue: NiuHue.red,
+                title: '通知設定',
+                subtitle: '作業死線、重要日期、上課提醒',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => NotificationSettingsScreen(
+                      notifications: notifications!,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
         const NiuEyebrow('關於'),
         NiuGroup(
           children: [
@@ -331,7 +357,7 @@ class PrivacyScreen extends StatelessWidget {
     (
       Icons.photo_camera_outlined,
       '裝置權限與檔案',
-      '相機只用來掃描點名 QR Code，不保存也不上傳影像。通知用於你開啟的上課提醒。選取的作業檔案會送到學校 M 園區；匯出與分享的副本由對方 App 管理。圖書館畫面會暫時調亮螢幕，離開後恢復。',
+      '相機只用來掃描點名 QR Code，不保存也不上傳影像。通知只用於你在通知設定開啟的作業死線、重要日期與上課提醒，全部在裝置上排程。選取的作業檔案會送到學校 M 園區；匯出與分享的副本由對方 App 管理。圖書館畫面會暫時調亮螢幕，離開後恢復。',
     ),
     (
       NiuIcons.logout,

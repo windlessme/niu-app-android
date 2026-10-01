@@ -8,6 +8,8 @@ String? campusDeepLink(Uri uri) {
     'schedule' => '/schedule',
     'attendance' => '/attendance',
     'library' => '/library',
+    'moodle' => '/moodle',
+    'calendar' => '/calendar',
     _ => null,
   };
 }
