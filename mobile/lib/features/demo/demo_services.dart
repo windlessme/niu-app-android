@@ -99,7 +99,7 @@ class DemoEventActions implements EventActions {
           ['身份', '學生'],
           ['班級', '資工三'],
           ['學號', 'niulifedemo'],
-          ['姓名', '示範同學'],
+          ['姓名', DemoData.studentName],
         ],
       });
 
@@ -216,7 +216,7 @@ class DemoPostalService extends PostalService {
               receivedDate: r['receivedDate']!,
               trackingNumber: r['trackingNumber']!,
               unit: r['unit']!,
-              recipient: q.name.isEmpty ? '示範同學' : q.name,
+              recipient: q.name.isEmpty ? DemoData.studentName : q.name,
               category: r['category']!,
               quantity: r['quantity']!,
               signature: r['signature']!,

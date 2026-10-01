@@ -45,7 +45,7 @@ void main() {
       final restored = CampusSession(vault: vault, platformCleanup: []);
       await restored.restore();
       expect(restored.isDemo, isTrue);
-      expect(restored.displayName, '示範同學');
+      expect(restored.displayName, DemoData.studentName);
 
       await restored.logout();
       expect(restored.isDemo, isFalse);
@@ -224,11 +224,11 @@ void main() {
   test('postal demo answers each status', () async {
     final service = DemoPostalService();
     final waiting = await service.search(
-      const PostalQuery(name: '示範同學', status: PostalStatus.waiting),
+      PostalQuery(name: DemoData.studentName, status: PostalStatus.waiting),
     );
     expect(waiting.records.single.trackingNumber, 'RR123456789TW');
     final returned = await service.search(
-      const PostalQuery(name: '示範同學', status: PostalStatus.returned),
+      PostalQuery(name: DemoData.studentName, status: PostalStatus.returned),
     );
     expect(returned.records, isEmpty);
   });

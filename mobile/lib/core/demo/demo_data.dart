@@ -23,8 +23,11 @@ abstract final class DemoData {
           .millisecondsSinceEpoch ~/
       1000;
 
+  /// The demo student's (fictional) name, shown wherever a name appears.
+  static const studentName = '陳宜安';
+
   static const profile = <String, dynamic>{
-    'chName': '示範同學',
+    'chName': studentName,
     'facultyName': '資訊工程學系',
     'grade': '3',
   };
@@ -469,7 +472,7 @@ abstract final class DemoData {
               'message': news
                   ? '<p>期中考範圍為第 1 至第 8 週，請準時到考。</p>'
                   : '<p>請問作業一可以使用標準函式庫嗎？</p>',
-              'userfullname': news ? course.$4 : '示範同學',
+              'userfullname': news ? course.$4 : studentName,
               'timemodified': unix(-2),
               'numreplies': news ? 0 : 1,
               'attachments': [],
@@ -495,7 +498,7 @@ abstract final class DemoData {
               'id': 1,
               'subject': '作業一提問',
               'message': '<p>請問作業一可以使用標準函式庫嗎？</p>',
-              'author': {'fullname': '示範同學'},
+              'author': {'fullname': studentName},
               'timecreated': unix(-2),
               'attachments': [],
             },
