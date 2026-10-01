@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../shared/shared.dart';
 import 'campus_services.dart';
+import '../../core/demo/demo_account.dart';
 
 class HomeCourse {
   const HomeCourse({
@@ -97,7 +98,8 @@ class CampusHomeScreen extends StatelessWidget {
                   style: theme.textTheme.headlineLarge,
                 ),
               ),
-              if (demo) ...[
+              // Store screenshots show the app as students see it.
+              if (demo && !storeScreenshots) ...[
                 const SizedBox(height: NiuSpacing.lg),
                 const NiuBanner(
                   tone: NiuTone.accent,

@@ -9,6 +9,7 @@ import '../../shared/shared.dart';
 import '../moodle/moodle_repository.dart';
 import 'attendance_repository.dart';
 import '../demo/demo_services.dart';
+import '../../core/demo/demo_account.dart';
 
 /// Reads the page Moodle returns after an attendance link is opened.
 const attendanceInspectScript = r'''JSON.stringify({
@@ -72,7 +73,9 @@ class _AttendanceResultScreenState extends State<AttendanceResultScreen> {
     super.initState();
     if (demo) {
       outcome = AttendanceOutcome.recorded;
-      message = '示範模式：已模擬點名，沒有連線到 M 園區。';
+      message = storeScreenshots
+          ? _defaultMessage(AttendanceOutcome.recorded)
+          : '示範模式：已模擬點名，沒有連線到 M 園區。';
       resolvedAt = DateTime.now();
       return;
     }
