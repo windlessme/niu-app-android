@@ -1,6 +1,6 @@
 # HANDOFF
 
-給接手的 Claude Code session。最後更新：2026-10-01。目前版本：**0.13.10+71**。
+給接手的 Claude Code session。最後更新：2026-10-01。目前版本：**0.13.11+72**。
 
 ## 專案概況
 
@@ -15,7 +15,7 @@
 
 在 `mobile/` 底下執行：
 
-1. `set -o pipefail; tool/verify.sh`，包含 calendar/toolchain/DOM 檢查、`dart format`、`flutter analyze`、`flutter test`，目前 316 項測試。
+1. `set -o pipefail; tool/verify.sh`，包含 calendar/toolchain/DOM 檢查、`dart format`、`flutter analyze`、`flutter test`，目前 328 項測試。
 2. 把 `pubspec.yaml` 的 patch 版號和 build number 各加一。
 3. commit 到 `main`，**push 到 origin main**。
 4. `flutter build apk --debug`
@@ -49,6 +49,7 @@
 | 0.13.8 | `2e2a3e1` | Release 簽章；第一個 AAB（versionCode 69）已上 Play internal 軌道 |
 | 0.13.9 | `302587a` | 圖書館空間預約（見下節） |
 | 0.13.10 | `8741ad2` | 設備預約依 iOS 版重新設計（見下節） |
+| 0.13.11 | | 校園信箱（全原生，見下節） |
 
 另外：
 
@@ -102,6 +103,41 @@
 - 2026-10-01 用使用者的 session 實測過一次：預約 523討論室 10/02 10:00–11:00（預約編號 26762），之後已取消。
 - 示範模式用 `DemoSpaceService`，資料存在記憶體裡。
 
+## 校園信箱（0.13.11）
+
+- 使用者選的是**全原生**介面（不是 iOS 的 WebView）。入口在首頁服務的第一格「校園信箱」，路由 `/mail`，深層連結 `niulife://mail`。程式在 `lib/features/mail/`：
+  - `numail_client.dart`：API client 和 `MailService` 介面。
+  - `mail_session.dart`：登入，以及 vault 的 `mailSession` cookie 封套。
+  - `mail_captcha.dart`：解析 SVG、轉成 PNG、用 ML Kit 辨識。
+  - `mail_screen.dart`：登入畫面、信件匣、列表、搜尋、多選。
+  - `mail_detail_screen.dart`：讀信、附件、回覆／轉寄。
+  - `mail_compose_screen.dart`：寫信、附件、草稿。
+  - `mail_body_view.dart`：用 WebView 顯示 HTML 信件內容，會自動調整高度並先清理內容。
+- 後端是 NUMail（`https://ms.niu.edu.tw`，`mail.niu.edu.tw` 也可以用）的 JSON API，路徑在 `/api` 底下。
+  - 驗證方式：`XSRF-TOKEN` cookie 和 `X-XSRF-TOKEN` header 由用戶端自己產生、兩邊要一樣，再加上伺服器發的 `SESSIONID`、`NMV`、`io` cookie。
+  - 信件匣名稱要用 **base64url** 編碼，例如 INBOX 是 `SU5CT1g`。
+  - 前端的 source map 是公開的（`/NUMail/static/js/main.*.chunk.js.map`），有完整原始碼可以參考。
+- 用到的 API：
+  - `GET /box`：信件匣和未讀數。
+  - `GET /mails/box/{b64}?page&sort=date&asc=false`：信件列表，每頁 20 封。
+  - `GET /mails/search?all=&box=`：搜尋。
+  - `GET /mails/box/{b64}/{uid}`：讀信，回傳 `mailGroup[0]`。**讀信不會自動標成已讀。**
+  - `POST /mails/box/{b64}/{uids}/flags {flags:["Seen"]}`：標成已讀，取消已讀用 `DELETE .../flags/Seen`。
+  - `POST .../move {dstBox}`：搬移。不在垃圾桶和草稿裡的信，「刪除」等於搬到 Trash；`DELETE /mails/box/{b64}/{uids}` 是永久刪除。
+  - `GET .../attachment/{partId}`：下載附件。
+- 寫信流程：
+  1. `POST /draft {inReplyTo, references}` 建立草稿，回傳 `{id}`。
+  2. 附件：上傳新檔用 `POST /draft/{id}/attachments`（multipart 欄位名 `file`）；轉寄原信附件用 `POST /draft/{id}/attachments/append {attachmentId, cid}`。
+  3. 寄出用 `POST /draft/{id}/send {receiver, cc, bcc, subject, type, body}`，存草稿用 `POST /draft/{id}/save`，捨棄用 `DELETE /draft/{id}`。
+  4. 編輯既有草稿時，先用 `GET /draft/uid/{uid}` 取回內容。
+- **寄信不會自動重送。** 如果送出後逾時或收到 5xx，會丟出 `MailUncertain`，請使用者先查看「寄件備份」。
+- 登入：`POST /auth/login {username, password: base64(utf8), captcha}`，接著用 `GET /auth/user` 核對帳號。
+  - 一定要輸入驗證碼。驗證碼是 svg-captcha：6 條實心路徑，加上 2 條 `fill="none"` 的干擾線。App 把它轉成 PNG，用 ML Kit（`google_mlkit_text_recognition`）辨識；在登入畫面上，辨識結果會預先填好，使用者可以修改。
+  - 自動登入最多試 3 次：登入學校時順便建立，或者用「記住登入」存的帳密。
+  - 錯誤訊息的對應方式照 iOS 版 `MailService.swift`，包含 2FA。
+- 2026-10-01 用使用者提供的 session 做過**唯讀**實測：信件匣、列表、讀信、搜尋都正常，讀信後未讀狀態沒有改變。**真實帳密登入、ML Kit 辨識率、寄信、上傳附件、搬移和刪除都還沒在真機上測過。**
+- 示範模式用 `DemoMailService`，資料存在記憶體裡。
+
 ## 重要決策
 
 - **不架後端。** 需要遠端內容時沿用 credits 的做法：GitHub 上的靜態 JSON，加上 App 內建的離線版本和 revision 號碼。
@@ -121,7 +157,8 @@
 1. 在實機上驗證三種通知和點通知後的跳轉，必要時調整文案或時間。
 2. 等使用者把測試人員加進 internal 名單，再推版本號更大的 build，在實機上測 In-App Updates。
 3. 用 release 版上 Play 內部測試軌道，驗證 In-App Updates。
-4. 在實機上用真實帳密測試圖書館登入，包含登入學校時順便建立 session，以及在畫面上手動輸入密碼。
-5. 遠端彈窗公告，使用者問過，還沒做：建議做法是 `app-content/announcements.json` 加 revision，同一個 revision 只跳一次。
-6. 決定行事曆資料來源要不要改成本 repo。
-7. 視需要調整 Switch 關閉時的樣式。
+4. 在實機上測試校園信箱：登入時驗證碼的辨識率、寄信（先寄給自己）、附件上傳和下載、搬移和刪除。
+5. 在實機上用真實帳密測試圖書館登入，包含登入學校時順便建立 session，以及在畫面上手動輸入密碼。
+6. 遠端彈窗公告，使用者問過，還沒做：建議做法是 `app-content/announcements.json` 加 revision，同一個 revision 只跳一次。
+7. 決定行事曆資料來源要不要改成本 repo。
+8. 視需要調整 Switch 關閉時的樣式。
