@@ -1,0 +1,87 @@
+# HANDOFF
+
+給接手的 Claude Code session。最後更新：2026-10-01。目前版本：**0.13.7+68**（`main` 上的 `1e3f05b`）。
+
+## 專案概況
+
+- NIU-Life：國立宜蘭大學的非官方 Android 校園 App，用 Flutter 寫，原生部分用 Kotlin。功能、設計參考 iOS 版 [qian403/NIU-app](https://github.com/qian403/NIU-app)。
+- 程式在 `mobile/`，applicationId 是 `me.windless.niulife`，minSdk 26，targetSdk 36。
+- 沒有自己的後端：
+  - 直接連學校系統（ccsys/ccsys1、acade、euni＝M 園區、sso）。
+  - 從 GitHub raw 讀公開資料：`app-content/credits.json`（本 repo）、行事曆 `calendar-data/`（目前讀 **qian403/NIU-app**）。
+- 架構說明：`docs/android-flutter-architecture.md`、`mobile/lib/core/platform/README.md`。
+
+## 每次改完的固定流程（使用者要求，不用再問）
+
+在 `mobile/` 底下執行：
+
+1. `set -o pipefail; tool/verify.sh`，包含 calendar/toolchain/DOM 檢查、`dart format`、`flutter analyze`、`flutter test`，目前 303 項測試。
+2. 把 `pubspec.yaml` 的 patch 版號和 build number 各加一。
+3. commit 到 `main`，**push 到 origin main**。
+4. `flutter build apk --debug`
+5. `python3 tool/check_apk.py build/app/outputs/flutter-apk/app-debug.apk`
+6. `python3 tool/publish_preview.py --apk build/app/outputs/flutter-apk/app-debug.apk --version X.Y.Z`
+7. 給使用者下載連結：`http://161.248.44.73:8080/NIU-Life-X.Y.Z-preview.apk`
+
+其他慣例：
+
+- 回覆一律用**繁體中文**。
+- 查詢類畫面不要加「以學校為準」「資料來源」這類免責文字。
+- commit 結尾要加 `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`。
+- 這台機器上的 auto-memory（`~/.claude/projects/-tmp-opencode-niu-app-android/memory/`）也記了這些規則，還有 Play 審查用示範帳號的說明。**示範帳號的密碼不要寫進 repo**，repo 裡只存它的 SHA-256。
+
+## 這次 session 完成的事
+
+| 版本 | Commit | 內容 |
+|---|---|---|
+| 0.13.4 | `b6bd403` | `NiuSection` 的標題和右側按鈕改成文字基線對齊，修好首頁「今天／完整課表」不在同一條線上 |
+| 0.13.4 | `d5a1a8c` | 用商店截圖旗標 `NIU_STORE_SCREENSHOTS` 建置時隱藏系統列 |
+| 0.13.5 | `e884a7d` | Google Play In-App Updates（彈性更新）。見 `lib/core/platform/play_update.dart` |
+| 0.13.6 | `0f7e25a` | `NiuRow` 的值改成貼齊右側；版本號改用半形括號，顯示為 `0.13.6 (67)` |
+| 0.13.7 | `1e3f05b` | 通知設定，功能和 iOS 版一致（見下節） |
+
+另外：
+
+- google-play-developer MCP 已登記帳號 `niu-app`（金鑰在 `/root/.config/google-play-developer-mcp/service-account.json`），是目前使用中的帳號。
+- MCP 伺服器在 `claude mcp list` 裡顯示已連線，但上一個 session 沒有載入它的工具，當時是用 stdio 直接對 `google-play-developer-mcp` 送 JSON-RPC。**重新啟動 session 後應該就能直接用它的工具。**
+
+## 通知系統（0.13.7）
+
+- 入口在「設定 → 通知 → 通知設定」，畫面在 `lib/features/notifications/notification_settings_screen.dart`。
+- 排程邏輯在 `lib/features/notifications/campus_notifications.dart`，規則照 iOS 的 `Core/Models/AppState.swift` `NotificationScheduler`：
+
+| 項目 | 規則 |
+|---|---|
+| 作業死線 | M 園區 14 天內到期的作業，截止前 24 小時通知，最多 20 項 |
+| 重要日期 | 行事曆裡 `important`／`deadline` 類別、30 天內的日期，前一天台北時間 08:00 通知，最多 20 項 |
+| 上課前提醒 | 每週上課前 10 分鐘。用原有的 `ScheduleReminders.kt`，提醒時間鏈式排程，一次只排下一堂 |
+
+- 原生端 `CampusNotifications.kt` 負責單次通知：Flutter 每次把同一類的通知整批取代，排一個不精確的 AlarmManager 鬧鐘；送出時已遲到超過 6 小時的就丟掉。開機或 App 更新後會恢復排程；登出時，`ScheduleStore.clear` 會一起清掉。
+- 什麼時候重新排程：App 啟動或還原 session、登入、課表快取更新時（`app.dart` 的 `_syncNotifications`）、切換開關、按「立即更新通知」。**沒有背景輪詢**，這點和 iOS 一樣。
+- 上課提醒如果沒有手動設過學期日期，會用行事曆 `semesters` 欄位裡的 `classesStartDate` 到 `endDate`（`CalendarSnapshot.semesters`）。
+- 上課提醒開關已經從課表選項移走；課表選項現在只剩「學期日期」和「匯出到行事曆」，並且會讀出裝置上已存的學期日期。
+- 通知點下去的深層連結：新增 `niulife://moodle`、`niulife://calendar`，寫在 `lib/app/deep_links.dart`。
+- iOS 的 Live Activities 和遠端即時動態沒做，Android 沒有對應功能。
+
+## 重要決策
+
+- **不架後端。** 需要遠端內容時沿用 credits 的做法：GitHub 上的靜態 JSON，加上 App 內建的離線版本和 revision 號碼。
+- **In-App Updates 只用彈性更新。** 同一個 versionCode 只問一次；只有 release 版而且是從 Play 安裝的才會檢查，debug 預覽版、截圖版、側載版都跳過。下載完成後顯示 SnackBar「重新啟動」，透過 `MaterialApp.scaffoldMessengerKey`。
+- **通知功能對齊 iOS，不多做。** 例如假日也不會略過上課提醒，提醒時間固定 10 分鐘。
+- Play 主題圖片（1024×500）建議用 App 的淺色配色：漸層 `#F2F3F7` 到 `#E5EEFC`，標題 `#15171C`，強調色 `#0A62D0`。
+
+## 尚未驗證／已知事項
+
+- 通知、In-App Updates 都**沒在實機上測過**。In-App Updates 要用 Play 內部測試軌道，而且需要兩個不同的 versionCode 才測得出來。
+- `NiuSection` 改成基線對齊、`NiuRow` 的值改成填滿空間，都會影響全 App。只用測試環境渲染確認過幾個畫面。
+- 開關（Switch）在關閉狀態時看不到軌道外框，只剩灰色圓點。這是主題原本的樣式，還沒處理。
+- 行事曆資料的網址指向 `qian403/NIU-app`，不是本 repo（`calendar_repository.dart` 的 `baseUrl`）。要不要改成自己維護，還沒決定。
+
+## 可以接著做的事
+
+1. 在實機上驗證三種通知和點通知後的跳轉，必要時調整文案或時間。
+2. 重新啟動 session 讓 google-play-developer MCP 的工具載入，再確認服務帳號對 `me.windless.niulife` 有權限（例如查詢 tracks 或 edits）。
+3. 用 release 版上 Play 內部測試軌道，驗證 In-App Updates。
+4. 遠端彈窗公告，使用者問過，還沒做：建議做法是 `app-content/announcements.json` 加 revision，同一個 revision 只跳一次。
+5. 決定行事曆資料來源要不要改成本 repo。
+6. 視需要調整 Switch 關閉時的樣式。
