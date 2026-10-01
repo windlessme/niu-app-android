@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:html/dom.dart' as dom;
@@ -10,8 +8,21 @@ import 'numail_client.dart';
 
 /// Strips scripts, frames, forms and event handlers from a message. The
 /// view's own height probe is the only script that runs.
-String sanitizeMailHtml(String source) {
+String sanitizeMailHtml(String source, {bool remoteImages = true}) {
   final doc = html.parse(source);
+  if (!remoteImages) {
+    // Pictures from other sites stay unloaded until the reader asks.
+    for (final img in doc.querySelectorAll('img')) {
+      final src = img.attributes['src'] ?? '';
+      final uri = Uri.tryParse(src.trim());
+      if (uri != null &&
+          (uri.scheme == 'http' || uri.scheme == 'https') &&
+          uri.host != NumailClient.host) {
+        img.attributes.remove('src');
+        img.attributes.remove('srcset');
+      }
+    }
+  }
   for (final tag in [
     'script',
     'iframe',
@@ -61,7 +72,9 @@ bool hasRemoteImages(String html) => RegExp(
 ).hasMatch(html);
 
 /// A message body sized to its content. Pictures from other sites stay
-/// blocked until the reader asks, like the school's "ask before showing".
+/// out of the page until the reader asks, like the school's "ask before
+/// showing". (Request interception is not used: on Android it also stops
+/// the page's own data from loading.)
 class MailBodyView extends StatefulWidget {
   const MailBodyView({
     super.key,
@@ -98,7 +111,10 @@ class _MailBodyViewState extends State<MailBodyView> {
   }
 
   String get document {
-    final body = sanitizeMailHtml(widget.html);
+    final body = sanitizeMailHtml(
+      widget.html,
+      remoteImages: widget.showRemoteImages,
+    );
     return '''<!doctype html><html><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -123,9 +139,6 @@ a{color:#0a62d0;}
 })();
 </script></body></html>''';
   }
-
-  bool _school(Uri uri) =>
-      uri.scheme == 'https' && uri.host == NumailClient.host;
 
   @override
   Widget build(BuildContext context) => FutureBuilder<void>(
@@ -154,7 +167,6 @@ a{color:#0a62d0;}
               javaScriptCanOpenWindowsAutomatically: false,
               supportMultipleWindows: false,
               useShouldOverrideUrlLoading: true,
-              useShouldInterceptRequest: true,
               allowFileAccess: false,
               allowContentAccess: false,
               disableVerticalScroll: true,
@@ -173,19 +185,6 @@ a{color:#0a62d0;}
                 }
               },
             ),
-            shouldInterceptRequest: (_, request) async {
-              final uri = Uri.tryParse(request.url.toString());
-              if (uri == null || _school(uri) || widget.showRemoteImages) {
-                return null;
-              }
-              // Remote pictures and trackers stay blocked until asked for.
-              return WebResourceResponse(
-                contentType: 'text/plain',
-                statusCode: 204,
-                reasonPhrase: 'No Content',
-                data: utf8.encode(''),
-              );
-            },
             shouldOverrideUrlLoading: (_, action) async {
               final uri = Uri.tryParse(action.request.url.toString());
               if (uri == null || action.isForMainFrame != true) {

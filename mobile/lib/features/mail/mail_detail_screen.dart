@@ -188,7 +188,8 @@ class _MailDetailScreenState extends State<MailDetailScreen> {
   Widget build(BuildContext context) {
     final m = message;
     return NiuScrollPage(
-      title: s.subject.isEmpty ? '（無主旨）' : s.subject,
+      // The subject heads the message itself; the bar names the folder.
+      title: MailFolder(s.box).label,
       actions: [
         if (m != null) ...[
           NiuIconButton(

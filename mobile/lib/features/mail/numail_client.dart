@@ -181,7 +181,9 @@ class NumailClient implements MailService {
     try {
       return jsonDecode(utf8.decode(bytes));
     } catch (_) {
-      if (change) return null;
+      // Changes (move, delete, flags…) answer 2xx with plain text such as
+      // "OK"; success is the status code, not the body.
+      if (method != 'GET') return null;
       throw const MailException('學校信箱回應格式已變更');
     }
   }

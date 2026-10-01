@@ -178,6 +178,13 @@ void main() {
         hasRemoteImages('<img src="https://ms.niu.edu.tw/api/x">'),
         isFalse,
       );
+      final blocked = sanitizeMailHtml(
+        '<img src="https://tracker.example/p.gif">'
+        '<img src="https://ms.niu.edu.tw/api/mails/box/x/1/attachment/2">',
+        remoteImages: false,
+      );
+      expect(blocked, isNot(contains('tracker.example')));
+      expect(blocked, contains('ms.niu.edu.tw/api/mails'));
     });
   });
 
@@ -334,6 +341,25 @@ void main() {
       final full = await web.open('INBOX', 9);
       expect(full.html, 'a<br>b');
       expect(full.box, 'INBOX');
+    });
+
+    test('changes succeed on a plain-text reply', () async {
+      final adapter = NumailAdapter(
+        (r, _) => ResponseBody.fromString(
+          'OK',
+          200,
+          headers: {
+            Headers.contentTypeHeader: ['text/plain'],
+          },
+        ),
+      );
+      final web = client(adapter);
+      await web.move('INBOX', [3, 4], 'Trash');
+      expect(adapter.requests.last.path, '/api/mails/box/SU5CT1g/3,4/move');
+      await web.delete('Trash', [3]);
+      expect(adapter.requests.last.method, 'DELETE');
+      await web.setSeen('INBOX', [3], true);
+      await expectLater(web.list('INBOX'), throwsA(isA<MailException>()));
     });
 
     test('search uses the full-text field of the folder', () async {

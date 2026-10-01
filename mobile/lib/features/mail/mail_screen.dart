@@ -11,6 +11,7 @@ import 'mail_detail_screen.dart';
 import 'mail_format.dart';
 import 'mail_models.dart';
 import 'mail_session.dart';
+import 'mail_web_screen.dart';
 import 'numail_client.dart';
 
 enum _Phase { connecting, signIn, ready, failed }
@@ -502,14 +503,17 @@ class _MailScreenState extends State<MailScreen> {
                 ),
               ]
             : [
-                NiuIconButton(
-                  icon: NiuIcons.external,
-                  tooltip: '開啟網頁版信箱',
-                  onPressed: () => openPublicUrl(
-                    context,
-                    Uri.parse('${NumailClient.origin}/NUMail/Mobile/Box/INBOX'),
+                if (service?.cookies.isNotEmpty ?? false)
+                  NiuIconButton(
+                    icon: Icons.language_rounded,
+                    tooltip: '學校信箱網頁',
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            MailWebScreen(cookies: service!.cookies),
+                      ),
+                    ),
                   ),
-                ),
               ],
         floatingActionButton: selecting
             ? null
