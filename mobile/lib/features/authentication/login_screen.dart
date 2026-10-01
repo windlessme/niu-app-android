@@ -9,6 +9,7 @@ import '../../core/session/campus_session.dart';
 import '../../core/web/portal_policy.dart';
 import '../../shared/shared.dart';
 import '../events/event_login_service.dart';
+import '../library/library_space_session.dart';
 import '../moodle/moodle_login_service.dart';
 import '../settings/settings_screen.dart';
 import 'remember_school_login.dart';
@@ -186,7 +187,8 @@ class _LoginScreenState extends State<LoginScreen> {
             consentRevision: revision,
           );
         } catch (_) {}
-        // M 園區 and 活動報名 authenticate separately; failures stay local.
+        // M 園區、活動報名 and the library authenticate separately; failures
+        // stay local.
         await Future.wait<void>([
           () async {
             try {
@@ -200,6 +202,7 @@ class _LoginScreenState extends State<LoginScreen> {
               await EventLoginService().establish(name, secret, session, epoch);
             } catch (_) {}
           }(),
+          LibrarySpaceSession.establishQuietly(session, name, secret),
         ]);
       }
       session.coordinator.requireCurrent(epoch);

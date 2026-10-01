@@ -1,6 +1,6 @@
 # HANDOFF
 
-給接手的 Claude Code session。最後更新：2026-10-01。目前版本：**0.13.8+69**（`main` 上的 `2e2a3e1`）。
+給接手的 Claude Code session。最後更新：2026-10-01。目前版本：**0.13.9+70**。
 
 ## 專案概況
 
@@ -15,7 +15,7 @@
 
 在 `mobile/` 底下執行：
 
-1. `set -o pipefail; tool/verify.sh`，包含 calendar/toolchain/DOM 檢查、`dart format`、`flutter analyze`、`flutter test`，目前 303 項測試。
+1. `set -o pipefail; tool/verify.sh`，包含 calendar/toolchain/DOM 檢查、`dart format`、`flutter analyze`、`flutter test`，目前 313 項測試。
 2. 把 `pubspec.yaml` 的 patch 版號和 build number 各加一。
 3. commit 到 `main`，**push 到 origin main**。
 4. `flutter build apk --debug`
@@ -47,6 +47,7 @@
 | 0.13.6 | `0f7e25a` | `NiuRow` 的值改成貼齊右側；版本號改用半形括號，顯示為 `0.13.6 (67)` |
 | 0.13.7 | `1e3f05b` | 通知設定，功能和 iOS 版一致（見下節） |
 | 0.13.8 | `2e2a3e1` | Release 簽章；第一個 AAB（versionCode 69）已上 Play internal 軌道 |
+| 0.13.9 | | 圖書館空間預約（見下節） |
 
 另外：
 
@@ -71,6 +72,23 @@
 - 通知點下去的深層連結：新增 `niulife://moodle`、`niulife://calendar`，寫在 `lib/app/deep_links.dart`。
 - iOS 的 Live Activities 和遠端即時動態沒做，Android 沒有對應功能。
 
+## 圖書館空間預約（0.13.9）
+
+- 入口：「圖書館」頁底部 →「空間預約」，路由是 `/library/spaces`。程式在 `lib/features/library/`，包含 `webpac_client.dart`、`library_space_session.dart`、`library_space_screen.dart`、`space_models.dart`。
+- 後端是凌網 HyLib WebPAC（`https://webpacx.niu.edu.tw`），走 GraphQL `/api/HyLibWS/graphql`。需要 `HYSESSION` cookie 和 `X-CSRF-Token`，token 從 `/equipment` 頁面的 `"csrfToken"` 取得。
+- 登入：mutation `ssoLogin(user, pass, captcha: "", encrypt: true)`。帳號和密碼都用 AES-256-CBC 加密，金鑰寫死在網站前端，格式是 `ivHex:base64`。帳密和學校 SSO 共用。errorType 3 表示一個身分有多張證，要再呼叫 `ssoChooseLogin`。
+  - **真實帳密的登入流程還沒實測過。** 加密有用 Python 算出的測試向量驗證。
+- Session 存在 vault 的 `librarySession` 欄位，內容是 `{account, session}`。登入學校時會順便建立。舊使用者如果有「記住登入」就自動登入，沒有就在畫面上請他輸入一次密碼。
+- 用到的 API：
+  - `getEquipmentGroupInfo`：取群組，只顯示 `ebPolicy` 不是 null 的群組；「長期研究小間511」對學生沒有 policy。
+  - `getEquipmentInfoList` 和 `getReserveEquipmentList`：取房間和已被預約的時段。
+  - `getDayReservedByReader`：取規則，`equipId` 必須是真的房間 ID。
+  - `reserveEquipmentCir`：預約，時間格式是 `YYYY/MM/DD HH:mm`，`muserid` 固定 100。
+  - `getEquipmentByReader(status: Reserve|Borrow)`：我的預約和使用中。
+  - `cancelEquipmentCir(eccId: equipmentCirContent.id)`：取消。
+- 2026-10-01 用使用者的 session 實測過一次：預約 523討論室 10/02 10:00–11:00（預約編號 26762），之後已取消。
+- 示範模式用 `DemoSpaceService`，資料存在記憶體裡。
+
 ## 重要決策
 
 - **不架後端。** 需要遠端內容時沿用 credits 的做法：GitHub 上的靜態 JSON，加上 App 內建的離線版本和 revision 號碼。
@@ -90,6 +108,7 @@
 1. 在實機上驗證三種通知和點通知後的跳轉，必要時調整文案或時間。
 2. 等使用者把測試人員加進 internal 名單，再推版本號更大的 build，在實機上測 In-App Updates。
 3. 用 release 版上 Play 內部測試軌道，驗證 In-App Updates。
-4. 遠端彈窗公告，使用者問過，還沒做：建議做法是 `app-content/announcements.json` 加 revision，同一個 revision 只跳一次。
-5. 決定行事曆資料來源要不要改成本 repo。
-6. 視需要調整 Switch 關閉時的樣式。
+4. 在實機上用真實帳密測試圖書館登入，包含登入學校時順便建立 session，以及在畫面上手動輸入密碼。
+5. 遠端彈窗公告，使用者問過，還沒做：建議做法是 `app-content/announcements.json` 加 revision，同一個 revision 只跳一次。
+6. 決定行事曆資料來源要不要改成本 repo。
+7. 視需要調整 Switch 關閉時的樣式。

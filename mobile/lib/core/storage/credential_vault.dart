@@ -18,6 +18,7 @@ class DeviceCredentialVault implements CredentialVault {
     'moodlePrivateToken',
     'moodleSession',
     'eventSession',
+    'librarySession',
     'scheduleCache',
     'graduationCache',
     'leaveCache',
