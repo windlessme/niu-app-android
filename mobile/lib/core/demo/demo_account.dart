@@ -10,6 +10,10 @@ const demoAccount = 'niulifedemo';
 const _demoPasswordSha256 =
     '732d71d66e08d1b04412c9d8426694d93d65f52d15665d30e0d0b56cac8b9665';
 
+/// Build flag for Play Store screenshots: the demo looks as it does for a
+/// signed-in student, without demo-mode notices. Never set for releases.
+const storeScreenshots = bool.fromEnvironment('NIU_STORE_SCREENSHOTS');
+
 bool isDemoLogin(String account, String password) =>
     account.trim().toLowerCase() == demoAccount &&
     sha256.convert(utf8.encode(password)).toString() == _demoPasswordSha256;
