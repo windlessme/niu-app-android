@@ -63,6 +63,57 @@ class ScheduleGateway {
         'minutesBefore': minutesBefore,
       }) ??
       false;
+
+  /// Class reminder switch and the semester dates saved on this device.
+  Future<ReminderStatus> reminderStatus() async {
+    final data =
+        await channel.invokeMapMethod<String, Object?>('reminderStatus') ??
+        const {};
+    return ReminderStatus(
+      enabled: data['enabled'] == true,
+      permitted: data['permitted'] == true,
+      semesterStart: data['semesterStart'] as String?,
+      semesterEnd: data['semesterEnd'] as String?,
+    );
+  }
+
+  /// Replaces every pending notification of [kind] ('assignments', 'calendar').
+  Future<void> setNotifications(String kind, List<CampusNotice> items) =>
+      channel.invokeMethod<void>('setNotifications', {
+        'kind': kind,
+        'items': items.map((item) => item.toJson()).toList(),
+      });
   Future<void> shareCalendar(String ics) =>
       channel.invokeMethod<void>('shareCalendar', {'ics': ics});
+}
+
+class ReminderStatus {
+  const ReminderStatus({
+    required this.enabled,
+    required this.permitted,
+    this.semesterStart,
+    this.semesterEnd,
+  });
+  final bool enabled, permitted;
+  final String? semesterStart, semesterEnd;
+}
+
+/// A one-shot local notification. [link] is a niulife:// app destination.
+class CampusNotice {
+  const CampusNotice({
+    required this.id,
+    required this.title,
+    required this.body,
+    required this.at,
+    required this.link,
+  });
+  final String id, title, body, link;
+  final DateTime at;
+  Map<String, Object> toJson() => {
+    'id': id,
+    'title': title,
+    'body': body,
+    'at': at.millisecondsSinceEpoch,
+    'link': link,
+  };
 }

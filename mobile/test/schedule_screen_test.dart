@@ -140,18 +140,19 @@ void main() {
     session.dispose();
   });
 
-  testWidgets('options sheet contains export and reminder controls', (
-    tester,
-  ) async {
-    await tester.pumpWidget(app());
-    await tester.tap(find.byTooltip('課表選項'));
-    await tester.pumpAndSettle();
-    expect(find.byType(ScheduleExportBar), findsOneWidget);
-    expect(find.byTooltip('匯出行事曆'), findsOneWidget);
-    expect(find.text('上課前 10 分鐘提醒'), findsOneWidget);
-    await tester.pumpWidget(const SizedBox());
-    session.dispose();
-  });
+  testWidgets(
+    'options sheet contains export controls; reminders live in settings',
+    (tester) async {
+      await tester.pumpWidget(app());
+      await tester.tap(find.byTooltip('課表選項'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ScheduleExportBar), findsOneWidget);
+      expect(find.byTooltip('匯出行事曆'), findsOneWidget);
+      expect(find.text('上課前 10 分鐘提醒'), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+      session.dispose();
+    },
+  );
 
   testWidgets('manual refresh can return to existing cache', (tester) async {
     await tester.pumpWidget(app());

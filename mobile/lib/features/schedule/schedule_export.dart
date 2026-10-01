@@ -93,8 +93,31 @@ class _ScheduleExportBarState extends State<ScheduleExportBar> {
   late final epoch = session.coordinator.epoch;
   late final owner = session.account;
   ScheduleSnapshot? snapshot;
-  bool reminders = false;
   bool busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _restoreDates();
+  }
+
+  /// Shows the semester dates already saved on this device.
+  Future<void> _restoreDates() async {
+    try {
+      final status = await gateway.reminderStatus();
+      final start = status.semesterStart, end = status.semesterEnd;
+      if (start == null || end == null || !mounted || snapshot != null) return;
+      setState(
+        () => snapshot = ScheduleSnapshot(
+          semesterStart: start,
+          semesterEnd: end,
+          blocks: scheduleBlocks(widget.schedule),
+        ),
+      );
+    } catch (_) {
+      /* The dates can still be chosen by hand. */
+    }
+  }
 
   void current() {
     session.coordinator.requireCurrent(epoch);
@@ -134,7 +157,7 @@ class _ScheduleExportBarState extends State<ScheduleExportBar> {
       await action();
     } catch (_) {
       if (mounted) {
-        showNiuMessage(context, '沒有完成，請確認登入狀態、學期日期與通知權限');
+        showNiuMessage(context, '沒有完成，請確認登入狀態與學期日期');
       }
     } finally {
       if (mounted) setState(() => busy = false);
@@ -146,20 +169,6 @@ class _ScheduleExportBarState extends State<ScheduleExportBar> {
     if (snapshot == null) return;
     current();
     await gateway.shareCalendar(exportScheduleIcs(snapshot!));
-  });
-
-  Future<void> toggleReminders(bool enabled) => run(() async {
-    if (enabled && snapshot == null) await configure();
-    if (enabled && snapshot == null) return;
-    current();
-    if (enabled && !await gateway.requestNotificationPermission()) {
-      throw StateError('通知權限未開啟');
-    }
-    current();
-    final accepted = await gateway.setReminders(enabled: enabled);
-    current();
-    if (enabled && !accepted) throw StateError('通知不可用');
-    if (mounted) setState(() => reminders = enabled);
   });
 
   @override
@@ -181,17 +190,6 @@ class _ScheduleExportBarState extends State<ScheduleExportBar> {
           title: '匯出到行事曆',
           subtitle: '產生 .ics 檔，分享到 Google 日曆等 App',
           onTap: busy ? null : export,
-        ),
-      ),
-      NiuRow(
-        icon: NiuIcons.notifications,
-        hue: NiuHue.orange,
-        title: '上課前 10 分鐘提醒',
-        subtitle: '依每週課表提醒，放假或停課不會自動略過',
-        maxSubtitleLines: 3,
-        trailing: Switch(
-          value: reminders,
-          onChanged: busy ? null : toggleReminders,
         ),
       ),
     ],

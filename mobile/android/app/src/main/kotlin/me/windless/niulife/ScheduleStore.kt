@@ -47,6 +47,7 @@ internal object ScheduleStore {
     }
     fun clear(c: Context) {
         ScheduleReminders.cancel(c)
+        CampusNotifications.clear(c)
         check(prefs(c).edit().clear().commit())
         c.cacheDir.resolve("calendar_exports").deleteRecursively()
         ScheduleWidget.refresh(c)

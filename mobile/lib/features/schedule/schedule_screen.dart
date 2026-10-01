@@ -280,7 +280,7 @@ Future<void> showScheduleOptions(
           Text('課表選項', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: NiuSpacing.xs),
           Text(
-            '設定學期日期後，可以匯出到行事曆、開啟上課提醒，並更新桌面小工具。',
+            '設定學期日期後，可以匯出到行事曆，並更新桌面小工具與上課提醒。',
             style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: NiuSpacing.lg),

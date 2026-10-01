@@ -47,6 +47,21 @@ class MainActivity : FlutterActivity() {
                             ScheduleReminders.reschedule(this)
                             result.success(!enabled || ScheduleReminders.permitted(this))
                         }
+                        "reminderStatus" -> {
+                            val snapshot = ScheduleStore.load(this)
+                            result.success(mapOf(
+                                "enabled" to ScheduleStore.prefs(this).getBoolean("reminders", false),
+                                "permitted" to ScheduleReminders.permitted(this),
+                                "semesterStart" to snapshot?.start?.toString(),
+                                "semesterEnd" to snapshot?.end?.toString(),
+                            ))
+                        }
+                        "setNotifications" -> {
+                            val kind = call.argument<String>("kind") ?: error("Missing kind")
+                            val items = call.argument<List<Map<*, *>>>("items") ?: emptyList()
+                            CampusNotifications.replace(this, kind, items)
+                            result.success(null)
+                        }
                         "requestNotificationPermission" -> {
                             if (Build.VERSION.SDK_INT >= 33 && !ScheduleReminders.permitted(this)) {
                                 if (permissionResult != null) result.error("busy", "Permission request in progress", null)
@@ -84,6 +99,7 @@ class MainActivity : FlutterActivity() {
     override fun onResume() {
         super.onResume()
         ScheduleReminders.reschedule(this)
+        CampusNotifications.reschedule(this)
         ScheduleWidget.refresh(this)
     }
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
