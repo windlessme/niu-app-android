@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 
+import '../core/platform/play_update.dart';
 import '../core/session/campus_session.dart';
 import '../features/academic_calendar/calendar_screen.dart';
 import '../features/authentication/login_screen.dart';
@@ -45,6 +46,7 @@ class _NiuAppState extends State<NiuApp> {
   final appearance = ValueNotifier<ThemeMode>(ThemeMode.system);
   ThemeMode get mode => appearance.value;
   CreditsRepository? credits;
+  final messenger = GlobalKey<ScaffoldMessengerState>();
   late final GoRouter router = GoRouter(
     observers: [libraryRouteObserver],
     redirect: (_, state) => campusDeepLink(state.uri),
@@ -282,6 +284,7 @@ class _NiuAppState extends State<NiuApp> {
     session.registerCleanup(_clearMoodle);
     _restorePreferences();
     session.restore().catchError((Object _) {});
+    PlayUpdate(messenger).check();
   }
 
   Future<void> _restorePreferences() async {
@@ -323,6 +326,7 @@ class _NiuAppState extends State<NiuApp> {
   Widget build(BuildContext context) => MaterialApp.router(
     title: 'NIU-Life',
     debugShowCheckedModeBanner: false,
+    scaffoldMessengerKey: messenger,
     locale: const Locale('zh', 'TW'),
     supportedLocales: const [Locale('zh', 'TW')],
     localizationsDelegates: GlobalMaterialLocalizations.delegates,
