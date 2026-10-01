@@ -40,7 +40,7 @@ class MailDetailScreen extends StatefulWidget {
 class _MailDetailScreenState extends State<MailDetailScreen> {
   MailMessage? message;
   String? error;
-  bool remoteImages = false, busy = false;
+  bool remoteImages = false, busy = false, scaled = false;
   final downloading = <int>{};
   Directory? temp;
 
@@ -266,8 +266,45 @@ class _MailDetailScreenState extends State<MailDetailScreen> {
             ),
             const SizedBox(height: NiuSpacing.md),
           ],
+          if (scaled)
+            Padding(
+              padding: const EdgeInsets.only(bottom: NiuSpacing.xs),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.zoom_out_map_rounded,
+                    size: 16,
+                    color: NiuColors.of(context).inkTertiary,
+                  ),
+                  const SizedBox(width: NiuSpacing.xs),
+                  Expanded(
+                    child: Text(
+                      '已縮小以符合螢幕寬度',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => MailOriginalScreen(
+                          title: m.subject.isEmpty ? '（無主旨）' : m.subject,
+                          html: m.html,
+                          showRemoteImages: remoteImages,
+                        ),
+                      ),
+                    ),
+                    child: const Text('原始大小'),
+                  ),
+                ],
+              ),
+            ),
           widget.bodyBuilder?.call(m, remoteImages) ??
               MailBodyView(
+                onScaled: (value) {
+                  if (mounted && value != scaled) {
+                    setState(() => scaled = value);
+                  }
+                },
                 html: m.html,
                 cookies: widget.service.cookies,
                 showRemoteImages: remoteImages,

@@ -57,7 +57,7 @@ class _MailScreenState extends State<MailScreen> {
   String box = MailFolder.inbox;
   final mails = <MailSummary>[];
   int total = 0, page = 0;
-  bool loading = false, more = false;
+  bool loading = false;
   String query = '';
   Timer? searchDelay;
   final search = TextEditingController();
@@ -73,7 +73,6 @@ class _MailScreenState extends State<MailScreen> {
   void initState() {
     super.initState();
     session.registerCleanup(_clear);
-    scroll.addListener(_nearEnd);
     connect();
   }
 
@@ -96,17 +95,6 @@ class _MailScreenState extends State<MailScreen> {
     service?.close();
     service = null;
     if (mounted) setState(() => phase = _Phase.signIn);
-  }
-
-  void _nearEnd() {
-    if (scroll.hasClients &&
-        scroll.position.extentAfter < 600 &&
-        !more &&
-        !loading &&
-        page > 0 &&
-        mails.length < total) {
-      loadMore();
-    }
   }
 
   // ── Sign-in ───────────────────────────────────────────────────────────────
@@ -223,10 +211,15 @@ class _MailScreenState extends State<MailScreen> {
     await reload();
   }
 
-  Future<void> reload({bool foldersToo = false}) async {
+  static const perPage = 20;
+  int get pages => total == 0 ? 1 : (total + perPage - 1) ~/ perPage;
+
+  /// Loads [toPage] (default: the page on screen) of the current folder.
+  Future<void> reload({bool foldersToo = false, int? toPage}) async {
     final api = service;
     if (api == null) return;
     final current = generation;
+    final target = (toPage ?? page).clamp(1, 1 << 20);
     setState(() {
       loading = true;
       error = null;
@@ -236,14 +229,19 @@ class _MailScreenState extends State<MailScreen> {
         final list = await api.folders();
         if (mounted && current == generation) folders = list;
       }
-      final result = await api.list(box, query: query);
+      final result = await api.list(box, page: target, query: query);
       if (!mounted || current != generation) return;
+      // A page emptied by deletions falls back to the new last page.
+      if (result.mails.isEmpty && target > 1 && result.total > 0) {
+        final last = (result.total + perPage - 1) ~/ perPage;
+        if (last < target) return await reload(toPage: last);
+      }
       setState(() {
         mails
           ..clear()
           ..addAll(result.mails);
         total = result.total;
-        page = 1;
+        page = target;
         selected.clear();
       });
     } on MailSignInRequired {
@@ -262,25 +260,19 @@ class _MailScreenState extends State<MailScreen> {
     }
   }
 
-  Future<void> loadMore() async {
-    final api = service;
-    if (api == null || more) return;
-    final current = generation;
-    setState(() => more = true);
-    try {
-      final result = await api.list(box, page: page + 1, query: query);
-      if (!mounted || current != generation) return;
-      final known = mails.map((m) => m.uid).toSet();
-      setState(() {
-        mails.addAll(result.mails.where((m) => !known.contains(m.uid)));
-        total = result.total;
-        page = result.page;
-      });
-    } catch (_) {
-      if (mounted) showNiuMessage(context, '無法載入更多信件');
-    } finally {
-      if (mounted && current == generation) setState(() => more = false);
-    }
+  Future<void> goTo(int target) async {
+    if (loading || target < 1 || target > pages || target == page) return;
+    generation++;
+    await reload(toPage: target);
+    if (mounted && scroll.hasClients) scroll.jumpTo(0);
+  }
+
+  Future<void> pickPage() async {
+    final chosen = await showDialog<int>(
+      context: context,
+      builder: (_) => _PageDialog(page: page, pages: pages),
+    );
+    if (chosen != null) await goTo(chosen.clamp(1, pages));
   }
 
   void openFolder(String name) {
@@ -294,7 +286,7 @@ class _MailScreenState extends State<MailScreen> {
       selected.clear();
     });
     if (scroll.hasClients) scroll.jumpTo(0);
-    reload(foldersToo: true);
+    reload(foldersToo: true, toPage: 1);
   }
 
   void searchChanged(String value) {
@@ -303,7 +295,7 @@ class _MailScreenState extends State<MailScreen> {
       if (value.trim() == query) return;
       query = value.trim();
       generation++;
-      reload();
+      reload(toPage: 1);
     });
   }
 
@@ -597,21 +589,16 @@ class _MailScreenState extends State<MailScreen> {
               ),
             ),
             SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(NiuSpacing.lg),
-                child: Center(
-                  child: more
-                      ? const SizedBox.square(
-                          dimension: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(
-                          mails.length < total
-                              ? '已顯示 ${mails.length} / $total 封'
-                              : '共 $total 封',
-                          style: Theme.of(context).textTheme.labelMedium,
-                        ),
-                ),
+              child: _Pager(
+                page: page,
+                pages: pages,
+                total: total,
+                first: (page - 1) * perPage + 1,
+                last: (page - 1) * perPage + mails.length,
+                loading: loading,
+                onPrevious: () => goTo(page - 1),
+                onNext: () => goTo(page + 1),
+                onPick: pages > 1 ? pickPage : null,
               ),
             ),
           ],
@@ -891,4 +878,118 @@ class _MailTile extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 上一頁 · 第 x / y 頁 · 下一頁, plus which messages are shown.
+class _Pager extends StatelessWidget {
+  const _Pager({
+    required this.page,
+    required this.pages,
+    required this.total,
+    required this.first,
+    required this.last,
+    required this.loading,
+    required this.onPrevious,
+    required this.onNext,
+    required this.onPick,
+  });
+  final int page, pages, total, first, last;
+  final bool loading;
+  final VoidCallback onPrevious, onNext;
+  final VoidCallback? onPick;
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        NiuSpacing.gutter,
+        NiuSpacing.md,
+        NiuSpacing.gutter,
+        NiuSpacing.huge + NiuSpacing.xl,
+      ),
+      child: Column(
+        children: [
+          if (pages > 1)
+            Row(
+              children: [
+                IconButton.filledTonal(
+                  tooltip: '上一頁',
+                  onPressed: loading || page <= 1 ? null : onPrevious,
+                  icon: const Icon(Icons.chevron_left_rounded),
+                ),
+                Expanded(
+                  child: Center(
+                    child: TextButton(
+                      onPressed: loading ? null : onPick,
+                      child: loading
+                          ? const SizedBox.square(
+                              dimension: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Text(
+                              '第 $page / $pages 頁',
+                              style: theme.textTheme.titleSmall?.copyWith(
+                                fontFeatures: tabularFigures,
+                              ),
+                            ),
+                    ),
+                  ),
+                ),
+                IconButton.filledTonal(
+                  tooltip: '下一頁',
+                  onPressed: loading || page >= pages ? null : onNext,
+                  icon: const Icon(Icons.chevron_right_rounded),
+                ),
+              ],
+            ),
+          const SizedBox(height: NiuSpacing.xs),
+          Text(
+            total == 0 ? '' : '第 $first–$last 封，共 $total 封',
+            style: theme.textTheme.labelMedium?.copyWith(
+              fontFeatures: tabularFigures,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Asks for a page number; owns its field so closing never outlives it.
+class _PageDialog extends StatefulWidget {
+  const _PageDialog({required this.page, required this.pages});
+  final int page, pages;
+  @override
+  State<_PageDialog> createState() => _PageDialogState();
+}
+
+class _PageDialogState extends State<_PageDialog> {
+  late final field = TextEditingController(text: '${widget.page}');
+
+  @override
+  void dispose() {
+    field.dispose();
+    super.dispose();
+  }
+
+  void submit() => Navigator.pop(context, int.tryParse(field.text.trim()));
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text('跳到第幾頁'),
+    content: TextField(
+      controller: field,
+      autofocus: true,
+      keyboardType: TextInputType.number,
+      decoration: InputDecoration(helperText: '共 ${widget.pages} 頁'),
+      onSubmitted: (_) => submit(),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('取消'),
+      ),
+      FilledButton(onPressed: submit, child: const Text('前往')),
+    ],
+  );
 }

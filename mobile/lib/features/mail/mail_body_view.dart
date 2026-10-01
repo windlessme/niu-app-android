@@ -71,6 +71,64 @@ bool hasRemoteImages(String html) => RegExp(
   caseSensitive: false,
 ).hasMatch(html);
 
+/// A full page for [html]. With [fit], a message wider than the screen is
+/// scaled down to its width (as mail apps do), so it scrolls with the page
+/// instead of fighting it sideways; heights are reported to the app.
+///
+/// [width] is the view's width in CSS pixels: Android WebView widens its own
+/// `innerWidth` to wide content, so the page cannot measure the screen.
+String mailDocument(
+  String html, {
+  required bool remoteImages,
+  required bool fit,
+  double width = 0,
+}) {
+  final body = sanitizeMailHtml(html, remoteImages: remoteImages);
+  final script = fit
+      ? '<script>var VIEW_WIDTH = ${width.floor()};</script>'
+            r"""
+<script>
+(function(){
+  var bridge = function(name, value){
+    if (window.flutter_inappwebview) window.flutter_inappwebview.callHandler(name, value);
+  };
+  function report(){
+    bridge('height', Math.ceil(document.documentElement.getBoundingClientRect().height));
+  }
+  function fit(){
+    var b = document.body;
+    b.style.zoom = '';
+    var wide = Math.max(document.documentElement.scrollWidth, b.scrollWidth);
+    var view = VIEW_WIDTH || window.innerWidth;
+    var z = wide > view + 1 ? view / wide : 1;
+    if (z < 1) b.style.zoom = z;
+    bridge('fit', z < 1);
+    report();
+  }
+  window.addEventListener('load', fit);
+  window.addEventListener('resize', fit);
+  Array.prototype.forEach.call(document.images, function(img){
+    if (!img.complete) img.addEventListener('load', fit);
+  });
+  new ResizeObserver(report).observe(document.documentElement);
+  fit();
+})();
+</script>"""
+      : '';
+  return """<!doctype html><html><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+html,body{margin:0;padding:0;background:#fff;color:#15171c;}
+${fit ? 'html{overflow-x:hidden;}' : ''}
+body{font:15px/1.55 sans-serif;padding:16px;overflow-wrap:anywhere;}
+img{max-width:100%;height:auto;}
+pre{white-space:pre-wrap;}
+blockquote{margin:0 0 0 .8ex;border-left:2px solid #d0d4dc;padding-left:1ex;color:#5a6070;}
+a{color:#0a62d0;}
+</style></head><body>$body$script</body></html>""";
+}
+
 /// A message body sized to its content. Pictures from other sites stay
 /// out of the page until the reader asks, like the school's "ask before
 /// showing". (Request interception is not used: on Android it also stops
@@ -82,11 +140,15 @@ class MailBodyView extends StatefulWidget {
     required this.cookies,
     required this.showRemoteImages,
     this.onMailto,
+    this.onScaled,
   });
   final String html;
   final Map<String, String> cookies;
   final bool showRemoteImages;
   final ValueChanged<String>? onMailto;
+
+  /// Whether the message had to be scaled down to fit the screen.
+  final ValueChanged<bool>? onScaled;
   @override
   State<MailBodyView> createState() => _MailBodyViewState();
 }
@@ -110,35 +172,12 @@ class _MailBodyViewState extends State<MailBodyView> {
     }
   }
 
-  String get document {
-    final body = sanitizeMailHtml(
-      widget.html,
-      remoteImages: widget.showRemoteImages,
-    );
-    return '''<!doctype html><html><head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>
-html,body{margin:0;padding:0;background:#fff;color:#15171c;}
-body{font:15px/1.55 sans-serif;padding:16px;overflow-wrap:anywhere;}
-img{max-width:100%;height:auto;}
-table{max-width:100%;}
-pre{white-space:pre-wrap;}
-blockquote{margin:0 0 0 .8ex;border-left:2px solid #d0d4dc;padding-left:1ex;color:#5a6070;}
-a{color:#0a62d0;}
-</style></head><body>$body
-<script>
-(function(){
-  function report(){
-    window.flutter_inappwebview.callHandler('height',
-      Math.ceil(document.documentElement.getBoundingClientRect().height));
-  }
-  window.addEventListener('load', report);
-  new ResizeObserver(report).observe(document.documentElement);
-  report();
-})();
-</script></body></html>''';
-  }
+  String document(double width) => mailDocument(
+    widget.html,
+    remoteImages: widget.showRemoteImages,
+    fit: true,
+    width: width,
+  );
 
   @override
   Widget build(BuildContext context) => FutureBuilder<void>(
@@ -150,60 +189,76 @@ a{color:#0a62d0;}
           child: const NiuLoading(message: '正在顯示信件', compact: true),
         );
       }
-      return SizedBox(
-        height: height,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(NiuRadius.md),
-          child: InAppWebView(
-            key: ValueKey(widget.showRemoteImages),
-            initialData: InAppWebViewInitialData(
-              data: document,
-              baseUrl: WebUri('${NumailClient.origin}/'),
-              encoding: 'utf-8',
-              mimeType: 'text/html',
-            ),
-            initialSettings: InAppWebViewSettings(
-              javaScriptEnabled: true,
-              javaScriptCanOpenWindowsAutomatically: false,
-              supportMultipleWindows: false,
-              useShouldOverrideUrlLoading: true,
-              allowFileAccess: false,
-              allowContentAccess: false,
-              disableVerticalScroll: true,
-              disableHorizontalScroll: false,
-              supportZoom: false,
-              transparentBackground: false,
-              thirdPartyCookiesEnabled: false,
-            ),
-            onWebViewCreated: (web) => web.addJavaScriptHandler(
-              handlerName: 'height',
-              callback: (args) {
-                final value = args.isEmpty ? null : args.first;
-                if (value is num && mounted) {
-                  final next = value.toDouble().clamp(40, 200000).toDouble();
-                  if ((next - height).abs() > 1) setState(() => height = next);
+      return LayoutBuilder(
+        builder: (context, box) => SizedBox(
+          height: height,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(NiuRadius.md),
+            child: InAppWebView(
+              key: ValueKey((widget.showRemoteImages, box.maxWidth.floor())),
+              initialData: InAppWebViewInitialData(
+                data: document(box.maxWidth),
+                baseUrl: WebUri('${NumailClient.origin}/'),
+                encoding: 'utf-8',
+                mimeType: 'text/html',
+              ),
+              initialSettings: InAppWebViewSettings(
+                javaScriptEnabled: true,
+                javaScriptCanOpenWindowsAutomatically: false,
+                supportMultipleWindows: false,
+                useShouldOverrideUrlLoading: true,
+                allowFileAccess: false,
+                allowContentAccess: false,
+                disableVerticalScroll: true,
+                disableHorizontalScroll: true,
+                supportZoom: false,
+                transparentBackground: false,
+                thirdPartyCookiesEnabled: false,
+              ),
+              onWebViewCreated: (web) => web
+                ..addJavaScriptHandler(
+                  handlerName: 'height',
+                  callback: (args) {
+                    final value = args.isEmpty ? null : args.first;
+                    if (value is num && mounted) {
+                      final next = value
+                          .toDouble()
+                          .clamp(40, 200000)
+                          .toDouble();
+                      if ((next - height).abs() > 1) {
+                        setState(() => height = next);
+                      }
+                    }
+                  },
+                )
+                ..addJavaScriptHandler(
+                  handlerName: 'fit',
+                  callback: (args) {
+                    if (mounted && args.isNotEmpty) {
+                      widget.onScaled?.call(args.first == true);
+                    }
+                  },
+                ),
+              shouldOverrideUrlLoading: (_, action) async {
+                final uri = Uri.tryParse(action.request.url.toString());
+                if (uri == null || action.isForMainFrame != true) {
+                  return NavigationActionPolicy.CANCEL;
                 }
+                if (uri.scheme == 'about' || uri.scheme == 'data') {
+                  return NavigationActionPolicy.ALLOW;
+                }
+                if (!context.mounted) return NavigationActionPolicy.CANCEL;
+                if (uri.scheme == 'mailto') {
+                  widget.onMailto?.call(uri.path);
+                } else if (uri.scheme == 'https' || uri.scheme == 'http') {
+                  await openPublicUrl(
+                    context,
+                    uri.scheme == 'http' ? uri.replace(scheme: 'https') : uri,
+                  );
+                }
+                return NavigationActionPolicy.CANCEL;
               },
             ),
-            shouldOverrideUrlLoading: (_, action) async {
-              final uri = Uri.tryParse(action.request.url.toString());
-              if (uri == null || action.isForMainFrame != true) {
-                return NavigationActionPolicy.CANCEL;
-              }
-              if (uri.scheme == 'about' || uri.scheme == 'data') {
-                return NavigationActionPolicy.ALLOW;
-              }
-              if (!context.mounted) return NavigationActionPolicy.CANCEL;
-              if (uri.scheme == 'mailto') {
-                widget.onMailto?.call(uri.path);
-              } else if (uri.scheme == 'https' || uri.scheme == 'http') {
-                await openPublicUrl(
-                  context,
-                  uri.scheme == 'http' ? uri.replace(scheme: 'https') : uri,
-                );
-              }
-              return NavigationActionPolicy.CANCEL;
-            },
           ),
         ),
       );
@@ -219,4 +274,61 @@ String mailPlainText(String source) {
       .join(' ')
       .replaceAll(RegExp(r'\s+'), ' ')
       .trim();
+}
+
+/// A message at its own width, full screen: the only scroller on the page,
+/// so wide layouts pan and pinch-zoom smoothly.
+class MailOriginalScreen extends StatelessWidget {
+  const MailOriginalScreen({
+    super.key,
+    required this.title,
+    required this.html,
+    required this.showRemoteImages,
+  });
+  final String title, html;
+  final bool showRemoteImages;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: NiuAppBar(title: title),
+    backgroundColor: Colors.white,
+    body: SafeArea(
+      top: false,
+      child: InAppWebView(
+        initialData: InAppWebViewInitialData(
+          data: mailDocument(html, remoteImages: showRemoteImages, fit: false),
+          baseUrl: WebUri('${NumailClient.origin}/'),
+          encoding: 'utf-8',
+          mimeType: 'text/html',
+        ),
+        initialSettings: InAppWebViewSettings(
+          javaScriptEnabled: false,
+          supportMultipleWindows: false,
+          useShouldOverrideUrlLoading: true,
+          allowFileAccess: false,
+          allowContentAccess: false,
+          supportZoom: true,
+          builtInZoomControls: true,
+          displayZoomControls: false,
+          useWideViewPort: true,
+          loadWithOverviewMode: true,
+          thirdPartyCookiesEnabled: false,
+        ),
+        shouldOverrideUrlLoading: (_, action) async {
+          final uri = Uri.tryParse(action.request.url.toString());
+          if (uri == null || action.isForMainFrame != true) {
+            return NavigationActionPolicy.CANCEL;
+          }
+          if (uri.scheme == 'about' || uri.scheme == 'data') {
+            return NavigationActionPolicy.ALLOW;
+          }
+          if (context.mounted &&
+              (uri.scheme == 'https' || uri.scheme == 'http')) {
+            await openPublicUrl(context, uri.replace(scheme: 'https'));
+          }
+          return NavigationActionPolicy.CANCEL;
+        },
+      ),
+    ),
+  );
 }

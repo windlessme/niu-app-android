@@ -474,6 +474,50 @@ void main() {
     );
   });
 
+  testWidgets('long folders page through 20 at a time', (tester) async {
+    DemoMailService.reset();
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 2.75;
+    addTearDown(tester.view.reset);
+    final session = CampusSession(vault: MemoryVault(), platformCleanup: [])
+      ..account = 'b123';
+    addTearDown(session.dispose);
+    final service = _ManyMails();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: NiuTheme.light,
+        home: MailScreen(session: session, service: service),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final down = find
+        .byWidgetPredicate(
+          (w) => w is Scrollable && w.axisDirection == AxisDirection.down,
+        )
+        .first;
+    await tester.drag(down, const Offset(0, -4000));
+    await tester.pumpAndSettle();
+    expect(find.text('第 1 / 3 頁'), findsOneWidget);
+    expect(find.text('第 1–20 封，共 45 封'), findsOneWidget);
+    await tester.tap(find.byTooltip('下一頁'));
+    await tester.pumpAndSettle();
+    expect(find.text('信件 21'), findsOneWidget);
+    expect(find.text('信件 1'), findsNothing);
+    await tester.drag(down, const Offset(0, -4000));
+    await tester.pumpAndSettle();
+    expect(find.text('第 2 / 3 頁'), findsOneWidget);
+    await tester.tap(find.text('第 2 / 3 頁'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField).last, '3');
+    await tester.tap(find.text('前往'));
+    await tester.pumpAndSettle();
+    await tester.drag(down, const Offset(0, -4000));
+    await tester.pumpAndSettle();
+    expect(find.text('第 3 / 3 頁'), findsOneWidget);
+    expect(find.text('第 41–45 封，共 45 封'), findsOneWidget);
+    expect(service.pagesAsked, [1, 2, 3]);
+  });
+
   testWidgets('demo: read, reply, then delete', (tester) async {
     DemoMailService.reset();
     tester.view.physicalSize = const Size(1080, 2400);
@@ -495,7 +539,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('收件匣 2'), findsOneWidget);
+    expect(find.text('收件匣 3'), findsOneWidget);
     expect(find.text('期中考試時間公告'), findsOneWidget);
 
     await tester.tap(find.text('期中考試時間公告'));
@@ -515,7 +559,7 @@ void main() {
     await tester.tap(find.byTooltip('刪除'));
     await tester.pumpAndSettle();
     expect(find.text('期中考試時間公告'), findsNothing);
-    expect(find.text('收件匣 1'), findsOneWidget);
+    expect(find.text('收件匣 2'), findsOneWidget);
 
     await tester.tap(find.text('寄件備份'));
     await tester.pumpAndSettle();
@@ -524,4 +568,32 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('期中考試時間公告'), findsOneWidget);
   });
+}
+
+class _ManyMails extends DemoMailService {
+  final pagesAsked = <int>[];
+  @override
+  Future<MailPage> list(String box, {int page = 1, String query = ''}) async {
+    pagesAsked.add(page);
+    const total = 45;
+    final start = (page - 1) * 20;
+    return MailPage(
+      [
+        for (var i = start; i < start + 20 && i < total; i++)
+          MailSummary(
+            uid: 1000 - i,
+            box: box,
+            subject: '信件 ${i + 1}',
+            from: const [MailAddress('a@niu.edu.tw', '寄件者')],
+            to: const [],
+            date: DateTime.utc(2026, 9, 1),
+            preview: '',
+            flags: const [r'\Seen'],
+            hasAttachment: false,
+          ),
+      ],
+      total,
+      page,
+    );
+  }
 }

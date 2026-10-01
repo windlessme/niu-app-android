@@ -551,6 +551,20 @@ class DemoMailService implements MailService {
     );
     _boxes[MailFolder.inbox] = [
       mail(
+        6,
+        '圖書資訊館電子報 第 128 期',
+        const MailAddress('libnews@niu.edu.tw', '圖書資訊館'),
+        const Duration(minutes: 10),
+        '<table width="800" style="width:800px;border-collapse:collapse">'
+            '<tr><td colspan="2" style="background:#0a62d0;color:#fff;padding:24px;font-size:24px">'
+            '圖書資訊館電子報</td></tr>'
+            '<tr><td style="width:400px;padding:16px;vertical-align:top">'
+            '<h3>新書推薦</h3><p>本月新進館藏 320 冊，歡迎到二樓新書展示區借閱。</p></td>'
+            '<td style="width:400px;padding:16px;vertical-align:top">'
+            '<h3>討論室開放</h3><p>大型討論室 523、612、314 開放線上預約，每次 1–4 小時。</p></td></tr>'
+            '</table>',
+      ),
+      mail(
         5,
         '【圖書館】設備預約提醒',
         const MailAddress('library@niu.edu.tw', '圖書資訊館'),
