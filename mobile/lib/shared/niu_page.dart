@@ -101,6 +101,7 @@ class NiuScrollPage extends StatelessWidget {
     this.bottomBar,
     this.padding,
     this.controller,
+    this.floatingActionButton,
   });
   final String title;
   final List<Widget> actions;
@@ -112,6 +113,7 @@ class NiuScrollPage extends StatelessWidget {
   final Widget? bottomBar;
   final EdgeInsets? padding;
   final ScrollController? controller;
+  final Widget? floatingActionButton;
 
   @override
   Widget build(BuildContext context) {
@@ -176,6 +178,7 @@ class NiuScrollPage extends StatelessWidget {
     }
     return Scaffold(
       body: SafeArea(top: false, bottom: false, child: scroll),
+      floatingActionButton: floatingActionButton,
       bottomNavigationBar: bottomBar == null
           ? null
           : NiuBottomBar(child: bottomBar!),
