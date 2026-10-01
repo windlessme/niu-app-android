@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 import '../../core/network/school_clients.dart';
 import '../../core/session/campus_session.dart';
@@ -394,6 +395,20 @@ class _LibraryScreenState extends State<LibraryScreen>
               ),
             ),
           ],
+        ),
+        NiuSection(
+          title: '更多服務',
+          child: NiuGroup(
+            children: [
+              NiuRow(
+                title: '空間預約',
+                subtitle: '研究小間、討論室與 Switch',
+                icon: Icons.meeting_room_outlined,
+                hue: NiuHue.indigo,
+                onTap: () => GoRouter.of(context).push('/library/spaces'),
+              ),
+            ],
+          ),
         ),
       ],
     );

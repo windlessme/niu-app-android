@@ -34,6 +34,16 @@ class CampusDate implements Comparable<CampusDate> {
   ).compareTo(DateTime.utc(other.year, other.month, other.day));
 
   @override
+  bool operator ==(Object other) =>
+      other is CampusDate &&
+      other.year == year &&
+      other.month == month &&
+      other.day == day;
+
+  @override
+  int get hashCode => Object.hash(year, month, day);
+
+  @override
   String toString() =>
       '$year-${month.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}';
 }
