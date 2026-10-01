@@ -50,11 +50,19 @@ const calendarCategories = <String, String>{
   'other': '其他',
 };
 
+/// A semester's teaching span, from the first class day to the semester end.
+class CalendarSemester {
+  const CalendarSemester(this.number, this.classesStart, this.end);
+  final int number;
+  final CampusDate classesStart, end;
+}
+
 class CalendarSnapshot {
   CalendarSnapshot(
     this.year,
     this.revision,
     List<CalendarEvent> events, {
+    this.semesters = const [],
     this.sources = const {},
     this.sourceLabel = 'App 內建資料',
     this.message,
@@ -62,6 +70,7 @@ class CalendarSnapshot {
   final int year;
   final int revision;
   final List<CalendarEvent> events;
+  final List<CalendarSemester> semesters;
   final Map<String, Uri> sources;
   final String sourceLabel;
   final String? message;
@@ -69,6 +78,7 @@ class CalendarSnapshot {
     year,
     revision,
     events,
+    semesters: semesters,
     sources: sources,
     sourceLabel: label,
     message: notice,
@@ -182,10 +192,23 @@ CalendarSnapshot decodeCalendar(List<int> data, Map<String, dynamic> entry) {
     throw const FormatException('Duplicate calendar event');
   }
   events.sort((a, b) => a.start.compareTo(b.start));
+  final semesters = <CalendarSemester>[];
+  for (final raw in json['semesters'] as List? ?? const []) {
+    final semester = raw as Map<String, dynamic>;
+    final classes = CampusDate.parse(semester['classesStartDate'] as String);
+    final last = CampusDate.parse(semester['endDate'] as String);
+    if (classes.compareTo(start) < 0 ||
+        last.compareTo(end) > 0 ||
+        last.compareTo(classes) < 0) {
+      throw const FormatException('Semester outside academic year');
+    }
+    semesters.add(CalendarSemester(semester['number'] as int, classes, last));
+  }
   return CalendarSnapshot(
     year,
     json['revision'] as int,
     events,
+    semesters: semesters,
     sources: Map.unmodifiable(urls),
   );
 }

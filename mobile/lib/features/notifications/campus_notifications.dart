@@ -1,0 +1,241 @@
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../core/platform/schedule_gateway.dart';
+import '../../core/session/campus_session.dart';
+import '../../core/time/campus_date.dart';
+import '../academic_calendar/calendar_repository.dart';
+import '../moodle/course_presentation.dart';
+import '../moodle/moodle_repository.dart';
+import '../schedule/schedule_export.dart';
+import '../schedule/schedule_screen.dart';
+
+/// Local notifications, matching the iOS app: assignment deadlines a day
+/// ahead, important calendar dates the morning before, and weekly class
+/// reminders. Everything is computed on the device and handed to Android;
+/// there is no push server.
+class CampusNotifications {
+  CampusNotifications({
+    required this.session,
+    required this.moodle,
+    required this.calendar,
+    this.gateway = const ScheduleGateway(),
+    DateTime Function()? clock,
+  }) : clock = clock ?? DateTime.now;
+  final CampusSession session;
+  final Future<MoodleRepository?> Function() moodle;
+  final CalendarRepository calendar;
+  final ScheduleGateway gateway;
+  final DateTime Function() clock;
+
+  static const assignmentsKey = 'notify.assignments';
+  static const calendarKey = 'notify.calendar';
+
+  Future<void> _queue = Future.value();
+
+  Future<bool> enabled(String key) async =>
+      (await SharedPreferences.getInstance()).getBool(key) ?? false;
+
+  Future<void> setEnabled(String key, bool value) async {
+    await (await SharedPreferences.getInstance()).setBool(key, value);
+    await refresh();
+  }
+
+  /// Turns class reminders on with the saved semester dates, or the current
+  /// semester from the academic calendar.
+  Future<void> setClassReminders(bool value) async {
+    if (value) {
+      await _queue;
+      await _saveSchedule(requireDates: true);
+    }
+    if (!await gateway.setReminders(enabled: value) && value) {
+      throw StateError('通知權限未開啟');
+    }
+  }
+
+  /// Recomputes every enabled kind. Calls are serialized; a failure in one
+  /// kind does not stop the others and is rethrown at the end.
+  Future<void> refresh() {
+    final next = _queue.catchError((Object _) {}).then((_) => _refresh());
+    _queue = next;
+    return next;
+  }
+
+  Future<void> _refresh() async {
+    final account = session.account;
+    if (account == null || !session.hasLocalAccount) return;
+    final epoch = session.coordinator.epoch;
+    void current() {
+      session.coordinator.requireCurrent(epoch);
+      if (session.account != account) throw StateError('帳號已變更');
+    }
+
+    Object? failure;
+    for (final (kind, key, build) in [
+      ('assignments', assignmentsKey, _assignments),
+      ('calendar', calendarKey, _calendarDates),
+    ]) {
+      try {
+        final items = await enabled(key) ? await build() : <CampusNotice>[];
+        current();
+        await gateway.setNotifications(kind, items);
+      } catch (error) {
+        failure ??= error;
+      }
+    }
+    try {
+      if ((await gateway.reminderStatus()).enabled) {
+        current();
+        await _saveSchedule();
+      }
+    } catch (error) {
+      failure ??= error;
+    }
+    if (failure != null) throw failure;
+  }
+
+  Future<List<CampusNotice>> _assignments() async {
+    final repository = await moodle();
+    if (repository == null) throw StateError('請先登入 M 園區');
+    final now = clock();
+    final limit = now.add(const Duration(days: 14));
+    final found = <(DateTime, String, String, String)>[];
+    for (final course in await repository.courses()) {
+      final name = CoursePresentation(course).title;
+      for (final assignment in await repository.assignments(
+        number(course['id']),
+      )) {
+        final seconds = number(assignment['duedate']);
+        if (seconds <= 0) continue;
+        final due = DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
+        if (due.isAfter(now) && !due.isAfter(limit)) {
+          found.add((
+            due,
+            '${assignment['id']}',
+            '${assignment['name']}',
+            name,
+          ));
+        }
+      }
+    }
+    found.sort((a, b) => a.$1.compareTo(b.$1));
+    return [
+      for (final (due, id, title, course) in found.take(20))
+        if (due.subtract(const Duration(days: 1)).isAfter(now))
+          CampusNotice(
+            id: id,
+            title: '作業即將截止',
+            body: '$title（$course）將於 ${_dateTime(due)} 截止',
+            at: due.subtract(const Duration(days: 1)),
+            link: 'niulife://moodle',
+          ),
+    ];
+  }
+
+  Future<List<CampusNotice>> _calendarDates() async {
+    final now = clock();
+    final today = CampusDate.at(now);
+    final limit = CampusDate.at(now.add(const Duration(days: 30)));
+    final events = <CalendarEvent>[];
+    for (final year in {today.academicYear, limit.academicYear}) {
+      try {
+        events.addAll((await calendar.load(year)).events);
+      } catch (_) {
+        if (year == today.academicYear) rethrow;
+      }
+    }
+    final upcoming =
+        events
+            .where(
+              (e) =>
+                  (e.category == 'important' || e.category == 'deadline') &&
+                  e.start.compareTo(today) >= 0 &&
+                  e.start.compareTo(limit) <= 0,
+            )
+            .toList()
+          ..sort((a, b) => a.start.compareTo(b.start));
+    return [
+      for (final event in upcoming.take(20))
+        // 08:00 in Taipei (UTC+8) on the day before.
+        if (DateTime.utc(
+          event.start.year,
+          event.start.month,
+          event.start.day - 1,
+        ).isAfter(now))
+          CampusNotice(
+            id: event.id,
+            title: '重要日期提醒',
+            body: '${event.title}（${_dateRange(event)}）即將到來',
+            at: DateTime.utc(
+              event.start.year,
+              event.start.month,
+              event.start.day - 1,
+            ),
+            link: 'niulife://calendar',
+          ),
+    ];
+  }
+
+  /// Saves the cached timetable for native class reminders, keeping dates
+  /// already chosen on this device.
+  Future<void> _saveSchedule({bool requireDates = false}) async {
+    final cached = session.cachedSchedule;
+    final owner = session.account;
+    if (cached == null || owner == null) {
+      if (requireDates) throw StateError('請先開啟課表載入一次');
+      return;
+    }
+    final status = await gateway.reminderStatus();
+    var start = status.semesterStart, end = status.semesterEnd;
+    if (start == null || end == null) {
+      final semester = await _currentSemester();
+      if (semester == null) {
+        if (requireDates) throw StateError('找不到本學期日期');
+        return;
+      }
+      start = '${semester.classesStart}';
+      end = '${semester.end}';
+    }
+    // Offline: keep the snapshot already on the device, if there is one.
+    if (!session.isSignedIn) {
+      if (status.semesterStart != null || !requireDates) return;
+      throw StateError('請連線後再開啟上課提醒');
+    }
+    await session.saveSchedule(
+      ScheduleSnapshot(
+        semesterStart: start,
+        semesterEnd: end,
+        blocks: scheduleBlocks(ClassSchedule.fromRows(cached.rows)),
+      ),
+      epoch: session.coordinator.epoch,
+      owner: owner,
+    );
+  }
+
+  /// The semester that has not ended yet, from this or the next academic year.
+  Future<CalendarSemester?> _currentSemester() async {
+    final today = CampusDate.at(clock());
+    for (final year in [today.academicYear, today.academicYear + 1]) {
+      try {
+        for (final semester in (await calendar.load(year)).semesters) {
+          if (semester.end.compareTo(today) >= 0) return semester;
+        }
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  static String _two(int value) => value.toString().padLeft(2, '0');
+
+  static String _dateTime(DateTime instant) {
+    final taipei = instant.toUtc().add(const Duration(hours: 8));
+    return '${taipei.month}月${taipei.day}日 '
+        '${_two(taipei.hour)}:${_two(taipei.minute)}';
+  }
+
+  static String _dateRange(CalendarEvent event) {
+    String day(CampusDate d) => '${_two(d.month)}/${_two(d.day)}';
+    return event.end.compareTo(event.start) == 0
+        ? day(event.start)
+        : '${day(event.start)}–${day(event.end)}';
+  }
+}

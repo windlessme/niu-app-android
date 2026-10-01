@@ -77,6 +77,7 @@ class ScheduleAlarmReceiver : BroadcastReceiver() {
 class ScheduleRestoreReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         ScheduleReminders.reschedule(context)
+        CampusNotifications.reschedule(context)
         ScheduleWidget.refresh(context)
     }
 }
