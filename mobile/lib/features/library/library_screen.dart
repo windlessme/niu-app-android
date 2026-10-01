@@ -401,7 +401,7 @@ class _LibraryScreenState extends State<LibraryScreen>
           child: NiuGroup(
             children: [
               NiuRow(
-                title: '空間預約',
+                title: '設備預約',
                 subtitle: '研究小間、討論室與 Switch',
                 icon: Icons.meeting_room_outlined,
                 hue: NiuHue.indigo,

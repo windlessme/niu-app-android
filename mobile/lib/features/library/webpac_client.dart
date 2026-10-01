@@ -59,20 +59,31 @@ class WebpacClient implements SpaceService {
     return RegExp(r'"auth":true').hasMatch(body);
   }
 
+  /// [change] marks a mutation: once sent, a lost reply leaves its outcome
+  /// unknown, so it surfaces as [SpaceUncertain] and is never retried.
   Future<Map<String, dynamic>> query(
     String document, [
     Map<String, Object?> variables = const {},
+    bool change = false,
   ]) async {
     if (_csrf == null) await page();
     for (var attempt = 0; ; attempt++) {
-      final response = await dio.post<String>(
-        '/api/HyLibWS/graphql',
-        data: jsonEncode({'query': document, 'variables': variables}),
-        options: Options(
-          contentType: Headers.jsonContentType,
-          headers: {..._cookie, 'X-CSRF-Token': _csrf},
-        ),
-      );
+      final Response<String> response;
+      try {
+        response = await dio.post<String>(
+          '/api/HyLibWS/graphql',
+          data: jsonEncode({'query': document, 'variables': variables}),
+          options: Options(
+            contentType: Headers.jsonContentType,
+            headers: {..._cookie, 'X-CSRF-Token': _csrf},
+          ),
+        );
+      } on DioException catch (e) {
+        if (change && e.type != DioExceptionType.connectionError) {
+          throw const SpaceUncertain();
+        }
+        rethrow;
+      }
       _takeCookie(response);
       // A stale CSRF token is rejected before the operation runs.
       if (response.statusCode == 403 && attempt == 0) {
@@ -80,6 +91,9 @@ class WebpacClient implements SpaceService {
         continue;
       }
       if (response.statusCode != 200) {
+        if (change && (response.statusCode ?? 0) >= 500) {
+          throw const SpaceUncertain();
+        }
         throw const SpaceException('圖書館系統暫時無法使用，稍後再試。');
       }
       final body = jsonDecode(response.data ?? '') as Map<String, dynamic>;
@@ -150,6 +164,7 @@ mutation($user: String!, $pass: String!) {
 { getEquipmentGroupInfo { eqgroupitemlist {
   equipmentGroup { id name webpacDisplay }
   ebPolicy { id }
+  equipmentNum
 } } }''');
     // Groups without a policy for this reader (e.g. 長期研究小間) are not
     // bookable online.
@@ -159,12 +174,29 @@ mutation($user: String!, $pass: String!) {
             when g['webpacDisplay'] != 0 &&
                 g['id'] is int &&
                 item['ebPolicy'] != null)
-          SpaceGroup(g['id'] as int, '${g['name']}'.trim()),
+          SpaceGroup(
+            g['id'] as int,
+            '${g['name']}'.trim(),
+            total: item['equipmentNum'] is int
+                ? item['equipmentNum'] as int
+                : 0,
+          ),
     ];
   }
 
   @override
-  Future<SpaceDay> day(SpaceGroup group, CampusDate date) async {
+  Future<bool> signedIn() async {
+    try {
+      return await page();
+    } on SpaceException {
+      rethrow;
+    } catch (_) {
+      throw const SpaceException('無法連線到圖書館，請檢查網路後再試。');
+    }
+  }
+
+  @override
+  Future<SpaceSchedule> schedule(SpaceGroup group, CampusDate date) async {
     final data = await query(
       r'''
 query($g: Int, $d: String) {
@@ -187,7 +219,7 @@ query($g: Int, $d: String) {
       if (cir is! Map || cir['equipmentId'] is! int) continue;
       final key = '${cir['equipmentId']}|${cir['startDate']}|${cir['endDate']}';
       if (!seen.add(key)) continue;
-      final booking = SpaceDay.clip(
+      final booking = SpaceSchedule.clip(
         date,
         cir['equipmentId'] as int,
         cir['startDate'] as String?,
@@ -196,28 +228,37 @@ query($g: Int, $d: String) {
       );
       if (booking != null) bookings.add(booking);
     }
-    if (rooms.isEmpty) throw const SpaceException('這個類別目前沒有開放的空間');
-    // The policy is per group, but the site asks through one of its rooms.
+    return SpaceSchedule(
+      group: group,
+      date: date,
+      rooms: rooms,
+      bookings: bookings,
+    );
+  }
+
+  /// Limits are per room; the site's own equipId: 1 shortcut fails.
+  @override
+  Future<SpaceRules> rules(
+    SpaceGroup group,
+    SpaceRoom room,
+    CampusDate date,
+  ) async {
     final policy = (await query(
       r'''
 query($q: Int, $g: Int, $d: String) {
   getDayReservedByReader(equipId: $q, groupId: $g, reserveDate: $d) { success data message }
 }''',
-      {'q': rooms.first.id, 'g': group.id, 'd': webpacDate(date)},
+      {'q': room.id, 'g': group.id, 'd': webpacDate(date)},
     ))['getDayReservedByReader'];
     final message = policy is Map ? '${policy['message'] ?? ''}' : '';
     if (policy is! Map || policy['data'] is! String) {
       throw SpaceException(
-        message.isEmpty || message.contains(':') ? '無法取得預約規則' : message,
+        message.isEmpty || message.contains(':')
+            ? '這台設備在這天無法預約，請選擇其他日期或設備。'
+            : message,
       );
     }
-    return SpaceDay(
-      group: group,
-      date: date,
-      rooms: rooms,
-      bookings: bookings,
-      rules: SpaceRules.parse(policy['data'] as String),
-    );
+    return SpaceRules.parse(policy['data'] as String);
   }
 
   @override
@@ -225,12 +266,12 @@ query($q: Int, $g: Int, $d: String) {
     final data = await query('''
 {
   reserve: getEquipmentByReader(status: "Reserve") { success eqgroupitemlist {
-    equipment { name }
+    equipment { id name }
     equipmentCir { reserveKeepDate }
     equipmentCirContent { id startDate endDate }
   } }
   borrow: getEquipmentByReader(status: "Borrow") { success eqgroupitemlist {
-    equipment { name }
+    equipment { id name }
     equipmentCirContent { id startDate endDate }
   } }
 }''');
@@ -248,16 +289,18 @@ query($q: Int, $g: Int, $d: String) {
         final keep = parseStamp(
           (item['equipmentCir'] as Map?)?['reserveKeepDate'] as String?,
         );
+        final equipment = item['equipment'] as Map?;
         list.add(
           SpaceReservation(
             id: content['id'] as int,
-            roomName: '${(item['equipment'] as Map?)?['name'] ?? '空間'}'.trim(),
+            roomId: equipment?['id'] is int ? equipment!['id'] as int : 0,
+            roomName: '${equipment?['name'] ?? '設備'}'.trim(),
             date: start.$1,
             start: start.$2,
             endDate: end.$1,
             end: end.$2,
             state: state,
-            keepUntil: keep?.$2,
+            keepUntil: keep,
           ),
         );
       }
@@ -287,6 +330,7 @@ mutation($s: String, $e: String, $q: Int, $g: Int) {
         'q': room.id,
         'g': group.id,
       },
+      true,
     );
     final result = data['reserveEquipmentCir'];
     if (result is! Map || result['success'] != true) {
@@ -303,6 +347,7 @@ mutation($s: String, $e: String, $q: Int, $g: Int) {
     final data = await query(
       r'mutation($i: Int) { cancelEquipmentCir(eccId: $i, eccIds: "") { success message } }',
       {'i': reservation.id},
+      true,
     );
     final result = data['cancelEquipmentCir'];
     if (result is! Map || result['success'] != true) {
