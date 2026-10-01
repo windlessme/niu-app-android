@@ -19,6 +19,7 @@ import '../features/graduation/graduation_screen.dart';
 import '../features/home/home_screen.dart';
 import '../features/home/today_courses.dart';
 import '../features/library/library_screen.dart';
+import '../features/library/library_space_screen.dart';
 import '../features/moodle/course_matcher.dart';
 import '../features/moodle/course_presentation.dart';
 import '../features/moodle/moodle_login_service.dart';
@@ -157,6 +158,14 @@ class _NiuAppState extends State<NiuApp> {
             listenable: session,
             builder: (_, _) => LibraryScreen(account: session.account ?? ''),
           ),
+        ),
+      ),
+      GoRoute(
+        path: '/library/spaces',
+        builder: (_, _) => const AuthGate(
+          title: '空間預約',
+          allowLocalAccount: true,
+          child: LibrarySpaceScreen(),
         ),
       ),
       GoRoute(
