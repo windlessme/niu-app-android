@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 import '../../core/session/campus_session.dart';
 import 'registration_data.dart';
+import '../demo/demo_services.dart';
 
 bool isCertificatePdf(int? status, String? contentType, List<int> bytes) =>
     status == 200 &&
@@ -50,6 +51,14 @@ class CertificateService {
     }
 
     check();
+    if (session.isDemo) {
+      final result = await channel.invokeMethod<bool>(
+        save ? 'savePdf' : 'viewPdf',
+        {'bytes': demoPdf('Enrollment certificate')},
+      );
+      check();
+      return result ?? false;
+    }
     _request?.cancel();
     final token = CancelToken();
     _request = token;

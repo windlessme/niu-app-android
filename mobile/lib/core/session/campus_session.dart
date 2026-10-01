@@ -5,6 +5,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../demo/demo_account.dart';
+import '../demo/demo_data.dart';
 import '../network/school_clients.dart';
 import '../platform/schedule_gateway.dart';
 import '../storage/credential_vault.dart';
@@ -27,6 +29,10 @@ class CampusSession extends ChangeNotifier {
   final coordinator = SessionCoordinator();
   final List<Future<void> Function()>? platformCleanup;
   bool isOffline = false;
+
+  /// Google Play review demo: sample data, simulated submissions, and no
+  /// connection to any school system.
+  bool isDemo = false;
   bool ssoNeedsReauthentication = false;
   bool get hasLocalAccount => account != null && !cleanupPending;
   int _identityGeneration = 0;
@@ -92,6 +98,14 @@ class CampusSession extends ChangeNotifier {
     final savedAccount = await vault.read('ssoAccount');
     final savedToken = await vault.read('ssoToken');
     if (savedAccount == null || savedToken == null) return;
+    // No school account can be named niulifedemo, and the demo token is never
+    // a school token, so the pair identifies a review session on its own.
+    if (savedAccount == demoAccount && savedToken == _demoToken) {
+      coordinator.requireCurrent(epoch);
+      if (identityGeneration != _identityGeneration) return;
+      _applyDemo();
+      return;
+    }
     final cachedProfile = await vault.read('ssoProfile');
     final cached = await vault.read('scheduleCache');
     coordinator.requireCurrent(epoch);
@@ -202,7 +216,45 @@ class CampusSession extends ChangeNotifier {
     });
   }
 
+  static const _demoToken = 'demo';
+
+  void _applyDemo() {
+    account = demoAccount;
+    _token = _demoToken;
+    isDemo = true;
+    profile = Map.of(DemoData.profile);
+    isOffline = false;
+    ssoNeedsReauthentication = false;
+    cachedSchedule = CachedSchedule(
+      account: demoAccount,
+      fetchedAt: DateTime.now().toUtc(),
+      rows: DemoData.scheduleRows,
+    );
+    cachedGraduation = null;
+    notifyListeners();
+  }
+
+  /// Signs in to the review demo. Nothing is sent to the school.
+  Future<void> enterDemo() async {
+    await recoverCleanup();
+    final captured = coordinator.epoch;
+    final savedOwner = await vault.read('ssoAccount');
+    if ((savedOwner != null && savedOwner != demoAccount) ||
+        (account != null && account != demoAccount)) {
+      throw StateError('切換帳號前請先登出');
+    }
+    _persist = () async {
+      await vault.write('ssoAccount', demoAccount);
+      await vault.write('ssoToken', _demoToken);
+    }();
+    await _persist;
+    coordinator.requireCurrent(captured);
+    _identityGeneration++;
+    _applyDemo();
+  }
+
   Future<Uri> academicEntry() async {
+    if (isDemo) throw StateError('示範模式不連線學校系統');
     // A freshly verified login is already authoritative. Re-reading storage
     // here can race an earlier startup restore and replace the new session.
     if (!isSignedIn) await restore();
@@ -328,6 +380,7 @@ class CampusSession extends ChangeNotifier {
     _identityGeneration++;
     account = null;
     _token = null;
+    isDemo = false;
     profile = {};
     _restore = null;
     cachedSchedule = null;

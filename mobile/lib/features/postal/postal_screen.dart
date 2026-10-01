@@ -4,6 +4,7 @@ import '../../core/session/campus_session.dart';
 import '../../shared/shared.dart';
 import 'postal_models.dart';
 import 'postal_service.dart';
+import '../demo/demo_services.dart';
 
 /// Campus mail and parcel lookup. One search covers every status (the school
 /// form takes one at a time); the status chips then filter locally.
@@ -116,7 +117,8 @@ class _PostalScreenState extends State<PostalScreen> {
       for (final status in PostalStatus.values)
         () async {
           final client = clients[status] =
-              (widget.service ?? PostalService.new)();
+              (widget.service ??
+              (session.isDemo ? DemoPostalService.new : PostalService.new))();
           try {
             final page = await client.search(query(status));
             if (mounted && current == generation) pages[status] = page;
