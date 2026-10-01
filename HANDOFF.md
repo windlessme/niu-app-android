@@ -1,6 +1,6 @@
 # HANDOFF
 
-給接手的 Claude Code session。最後更新：2026-10-01。目前版本：**0.13.11+72**。
+給接手的 Claude Code session。最後更新：2026-10-01。目前版本：**0.13.12+73**。
 
 ## 專案概況
 
@@ -15,7 +15,7 @@
 
 在 `mobile/` 底下執行：
 
-1. `set -o pipefail; tool/verify.sh`，包含 calendar/toolchain/DOM 檢查、`dart format`、`flutter analyze`、`flutter test`，目前 328 項測試。
+1. `set -o pipefail; tool/verify.sh`，包含 calendar/toolchain/DOM 檢查、`dart format`、`flutter analyze`、`flutter test`，目前 329 項測試。
 2. 把 `pubspec.yaml` 的 patch 版號和 build number 各加一。
 3. commit 到 `main`，**push 到 origin main**。
 4. `flutter build apk --debug`
@@ -50,6 +50,7 @@
 | 0.13.9 | `302587a` | 圖書館空間預約（見下節） |
 | 0.13.10 | `8741ad2` | 設備預約依 iOS 版重新設計（見下節） |
 | 0.13.11 | `e6f8407` | 校園信箱（全原生，見下節） |
+| 0.13.12 | | 修好讀信顯示、刪除和移動誤報失敗；右上角改成 App 內的學校信箱網頁 |
 
 另外：
 
@@ -137,6 +138,11 @@
   - 錯誤訊息的對應方式照 iOS 版 `MailService.swift`，包含 2FA。
 - 2026-10-01 用使用者提供的 session 做過**唯讀**實測：信件匣、列表、讀信、搜尋都正常，讀信後未讀狀態沒有改變。**真實帳密登入、ML Kit 辨識率、寄信、上傳附件、搬移和刪除都還沒在真機上測過。**
 - 示範模式用 `DemoMailService`，資料存在記憶體裡。
+- 0.13.12 修正的問題：
+  - **不要在信件內容的 WebView 開 `useShouldInterceptRequest`。** 在 Android 上開了之後，`initialData` 會載入空白頁，信件內容整個不見（在模擬器上已確認）。外部圖片改成由 `sanitizeMailHtml(remoteImages: false)` 直接拿掉 `src` 來封鎖。
+  - 搬移、刪除、標記這類修改操作，伺服器回傳 2xx 加純文字，例如 `OK`，**不是 JSON**；只要是非 GET 的請求，就以狀態碼判斷成功。
+  - 右上角的按鈕改成 `MailWebScreen`：在 App 內打開學校的 NUMail 手機版，並帶入原生登入取得的 cookie。
+- 這台機器有 Android 模擬器：`/opt/android-sdk/emulator/emulator -avd niu_api36 -no-window -gpu swiftshader_indirect`，可以用示範帳號登入測試 UI。
 
 ## 重要決策
 
