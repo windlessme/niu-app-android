@@ -1,4 +1,4 @@
-package dev.niulife.prototype.niu_mobile
+package me.windless.niulife
 
 import android.Manifest
 import android.app.*
@@ -15,7 +15,7 @@ internal object ScheduleReminders {
         c.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) &&
         c.getSystemService(NotificationManager::class.java).areNotificationsEnabled()
     private fun pending(c: Context) = PendingIntent.getBroadcast(c, requestCode,
-        Intent(c, ScheduleAlarmReceiver::class.java).setAction("dev.niulife.CLASS_REMINDER"),
+        Intent(c, ScheduleAlarmReceiver::class.java).setAction("me.windless.niulife.CLASS_REMINDER"),
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
     fun cancel(c: Context) {
         c.getSystemService(AlarmManager::class.java).cancel(pending(c))

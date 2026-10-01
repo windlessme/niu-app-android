@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "dev.niulife.prototype.niu_mobile"
+    namespace = "me.windless.niulife"
     compileSdk = 36
     ndkVersion = "28.2.13676358"
 
@@ -17,7 +17,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "dev.niulife.prototype.niu_mobile"
+        applicationId = "me.windless.niulife"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = 26

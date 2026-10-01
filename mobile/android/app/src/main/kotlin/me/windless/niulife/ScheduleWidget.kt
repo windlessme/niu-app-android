@@ -1,4 +1,4 @@
-package dev.niulife.prototype.niu_mobile
+package me.windless.niulife
 
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager

@@ -10,7 +10,7 @@ mkdir -p /tmp/opencode
 adb install -r build/app/outputs/flutter-apk/app-debug.apk
 adb shell input keyevent KEYCODE_WAKEUP
 adb shell wm dismiss-keyguard
-adb shell am start -W -n dev.niulife.prototype.niu_mobile/.MainActivity
+adb shell am start -W -n me.windless.niulife/.MainActivity
 adb shell uiautomator dump /sdcard/niu-window.xml
 adb pull /sdcard/niu-window.xml /tmp/opencode/niu-window.xml
 python3 - <<'PY'

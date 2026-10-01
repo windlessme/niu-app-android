@@ -1,4 +1,4 @@
-package dev.niulife.prototype.niu_mobile
+package me.windless.niulife
 
 import android.content.Context
 import org.json.JSONObject
