@@ -163,7 +163,7 @@ class _NiuAppState extends State<NiuApp> {
       GoRoute(
         path: '/library/spaces',
         builder: (_, _) => const AuthGate(
-          title: '空間預約',
+          title: '設備預約',
           allowLocalAccount: true,
           child: LibrarySpaceScreen(),
         ),

@@ -1,6 +1,6 @@
 # HANDOFF
 
-給接手的 Claude Code session。最後更新：2026-10-01。目前版本：**0.13.9+70**。
+給接手的 Claude Code session。最後更新：2026-10-01。目前版本：**0.13.10+71**。
 
 ## 專案概況
 
@@ -15,7 +15,7 @@
 
 在 `mobile/` 底下執行：
 
-1. `set -o pipefail; tool/verify.sh`，包含 calendar/toolchain/DOM 檢查、`dart format`、`flutter analyze`、`flutter test`，目前 313 項測試。
+1. `set -o pipefail; tool/verify.sh`，包含 calendar/toolchain/DOM 檢查、`dart format`、`flutter analyze`、`flutter test`，目前 316 項測試。
 2. 把 `pubspec.yaml` 的 patch 版號和 build number 各加一。
 3. commit 到 `main`，**push 到 origin main**。
 4. `flutter build apk --debug`
@@ -48,6 +48,7 @@
 | 0.13.7 | `1e3f05b` | 通知設定，功能和 iOS 版一致（見下節） |
 | 0.13.8 | `2e2a3e1` | Release 簽章；第一個 AAB（versionCode 69）已上 Play internal 軌道 |
 | 0.13.9 | `302587a` | 圖書館空間預約（見下節） |
+| 0.13.10 | | 設備預約依 iOS 版重新設計（見下節） |
 
 另外：
 
@@ -72,9 +73,21 @@
 - 通知點下去的深層連結：新增 `niulife://moodle`、`niulife://calendar`，寫在 `lib/app/deep_links.dart`。
 - iOS 的 Live Activities 和遠端即時動態沒做，Android 沒有對應功能。
 
-## 圖書館空間預約（0.13.9）
+## 圖書館設備預約（0.13.9 起，0.13.10 依 iOS 重新設計）
 
-- 入口：「圖書館」頁底部 →「空間預約」，路由是 `/library/spaces`。程式在 `lib/features/library/`，包含 `webpac_client.dart`、`library_space_session.dart`、`library_space_screen.dart`、`space_models.dart`。
+- 入口：「圖書館」頁底部 →「設備預約」，路由是 `/library/spaces`。程式在 `lib/features/library/`：
+  - `webpac_client.dart`：API client。
+  - `library_space_session.dart`：session 存取。
+  - `space_models.dart`：模型、時段計算和篩選。
+  - `space_booking_controller.dart`：狀態，對應 iOS 的 `LibraryEquipmentViewModel`。
+  - `library_space_screen.dart`：畫面。
+- UX 照 iOS 的 `Features/Library/LibraryEquipment*.swift`（qian403/NIU-app，2026-10-01）：
+  - 兩個分頁：「預約設備」和「我的預約（數量）」。
+  - 三個步驟卡片：選日期（14 天日期條，加「其他日期」）、選類別和設備、選開始時間（30 分鐘一格，分上午、下午、晚上）。
+  - 底部固定的預約列：顯示摘要，用滑桿調整時長，按「核對預約」後重新查詢，開確認頁，然後送出。
+  - 我的預約：可以搜尋，用日期範圍或設備篩選。
+- 規則要用**所選設備的 equipId** 查 `getDayReservedByReader`。剩餘額度 = `maxCanReserveTotalUnit − inReserve`。
+- 預約或取消送出後如果斷線、逾時或收到 5xx，會丟出 `SpaceUncertain`。這種情況不自動重送，要使用者重新整理「我的預約」並按「我已核對最新紀錄」後，才能再送出。
 - 後端是凌網 HyLib WebPAC（`https://webpacx.niu.edu.tw`），走 GraphQL `/api/HyLibWS/graphql`。需要 `HYSESSION` cookie 和 `X-CSRF-Token`，token 從 `/equipment` 頁面的 `"csrfToken"` 取得。
 - 登入：mutation `ssoLogin(user, pass, captcha: "", encrypt: true)`。帳號和密碼都用 AES-256-CBC 加密，金鑰寫死在網站前端，格式是 `ivHex:base64`。帳密和學校 SSO 共用。errorType 3 表示一個身分有多張證，要再呼叫 `ssoChooseLogin`。
   - **真實帳密的登入流程還沒實測過。** 加密有用 Python 算出的測試向量驗證。
