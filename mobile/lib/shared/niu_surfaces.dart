@@ -102,7 +102,10 @@ class NiuSection extends StatelessWidget {
               bottom: NiuSpacing.md,
             ),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
+              // Title and action text share one line, whatever the action's
+              // touch target height.
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
               children: [
                 Expanded(
                   child: Column(
