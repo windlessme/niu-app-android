@@ -46,6 +46,13 @@ abstract final class CampusServices {
     NiuHue.red,
     '/calendar',
   );
+  static const mail = CampusService(
+    '校園信箱',
+    '收信、寫信與附件',
+    Icons.mail_rounded,
+    NiuHue.blue,
+    '/mail',
+  );
   static const library = CampusService(
     '圖書館',
     '入館碼與借書證',
@@ -84,6 +91,7 @@ abstract final class CampusServices {
   );
 
   static const home = [
+    mail,
     grades,
     library,
     calendar,

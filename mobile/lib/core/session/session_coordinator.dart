@@ -1,4 +1,4 @@
-enum CampusService { sso, academic, moodleApi, moodleWeb, library }
+enum CampusService { sso, academic, moodleApi, moodleWeb, library, mail }
 
 enum ServiceStatus { unknown, authenticating, valid, interactionRequired }
 

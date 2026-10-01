@@ -10,6 +10,7 @@ import '../../core/web/portal_policy.dart';
 import '../../shared/shared.dart';
 import '../events/event_login_service.dart';
 import '../library/library_space_session.dart';
+import '../mail/mail_session.dart';
 import '../moodle/moodle_login_service.dart';
 import '../settings/settings_screen.dart';
 import 'remember_school_login.dart';
@@ -203,6 +204,7 @@ class _LoginScreenState extends State<LoginScreen> {
             } catch (_) {}
           }(),
           LibrarySpaceSession.establishQuietly(session, name, secret),
+          MailSession.establishQuietly(session, name, secret),
         ]);
       }
       session.coordinator.requireCurrent(epoch);
