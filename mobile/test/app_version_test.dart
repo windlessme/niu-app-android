@@ -24,6 +24,6 @@ void main() {
     );
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(find.text('版本'), 200);
-    expect(find.text('1.2.3（45）'), findsOneWidget);
+    expect(find.text('1.2.3 (45)'), findsOneWidget);
   });
 }

@@ -6,7 +6,7 @@ class AppVersion {
   final String name, build;
 
   @override
-  String toString() => build.isEmpty ? name : '$name（$build）';
+  String toString() => build.isEmpty ? name : '$name ($build)';
 
   static const channel = MethodChannel('niulife/app');
   static Future<AppVersion?>? _cached;

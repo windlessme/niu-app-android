@@ -281,7 +281,9 @@ class NiuRow extends StatelessWidget {
                 ),
                 if (value != null) ...[
                   const SizedBox(width: NiuSpacing.sm),
+                  // Tight so the value sits flush right, not mid-row.
                   Flexible(
+                    fit: FlexFit.tight,
                     child: Text(
                       value!,
                       textAlign: TextAlign.end,
