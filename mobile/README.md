@@ -54,7 +54,7 @@ event system's separate form-based session. Saved event cookies are reused;
 expired sessions provide a school-login reconnect action preserving the target.
 Use real accounts only in manual device testing; never commit credentials.
 
-The application ID is a development placeholder under `dev.niulife.prototype`.
+The application ID is `me.windless.niulife`, the permanent Google Play package name.
 Confirm the publisher-owned permanent ID before the first Play upload.
 
 Calendar assets are generated from `../calendar-data`, including index hashes.
