@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/demo/demo_data.dart';
 import '../../core/web/academic_portal_screen.dart';
 import 'schedule_export.dart';
 import '../../core/session/campus_session.dart';
@@ -147,6 +148,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       ),
       prepareScript: scheduleQueryScript,
       extractScript: scheduleExtractScript,
+      demoSnapshot: () => DemoData.scheduleRows,
       onSnapshot: (value, epoch) async {
         final rows = (value as List)
             .map((r) => (r as List).map((v) => v.toString()).toList())

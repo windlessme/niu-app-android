@@ -3,11 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../core/session/campus_session.dart';
 import '../../core/web/academic_portal_screen.dart';
 import '../../shared/shared.dart';
 import 'event_portal.dart';
 import 'event_actions.dart';
 import 'event_widgets.dart';
+import '../demo/demo_services.dart';
 
 /// One 多元認證 entry, e.g. 「專業進取（已認證，3 小時）」.
 class EventCredit {
@@ -198,7 +200,9 @@ class _EventsScreenState extends State<EventsScreen> {
   final snapshots = <bool, List<CampusEvent>>{};
   final attempted = <bool>{};
   final notices = <bool, String>{};
-  late final EventActions actions = widget.actions ?? WebEventActions();
+  late final EventActions actions =
+      widget.actions ??
+      (CampusSession.instance.isDemo ? DemoEventActions() : WebEventActions());
   bool refreshingApplied = false;
 
   /// Keeps 「我的報名」 current in the background so 可報名活動 can hide
@@ -447,6 +451,7 @@ class EventSyncScreen extends StatelessWidget {
       entryBuilder: (session) => eventPortalEntry(session, target: target),
       navigationScript: eventNavigationScript(target),
       extractScript: eventsExtractScript,
+      demoSnapshot: () => DemoEvents.list(applied: applied),
       onSnapshot: (value, _) async {
         final events = (value as List)
             .map(

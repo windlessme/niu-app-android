@@ -8,6 +8,7 @@ import '../moodle/moodle_web_screen.dart';
 import 'attendance_repository.dart';
 import 'attendance_open_flow.dart';
 import 'attendance_result_screen.dart';
+import '../demo/demo_services.dart';
 
 class AttendanceScannerScreen extends StatefulWidget {
   const AttendanceScannerScreen({super.key, required this.repository});
@@ -281,6 +282,15 @@ class _AttendanceScannerScreenState extends State<AttendanceScannerScreen>
                         ),
                       ],
                       const Spacer(),
+                      if (widget.repository is DemoMoodleRepository)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: NiuSpacing.md),
+                          child: FilledButton.icon(
+                            onPressed: () => open(demoAttendanceLink),
+                            icon: const Icon(NiuIcons.qr),
+                            label: const Text('模擬掃描點名 QR Code'),
+                          ),
+                        ),
                       _ScannerControls(
                         controller: controller,
                         onEnterLink: enterLink,

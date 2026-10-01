@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../core/demo/demo_data.dart';
 import '../../core/session/campus_session.dart';
 import '../../core/web/academic_portal_screen.dart';
 import '../../shared/shared.dart';
@@ -60,6 +61,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       'https://acade.niu.edu.tw/NIU/Application/ENR/ENR50/ENR5020_01.aspx',
     ),
     extractScript: registrationExtractScript,
+    demoSnapshot: () => DemoData.registration(session.account ?? ''),
     snapshotBuilder: (context, value) {
       final data = RegistrationData.fromJson(
         Map<String, dynamic>.from(value as Map),

@@ -36,7 +36,11 @@ class CampusHomeScreen extends StatelessWidget {
     this.ssoNeedsReauthentication = false,
     this.hasSchedule = false,
     this.onOpenCourse,
+    this.demo = false,
   });
+
+  /// Google Play review demo: everything shown is sample data.
+  final bool demo;
   final String? name;
   final String? department;
   final List<HomeCourse> courses;
@@ -93,6 +97,14 @@ class CampusHomeScreen extends StatelessWidget {
                   style: theme.textTheme.headlineLarge,
                 ),
               ),
+              if (demo) ...[
+                const SizedBox(height: NiuSpacing.lg),
+                const NiuBanner(
+                  tone: NiuTone.accent,
+                  title: '示範模式',
+                  message: '所有資料皆為示範內容；請假、報名、點名等送出操作只會模擬，不會連線學校系統。',
+                ),
+              ],
               if (ssoNeedsReauthentication) ...[
                 const SizedBox(height: NiuSpacing.lg),
                 NiuBanner(

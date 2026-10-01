@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/demo/demo_data.dart';
 import '../../core/session/campus_session.dart';
 import '../../core/web/academic_portal_screen.dart';
 import '../../shared/shared.dart';
@@ -102,6 +103,7 @@ class _GraduationScreenState extends State<GraduationScreen> {
         'https://acade.niu.edu.tw/NIU/Application/ENR/ENRG0/ENRG010_01.aspx',
       ),
       extractScript: graduationExtractScript,
+      demoSnapshot: () => DemoData.graduation,
       onSnapshot: (value, epoch) async {
         if (owner == null) return;
         await session.cacheGraduationData(

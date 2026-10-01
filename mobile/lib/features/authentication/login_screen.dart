@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
+import '../../core/demo/demo_account.dart';
 import '../../core/session/campus_session.dart';
 import '../../core/web/portal_policy.dart';
 import '../../shared/shared.dart';
@@ -99,6 +100,10 @@ class _LoginScreenState extends State<LoginScreen> {
     }
     final name = account.text.trim().toLowerCase();
     final secret = password.text;
+    if (isDemoLogin(name, secret)) {
+      await enterDemo();
+      return;
+    }
     final active = driver = SchoolLoginDriver(account: name, password: secret);
     setState(() {
       phase = _Phase.signingIn;
@@ -130,6 +135,33 @@ class _LoginScreenState extends State<LoginScreen> {
           remembered.setEnabled(true);
         }
         if (mounted) await showRejection(outcome);
+    }
+  }
+
+  /// The review account never reaches the school login page.
+  Future<void> enterDemo() async {
+    setState(() => phase = _Phase.connecting);
+    try {
+      await session.enterDemo();
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => phase = _Phase.form);
+      await showRejection(
+        SchoolLoginRejected(
+          SchoolLoginRejection.other,
+          '無法進入示範模式',
+          '$error'.contains('切換帳號') ? '要切換帳號，請先到設定登出。' : '請稍後再試一次。',
+        ),
+      );
+      return;
+    }
+    if (!mounted) return;
+    password.clear();
+    HapticFeedback.mediumImpact();
+    if (widget.onSignedIn != null) {
+      widget.onSignedIn!();
+    } else if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop(true);
     }
   }
 
@@ -251,7 +283,8 @@ class _LoginScreenState extends State<LoginScreen> {
         body: Stack(
           fit: StackFit.expand,
           children: [
-            if (busy) _schoolPage(),
+            // The review demo never opens the school login page.
+            if (busy && driver != null) _schoolPage(),
             if (!busy) _form(context),
             if (busy && !showPage) _cover(context),
           ],

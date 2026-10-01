@@ -1,6 +1,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:niu_mobile/core/session/campus_session.dart';
 import 'package:niu_mobile/core/storage/credential_vault.dart';
 
 void main() {
@@ -53,4 +54,20 @@ void main() {
       expect(() => vault.read('password'), throwsArgumentError);
     },
   );
+
+  test('review demo persists through the device vault and logs out', () async {
+    // MemoryVault accepts any key; the device vault has an allowlist.
+    final vault = DeviceCredentialVault(const FlutterSecureStorage());
+    final session = CampusSession(vault: vault, platformCleanup: []);
+    await session.enterDemo();
+    final restored = CampusSession(vault: vault, platformCleanup: []);
+    await restored.restore();
+    expect(restored.isDemo, isTrue);
+    await restored.logout();
+    expect(data.keys.where((k) => k.startsWith('niu.session.')), [
+      'niu.session.pendingCleanup',
+    ]);
+    session.dispose();
+    restored.dispose();
+  });
 }

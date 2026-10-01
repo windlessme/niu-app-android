@@ -2,6 +2,7 @@ import 'dart:convert';
 import '../../core/network/school_clients.dart';
 import '../../core/session/campus_session.dart';
 import 'moodle_repository.dart';
+import '../demo/demo_services.dart';
 
 /// One encrypted envelope prevents mixed-account token/private-token pairs.
 class MoodleSessionStore {
@@ -46,6 +47,7 @@ class MoodleSessionStore {
 
   Future<MoodleRepository?> restore(MoodleApiClient api) async {
     if (!owner.hasLocalAccount) return null;
+    if (owner.isDemo) return DemoMoodleRepository()..bindSession(owner);
     final account = owner.account!;
     final epoch = owner.coordinator.epoch;
     final raw = await owner.vault.read('moodleSession');
