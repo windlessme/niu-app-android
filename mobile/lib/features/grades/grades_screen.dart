@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/demo/demo_data.dart';
 import '../../core/web/academic_portal_screen.dart';
 import 'grade_statistics.dart';
 import '../../shared/shared.dart';
@@ -197,6 +198,7 @@ class _GradesScreenState extends State<GradesScreen> {
     ),
     menuLabel: menus[mode],
     extractScript: gradeExtractScript(mode),
+    demoSnapshot: () => DemoData.grades(mode.name),
     snapshotBuilder: (context, value) {
       final theme = Theme.of(context);
       final rows = (value['rows'] as List)

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../core/demo/demo_data.dart';
 import '../../core/session/campus_session.dart';
 import '../../core/web/academic_portal_screen.dart';
 import '../../shared/shared.dart';
@@ -126,6 +127,11 @@ class _LeaveScreenState extends State<LeaveScreen> {
                     int.tryParse('${record['_page']}') ?? 1,
                   )
                 : leaveInFrames(leavePagePrepare(page)),
+            demoSnapshot: () => keyName == 'statistics'
+                ? DemoData.leaveStatistics
+                : record != null
+                ? DemoData.leaveDetail('${record['假單序號']}')
+                : DemoData.leaveList,
             onSnapshot: (value, _) async {
               if (context.mounted) {
                 Navigator.pop(context, Map<String, dynamic>.from(value as Map));

@@ -7,6 +7,7 @@ import '../../core/network/school_clients.dart';
 import '../../core/session/campus_session.dart';
 import '../../shared/shared.dart';
 import 'library_repository.dart';
+import '../demo/demo_services.dart';
 
 /// Register with the navigator that owns this screen, including popup routes.
 final libraryRouteObserver = RouteObserver<ModalRoute<dynamic>>();
@@ -29,7 +30,9 @@ class _LibraryScreenState extends State<LibraryScreen>
     with WidgetsBindingObserver, RouteAware {
   late final repository =
       widget.repository ??
-      LibraryRepository(schoolClient('https://sso.niu.edu.tw'));
+      (CampusSession.instance.isDemo
+          ? DemoLibraryRepository()
+          : LibraryRepository(schoolClient('https://sso.niu.edu.tw')));
   LibraryCodeKind kind = LibraryCodeKind.entrance;
   Uint8List? image;
   DateTime? updated;

@@ -3,6 +3,8 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:html/parser.dart' as html;
 import '../moodle/moodle_repository.dart';
 import '../moodle/moodle_web_session.dart';
+import '../../core/demo/demo_data.dart';
+import '../demo/demo_services.dart';
 
 enum AttendanceStatus { present, late, absent, leave, pending }
 
@@ -142,6 +144,20 @@ class AttendanceRepository {
   }
 
   Future<List<AttendanceSection>> course(int course) async {
+    if (moodle is DemoMoodleRepository) {
+      return [
+        AttendanceSection('出席紀錄', course * 100 + 2, [
+          for (final (date, description, label) in DemoData.attendance)
+            AttendanceRecord(
+              date,
+              description,
+              label,
+              '',
+              attendanceStatus(label),
+            ),
+        ]),
+      ];
+    }
     final result = <AttendanceSection>[];
     for (final section in await moodle.contents(course)) {
       for (final module in objects(section['modules'])) {

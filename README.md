@@ -49,6 +49,8 @@ docs/                   架構、設計、資料研究與開發紀錄
 保留 `mobile/` 路徑以相容既有 CI 與工具。校曆目前仍從原專案公開 GitHub JSON 來源更新，致謝名單從本 repository 的 `app-content/credits.json` 更新；不是此repository提供私人校務後端。
 Android applicationId 為 `me.windless.niulife`（Google Play 套件名稱，發布後不可變更）。
 
+Google Play 審查使用示範帳號 `niulifedemo`（密碼記錄於 Play 控制台「應用程式存取權」）。以此帳號登入會進入示範模式：所有資料來自 `lib/core/demo/demo_data.dart`，請假、活動報名、點名、作業等送出操作皆為模擬，不連線任何學校系統；App 內只保存密碼的 SHA-256。
+
 ## 授權與致謝
 
 原始專案為 **MIT License，Copyright (c) 2026 CHIEN**，完整聲明保留於 [LICENSE](LICENSE) 與 App 授權頁。另見 [NOTICE.md](NOTICE.md)。

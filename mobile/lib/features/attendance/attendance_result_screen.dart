@@ -8,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../shared/shared.dart';
 import '../moodle/moodle_repository.dart';
 import 'attendance_repository.dart';
+import '../demo/demo_services.dart';
 
 /// Reads the page Moodle returns after an attendance link is opened.
 const attendanceInspectScript = r'''JSON.stringify({
@@ -63,9 +64,18 @@ class _AttendanceResultScreenState extends State<AttendanceResultScreen> {
     }
   }
 
+  /// Review demo: a simulated success, never a request to M 園區.
+  bool get demo => widget.repository is DemoMoodleRepository;
+
   @override
   void initState() {
     super.initState();
+    if (demo) {
+      outcome = AttendanceOutcome.recorded;
+      message = '示範模式：已模擬點名，沒有連線到 M 園區。';
+      resolvedAt = DateTime.now();
+      return;
+    }
     _armTimeout();
   }
 
@@ -192,6 +202,13 @@ class _AttendanceResultScreenState extends State<AttendanceResultScreen> {
   }
 
   void verify() {
+    if (demo) {
+      setState(() {
+        verification = _Verification.verified;
+        verificationText = '示範模式：模擬查核完成';
+      });
+      return;
+    }
     final web = controller;
     if (web == null || verifying) return;
     setState(() {
@@ -220,7 +237,8 @@ class _AttendanceResultScreenState extends State<AttendanceResultScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final showShare = success && error == null && !shareDismissed && !showWeb;
+    final showShare =
+        success && error == null && !shareDismissed && !showWeb && !demo;
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
@@ -243,66 +261,68 @@ class _AttendanceResultScreenState extends State<AttendanceResultScreen> {
       bottomNavigationBar: showShare ? _sharePrompt(context) : null,
       body: SafeArea(
         top: false,
-        child: FutureBuilder<Uri>(
-          future: entry,
-          builder: (context, snapshot) {
-            if (!snapshot.hasData) return _loading(context);
-            return Stack(
-              fit: StackFit.expand,
-              children: [
-                Opacity(
-                  opacity: showWeb ? 1 : 0,
-                  child: IgnorePointer(
-                    ignoring: !showWeb,
-                    child: InAppWebView(
-                      initialUrlRequest: URLRequest(
-                        url: WebUri('${snapshot.data}'),
+        child: demo
+            ? _summary(context)
+            : FutureBuilder<Uri>(
+                future: entry,
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) return _loading(context);
+                  return Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Opacity(
+                        opacity: showWeb ? 1 : 0,
+                        child: IgnorePointer(
+                          ignoring: !showWeb,
+                          child: InAppWebView(
+                            initialUrlRequest: URLRequest(
+                              url: WebUri('${snapshot.data}'),
+                            ),
+                            initialSettings: InAppWebViewSettings(
+                              useShouldOverrideUrlLoading: true,
+                              javaScriptEnabled: true,
+                              allowFileAccess: false,
+                              allowContentAccess: true,
+                              supportMultipleWindows: false,
+                            ),
+                            onWebViewCreated: (web) => controller = web,
+                            shouldOverrideUrlLoading: (_, action) async =>
+                                action.request.url != null &&
+                                    allowed(Uri.parse('${action.request.url}'))
+                                ? NavigationActionPolicy.ALLOW
+                                : NavigationActionPolicy.CANCEL,
+                            onLoadStop: inspect,
+                            onReceivedError: (_, request, failure) {
+                              if (request.isForMainFrame == true &&
+                                  mounted &&
+                                  outcome == null) {
+                                timeout?.cancel();
+                                setState(() => error = '無法連上 M 園區，請檢查網路後重新掃描。');
+                              }
+                            },
+                          ),
+                        ),
                       ),
-                      initialSettings: InAppWebViewSettings(
-                        useShouldOverrideUrlLoading: true,
-                        javaScriptEnabled: true,
-                        allowFileAccess: false,
-                        allowContentAccess: true,
-                        supportMultipleWindows: false,
-                      ),
-                      onWebViewCreated: (web) => controller = web,
-                      shouldOverrideUrlLoading: (_, action) async =>
-                          action.request.url != null &&
-                              allowed(Uri.parse('${action.request.url}'))
-                          ? NavigationActionPolicy.ALLOW
-                          : NavigationActionPolicy.CANCEL,
-                      onLoadStop: inspect,
-                      onReceivedError: (_, request, failure) {
-                        if (request.isForMainFrame == true &&
-                            mounted &&
-                            outcome == null) {
-                          timeout?.cancel();
-                          setState(() => error = '無法連上 M 園區，請檢查網路後重新掃描。');
-                        }
-                      },
-                    ),
-                  ),
-                ),
-                if (!showWeb)
-                  ColoredBox(
-                    color: Theme.of(context).scaffoldBackgroundColor,
-                    child: error != null
-                        ? _result(
-                            context,
-                            icon: NiuIcons.warning,
-                            tone: NiuTone.warning,
-                            title: '無法完成點名',
-                            message: error!,
-                          )
-                        : outcome == null ||
-                              outcome == AttendanceOutcome.requiresAction
-                        ? _loading(context, canShowWeb: true)
-                        : _summary(context),
-                  ),
-              ],
-            );
-          },
-        ),
+                      if (!showWeb)
+                        ColoredBox(
+                          color: Theme.of(context).scaffoldBackgroundColor,
+                          child: error != null
+                              ? _result(
+                                  context,
+                                  icon: NiuIcons.warning,
+                                  tone: NiuTone.warning,
+                                  title: '無法完成點名',
+                                  message: error!,
+                                )
+                              : outcome == null ||
+                                    outcome == AttendanceOutcome.requiresAction
+                              ? _loading(context, canShowWeb: true)
+                              : _summary(context),
+                        ),
+                    ],
+                  );
+                },
+              ),
       ),
     );
   }
@@ -423,7 +443,7 @@ class _AttendanceResultScreenState extends State<AttendanceResultScreen> {
             icon: const Icon(NiuIcons.attendance),
             label: const Text('重新掃描 QR Code'),
           ),
-        if (error == null) ...[
+        if (error == null && !demo) ...[
           const SizedBox(height: NiuSpacing.sm),
           OutlinedButton.icon(
             onPressed: () => setState(() => showWeb = true),

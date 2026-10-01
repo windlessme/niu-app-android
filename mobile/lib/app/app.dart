@@ -66,6 +66,7 @@ class _NiuAppState extends State<NiuApp> {
                 ssoNeedsReauthentication: session.ssoNeedsReauthentication,
                 hasSchedule: session.cachedSchedule != null,
                 onOpenCourse: _openCourse,
+                demo: session.isDemo,
               ),
             ),
           ),

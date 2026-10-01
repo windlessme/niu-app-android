@@ -36,7 +36,12 @@ class AcademicPortalScreen extends StatefulWidget {
     this.webViewBuilder,
     this.loadTimeout = const Duration(seconds: 60),
     this.header,
+    this.demoSnapshot,
   });
+
+  /// Review demo: the value this page's extraction would return. Without it,
+  /// the page is unavailable in demo mode; no WebView is ever created.
+  final Object? Function()? demoSnapshot;
 
   /// Persistent control under the top bar (e.g. a view switcher).
   final Widget? header;
@@ -207,6 +212,10 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen>
         entry = null;
       });
     }
+    if (session.isDemo) {
+      await showDemo(current);
+      return;
+    }
     syncWork();
     menuClicked = false;
     try {
@@ -235,6 +244,32 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen>
         syncWork();
       }
     }
+  }
+
+  Future<void> showDemo(int current) async {
+    timer?.cancel();
+    timer = null;
+    deadline?.cancel();
+    deadline = null;
+    final value = widget.demoSnapshot?.call();
+    if (value == null) {
+      if (mounted && current == generation) {
+        setState(() {
+          error = '示範模式沒有提供這個學校頁面。';
+          loading = false;
+        });
+      }
+      return;
+    }
+    // Same JSON round trip as a school page, so parsers see the real shapes.
+    final parsed = jsonDecode(jsonEncode(value));
+    await widget.onSnapshot?.call(parsed, epoch);
+    if (!mounted || current != generation) return;
+    setState(() {
+      snapshot = parsed;
+      loading = false;
+      error = null;
+    });
   }
 
   Future<void> expiredAcademicSession(int current) async {
@@ -531,7 +566,7 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen>
       appBar: NiuAppBar(
         title: widget.title,
         actions: [
-          if (widget.extractScript != null)
+          if (widget.extractScript != null && !session.isDemo)
             NiuIconButton(
               tooltip: schoolPage ? '回到 App 檢視' : '查看學校網頁',
               icon: schoolPage
@@ -808,7 +843,10 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen>
                         ),
                       ),
                     ),
-                  if (entry == null && error == null && !nativeCover)
+                  if (entry == null &&
+                      error == null &&
+                      snapshot == null &&
+                      !nativeCover)
                     const Center(child: NiuLoading(message: '正在連線')),
                 ],
               ),
