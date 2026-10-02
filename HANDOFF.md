@@ -186,6 +186,13 @@
 - 歷年成績的選單會導到 `MenuRedirect.aspx`，再用 `window.open` 開 `ccsys.niu.edu.tw/MvcTeam/Tutor/StudentCourseScoreSso?GUID=…`（App 的 `onCreateWindow` 會在同一個 WebView 載入），最後落在 `StudentCourseScore`，讀 `#accordion修課紀錄`。一年級上學期的帳號，這頁本來就是空的。
 - 驗證方式：用使用者提供的 acade cookie，以 headless Chrome 透過 DevTools Protocol 重現 App 的輪詢流程（導覽、檢查、點選單、擷取），三個分頁都能在 2 到 5 秒內讀到資料。**還沒在 App 裡用真實帳號實測過**；App 是用 SSO 換 GUID 登入，沒辦法直接帶 cookie 進去。
 
+## 尚未發布（下個版本一起發）
+
+- **成績、在學證明加快取**（使用者要求先 commit、不發版）：
+  - `PortalSnapshotCache`（`lib/core/session/portal_snapshot_cache.dart`）存在 vault 的 `portalCache`，綁帳號，登出時清掉。key 有 `grades.midterm`、`grades.finalTerm`、`grades.history`、`registration`。
+  - `AcademicPortalScreen` 新增 `cacheKey`：打開時先顯示上次的資料，上方用 `NiuSyncStatus` 顯示「正在更新」，背景照常向學校讀取，讀到後換成新資料並更新快取。讀取失敗、逾時或學校要求登入時，保留舊資料並顯示「更新失敗，顯示上次的資料」和「再試一次」。沒有快取時，行為和以前一樣。
+  - 在學證明的 PDF 是直接向 ccsys 的 `StudyProved/{學號}` 下載，不靠 WebView session，所以顯示快取時也能用。
+
 ## 重要決策
 
 - **不架後端。** 需要遠端內容時沿用 credits 的做法：GitHub 上的靜態 JSON，加上 App 內建的離線版本和 revision 號碼。

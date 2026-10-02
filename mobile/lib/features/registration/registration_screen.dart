@@ -61,6 +61,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       'https://acade.niu.edu.tw/NIU/Application/ENR/ENR50/ENR5020_01.aspx',
     ),
     extractScript: registrationExtractScript,
+    cacheKey: 'registration',
     demoSnapshot: () => DemoData.registration(session.account ?? ''),
     snapshotBuilder: (context, value) {
       final data = RegistrationData.fromJson(
