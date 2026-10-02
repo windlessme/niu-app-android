@@ -23,6 +23,9 @@ String sanitizeMailHtml(String source, {bool remoteImages = true}) {
       }
     }
   }
+  for (final img in doc.querySelectorAll('img')) {
+    _keepImageShape(img);
+  }
   for (final tag in [
     'script',
     'iframe',
@@ -63,6 +66,42 @@ String sanitizeMailHtml(String source, {bool remoteImages = true}) {
   }
   final body = doc.body;
   return body == null ? '' : body.innerHtml;
+}
+
+/// Lets a picture with a set width keep its shape when the screen narrows
+/// it. Mail from Word and Outlook pins both sides in the inline style
+/// (`width:6.5in;height:3.2in`), which outranks the page's `height:auto`, so
+/// the fixed height is dropped and the declared ratio kept for layout.
+void _keepImageShape(dom.Element img) {
+  final style = <String, String>{};
+  for (final part in (img.attributes['style'] ?? '').split(';')) {
+    final i = part.indexOf(':');
+    if (i > 0) {
+      style[part.substring(0, i).trim().toLowerCase()] = part
+          .substring(i + 1)
+          .trim();
+    }
+  }
+  final width = style['width'] ?? img.attributes['width'];
+  if (width == null || width.trim().isEmpty) return;
+  // Same-unit sizes only: a style width over an attribute height says nothing.
+  final ratio =
+      _sizeRatio(style['width'], style['height']) ??
+      _sizeRatio(img.attributes['width'], img.attributes['height']);
+  style.remove('height');
+  img.attributes.remove('height');
+  if (ratio != null) style['aspect-ratio'] = ratio;
+  img.attributes['style'] = [
+    for (final MapEntry(:key, :value) in style.entries) '$key:$value',
+  ].join(';');
+}
+
+String? _sizeRatio(String? width, String? height) {
+  final size = RegExp(r'^\s*(\d+(?:\.\d+)?)\s*(px|in|pt|cm|mm)?\s*$');
+  final w = size.firstMatch(width ?? ''), h = size.firstMatch(height ?? '');
+  if (w == null || h == null || w[2] != h[2]) return null;
+  final ww = double.parse(w[1]!), hh = double.parse(h[1]!);
+  return ww > 0 && hh > 0 ? 'auto ${w[1]} / ${h[1]}' : null;
 }
 
 /// Whether [html] shows pictures from outside the school.
@@ -122,7 +161,7 @@ String mailDocument(
 html,body{margin:0;padding:0;background:#fff;color:#15171c;}
 ${fit ? 'html{overflow-x:hidden;}' : ''}
 body{font:15px/1.55 sans-serif;padding:16px;overflow-wrap:anywhere;}
-img{max-width:100%;height:auto;}
+img{max-width:100%;height:auto;object-fit:contain;}
 pre{white-space:pre-wrap;}
 blockquote{margin:0 0 0 .8ex;border-left:2px solid #d0d4dc;padding-left:1ex;color:#5a6070;}
 a{color:#0a62d0;}
