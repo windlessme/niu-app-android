@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 
+import '../core/analytics/app_analytics.dart';
 import '../core/platform/play_update.dart';
 import '../core/session/cached_schedule.dart';
 import '../core/session/campus_session.dart';
@@ -58,7 +59,7 @@ class _NiuAppState extends State<NiuApp> {
     calendar: AppCalendarRepository(),
   );
   late final GoRouter router = GoRouter(
-    observers: [libraryRouteObserver],
+    observers: [libraryRouteObserver, AnalyticsRouteObserver()],
     redirect: (_, state) => campusDeepLink(state.uri),
     routes: [
       CampusShell.route([

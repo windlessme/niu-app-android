@@ -4,6 +4,7 @@ import 'dart:collection';
 
 import 'package:flutter/material.dart';
 
+import '../analytics/app_analytics.dart';
 import '../../shared/shared.dart';
 
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
@@ -51,6 +52,9 @@ class AcademicPortalScreen extends StatefulWidget {
 
   /// Persistent control under the top bar (e.g. a view switcher).
   final Widget? header;
+
+  /// Shown in the top bar and reported with load errors: keep it a fixed
+  /// page name, never school or student text.
   final String title;
   final Uri? target;
   final Uri? referer;
@@ -149,6 +153,7 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen>
         setState(() {
           loading = false;
           error = '學校系統回應逾時。可以再試一次，或直接開啟學校網頁。';
+          report('timeout');
         });
         syncWork();
       });
@@ -249,12 +254,17 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen>
         deadline?.cancel();
         setState(() {
           error = '沒有連上校務系統，請重新登入後再試。';
+          report('no_session');
           loading = false;
         });
         syncWork();
       }
     }
   }
+
+  /// Why this page could not be read, as a fixed kind (see [AppAnalytics]).
+  void report(String reason) =>
+      AppAnalytics.instance.error(widget.title, reason);
 
   Future<void> restoreCache(int current) async {
     final key = widget.cacheKey;
@@ -321,6 +331,7 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen>
       setState(() {
         loading = false;
         error = '校務登入已過期，請重新登入。';
+        report('session_expired');
         schoolPage = true;
       });
       syncWork();
@@ -350,6 +361,7 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen>
         setState(() {
           loading = false;
           error = '沒有連上校務系統，請重新登入後再試。';
+          report('no_session');
         });
         syncWork();
       }
@@ -395,6 +407,7 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen>
           if (!interactionRequired) {
             setState(() {
               interactionRequired = true;
+              report('interaction_required');
               loading = false;
               schoolPage = true;
             });
@@ -436,6 +449,7 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen>
             targetReady = false;
             setState(() {
               eventLoginRequired = true;
+              report('login_required');
               loading = false;
               schoolPage = true;
             });
@@ -782,6 +796,7 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen>
                                   timer?.cancel();
                                   setState(() {
                                     error = '學校網頁載入失敗，檢查網路後再試一次。';
+                                    report('network');
                                     loading = false;
                                   });
                                   syncWork();
@@ -806,6 +821,7 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen>
                                     }
                                     setState(() {
                                       error = '學校系統暫時沒有回應，稍後再試。';
+                                      report('http_error');
                                       loading = false;
                                     });
                                     syncWork();

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../../core/analytics/app_analytics.dart';
 import '../../core/time/campus_date.dart';
 import 'space_models.dart';
 
@@ -368,8 +369,10 @@ class SpaceBookingController extends ChangeNotifier {
     mutating = true;
     error = notice = null;
     _notify();
+    final event = success.reserved ? 'library_reserve' : 'library_cancel';
     try {
       await action();
+      AppAnalytics.instance.event(event, {'result': 'success'});
       if (!_current(generation)) return null;
       notice = success.reserved ? '預約已完成。' : '預約已取消。';
       var result = success;
@@ -389,6 +392,9 @@ class SpaceBookingController extends ChangeNotifier {
       }
       return result;
     } catch (e) {
+      AppAnalytics.instance.event(event, {
+        'result': e is SpaceUncertain ? 'unconfirmed' : 'failure',
+      });
       if (!_current(generation)) return null;
       if (e is SpaceUncertain) {
         needsVerification = true;

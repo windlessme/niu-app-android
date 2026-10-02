@@ -4,6 +4,7 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
+import '../../core/analytics/app_analytics.dart';
 import '../../core/session/campus_session.dart';
 import '../../core/web/portal_policy.dart';
 import '../../shared/shared.dart';
@@ -341,8 +342,12 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen>
     mutationConsent = true;
     try {
       final outcome = await gateway!.submit(data!);
+      AppAnalytics.instance.event('leave_apply', {
+        'result': outcome.confirmed ? 'success' : 'unconfirmed',
+      });
       if (current) setState(() => result = outcome);
     } catch (_) {
+      AppAnalytics.instance.event('leave_apply', {'result': 'unconfirmed'});
       if (current) {
         setState(
           () => result = const LeaveSubmitResult(

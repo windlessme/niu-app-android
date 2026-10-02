@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app/app.dart';
+import 'core/analytics/app_analytics.dart';
 import 'core/demo/demo_account.dart';
 
 void main() {
@@ -17,5 +18,7 @@ void main() {
   if (storeScreenshots) {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
   }
+  // Analytics starts alongside the app; nothing waits on it.
+  AppAnalytics.instance.start();
   runApp(const ProviderScope(child: NiuApp()));
 }

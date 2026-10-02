@@ -1,6 +1,6 @@
 # HANDOFF
 
-給接手的 Claude Code session。最後更新：2026-10-01。目前版本：**0.13.18+79**。
+給接手的 Claude Code session。最後更新：2026-10-01。目前版本：**0.13.19+80**。
 
 ## 專案概況
 
@@ -27,14 +27,16 @@
 ## Release 簽章與 Play 上傳
 
 - Upload key 在 repo 外面：`/root/.config/niulife-signing/upload-keystore.jks`，`key.properties` 也在同一個資料夾，密碼存在 `key.properties` 裡，權限是 600。可以用環境變數 `NIULIFE_KEY_PROPERTIES` 改路徑；找不到檔案時，release 會退回 debug 簽章。
+- Firebase 設定檔（`google-services.json`，專案 `niu-life-ac16e`）也放在 repo 外：`/root/.config/niulife-firebase/google-services.json`，可以用 `NIULIFE_GOOGLE_SERVICES` 改路徑。建置時 Gradle 會把它複製到 `android/app/`（已加進 gitignore）並套用 Google Services 外掛；找不到檔案時照常建置，但 Analytics 會停用。
 - Upload key 的 SHA-256 指紋：`95:04:DD:13:D3:38:D6:E5:7C:83:89:42:9F:B0:A0:AB:25:4E:F1:1F:95:CE:AB:DC:5E:4B:B4:04:46:C8:4B:FA`。已經請使用者另外備份。
 - 已啟用 Play 應用程式簽署：發布用的金鑰由 Google 保管，這把只是 upload key。
-- 目前 internal 軌道上是 **0.13.18 (79)**。release 名稱用 `X.Y.Z (versionCode)`，附一句 zh-TW 版本說明。
+- 目前 internal 軌道上是 **0.13.19 (80)**。release 名稱用 `X.Y.Z (versionCode)`，附一句 zh-TW 版本說明。
 - 上傳流程（每個新版本都要做）：`flutter build appbundle --release`，然後用 MCP 依序 `edits_insert` → `bundles_upload` → `tracks_update`（internal，status `completed`）→ `edits_commit`。
 
 其他慣例：
 
 - 回覆一律用**繁體中文**。
+- 聯絡信箱是 `hi@windless.me`（App 內和隱私權政策都已改好）；開源專案連結指向本 repo。
 - 查詢類畫面不要加「以學校為準」「資料來源」這類免責文字。
 - commit 結尾要加 `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`。
 - 這台機器上的 auto-memory（`~/.claude/projects/-tmp-opencode-niu-app-android/memory/`）也記了這些規則，還有 Play 審查用示範帳號的說明。**示範帳號的密碼不要寫進 repo**，repo 裡只存它的 SHA-256。
@@ -59,6 +61,7 @@
 | 0.13.16 | `091abb9` | 修好成績三個分頁都卡在「請在學校網頁完成驗證」；期中／學期成績改讀結果頁 |
 | 0.13.17 | `cc3c1eb` | 成績、在學證明加快取（`dfca5eb`）；課表、M 園區的標題和按鈕放同一列，拿掉上方留白 |
 | 0.13.18 | `d31839b` | 所有頁首統一成單列；請假頁只留一個重新整理（加下拉更新）；修好示範模式成績顯示「尚未更新」 |
+| 0.13.19 | （本次） | 加入 Google Analytics（Firebase）與設定開關；更新隱私權政策；開源專案連結改為本 repo；聯絡信箱改為 hi@windless.me |
 
 另外：
 
@@ -191,6 +194,19 @@
   - `PortalSnapshotCache`（`lib/core/session/portal_snapshot_cache.dart`）存在 vault 的 `portalCache`，綁帳號，登出時清掉。key 有 `grades.midterm`、`grades.finalTerm`、`grades.history`、`registration`。
   - `AcademicPortalScreen` 新增 `cacheKey`：打開時先顯示上次的資料，上方用 `NiuSyncStatus` 顯示「正在更新」，背景照常向學校讀取，讀到後換成新資料並更新快取。讀取失敗、逾時或學校要求登入時，保留舊資料並顯示「更新失敗，顯示上次的資料」和「再試一次」。沒有快取時，行為和以前一樣。
   - 在學證明的 PDF 是直接向 ccsys 的 `StudyProved/{學號}` 下載，不靠 WebView session，所以顯示快取時也能用。
+
+## Google Analytics（0.13.19）
+
+- 用 Firebase Analytics（`firebase_core`、`firebase_analytics` 套件會帶入原生 SDK，不需要另外加 BoM）。程式在 `lib/core/analytics/app_analytics.dart`。
+- **只送固定的名稱**：
+  - 畫面：路由路徑或主分頁，例如 `home`、`grades`、`library_spaces`。
+  - 功能和結果：`login`／`login_failed`(reason)、`mail_login`(result, captcha: as_read／edited／unread／two_factor)、`mail_send`、`attendance`(outcome)、`leave_apply`、`event_register`／`event_cancel`／`event_update`、`library_reserve`／`library_cancel`、`certificate_open`、`schedule_export`、`notification_setting`。
+  - 錯誤：`load_error`(page = `AcademicPortalScreen` 的 title, reason)。
+  - **絕對不要**放進帳號、學號、姓名、成績、課名、信件主旨或任何學校回傳的文字。
+- 不收集的情況：debug 建置、商店截圖建置、示範模式、使用者在「設定 → 隱私 → 分享匿名使用統計」關閉時（預設開啟，整列都可以點）。
+- Manifest 預設 `firebase_analytics_collection_enabled=false`，App 讀到使用者的選擇後才開啟，所以使用者關閉後重新啟動也不會送資料。廣告 ID、AdServices、Install Referrer 權限都已移除，也關閉了自動畫面追蹤。
+- 驗證方式：用 release 版搭配 `adb shell setprop debug.firebase.analytics.app me.windless.niulife`，在 logcat 的 `FA` 看「Logging screen view」。已確認開啟時會上傳（204），關閉後切換頁面、重新啟動都是 0 筆。
+- **Play Console 的資料安全性表單要配合更新**（使用者處理）。
 
 ## 重要決策
 

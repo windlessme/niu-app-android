@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
+import '../../core/analytics/app_analytics.dart';
 import '../../core/demo/demo_account.dart';
 import '../../core/session/campus_session.dart';
 import '../../core/web/portal_policy.dart';
@@ -119,6 +120,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!mounted || !identical(driver, active)) return;
     switch (outcome) {
       case SchoolLoginSucceeded(:final token):
+        AppAnalytics.instance.event('login', {'method': 'school'});
         await complete(token, name, secret);
       case SchoolLoginRejected():
         await web?.stopLoading();
@@ -131,6 +133,9 @@ class _LoginScreenState extends State<LoginScreen> {
             outcome.message == '已取消登入') {
           return;
         }
+        AppAnalytics.instance.event('login_failed', {
+          'reason': outcome.kind.name,
+        });
         if (outcome.kind == SchoolLoginRejection.credentials) {
           // As on iOS: never keep a password the school rejected.
           await remembered.forget();

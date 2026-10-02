@@ -7,6 +7,18 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Firebase (Google Analytics) config lives outside the repo too. Override the
+// location with NIULIFE_GOOGLE_SERVICES; without it the app builds with
+// analytics off.
+val googleServicesFile = file(
+    System.getenv("NIULIFE_GOOGLE_SERVICES")
+        ?: "/root/.config/niulife-firebase/google-services.json"
+)
+if (googleServicesFile.exists()) {
+    googleServicesFile.copyTo(file("google-services.json"), overwrite = true)
+    apply(plugin = "com.google.gms.google-services")
+}
+
 // Upload-key signing lives outside the repo. Override the location with
 // NIULIFE_KEY_PROPERTIES; without it, release builds fall back to debug signing.
 val keyPropertiesFile = file(
