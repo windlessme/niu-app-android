@@ -23,6 +23,7 @@ class DeviceCredentialVault implements CredentialVault {
     'scheduleCache',
     'graduationCache',
     'leaveCache',
+    'portalCache',
     'rememberedSchoolLogin',
     'pendingCleanup',
   ];
