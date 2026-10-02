@@ -1,6 +1,6 @@
 # HANDOFF
 
-給接手的 Claude Code session。最後更新：2026-10-01。目前版本：**0.13.15+76**。
+給接手的 Claude Code session。最後更新：2026-10-01。目前版本：**0.13.16+77**。
 
 ## 專案概況
 
@@ -29,7 +29,7 @@
 - Upload key 在 repo 外面：`/root/.config/niulife-signing/upload-keystore.jks`，`key.properties` 也在同一個資料夾，密碼存在 `key.properties` 裡，權限是 600。可以用環境變數 `NIULIFE_KEY_PROPERTIES` 改路徑；找不到檔案時，release 會退回 debug 簽章。
 - Upload key 的 SHA-256 指紋：`95:04:DD:13:D3:38:D6:E5:7C:83:89:42:9F:B0:A0:AB:25:4E:F1:1F:95:CE:AB:DC:5E:4B:B4:04:46:C8:4B:FA`。已經請使用者另外備份。
 - 已啟用 Play 應用程式簽署：發布用的金鑰由 Google 保管，這把只是 upload key。
-- 目前 internal 軌道上是 **0.13.15 (76)**。release 名稱用 `X.Y.Z (versionCode)`，附一句 zh-TW 版本說明。
+- 目前 internal 軌道上是 **0.13.16 (77)**。release 名稱用 `X.Y.Z (versionCode)`，附一句 zh-TW 版本說明。
 - 上傳流程（每個新版本都要做）：`flutter build appbundle --release`，然後用 MCP 依序 `edits_insert` → `bundles_upload` → `tracks_update`（internal，status `completed`）→ `edits_commit`。
 
 其他慣例：
@@ -56,6 +56,7 @@
 | 0.13.13 | `5521874` | 寬版信件縮到螢幕寬度，加「原始大小」全螢幕檢視；信件列表改成分頁 |
 | 0.13.14 | `08b780f` | 修好信件圖片在窄螢幕上變形 |
 | 0.13.15 | `695a652` | 首頁／課表／M 園區可左右滑切換並保留狀態，返回鍵先回首頁；課程詳情分頁可左右滑 |
+| 0.13.16 | （本次） | 修好成績三個分頁都卡在「請在學校網頁完成驗證」；期中／學期成績改讀結果頁 |
 
 另外：
 
@@ -172,6 +173,18 @@
   5. 主分頁的大標題上方留白很多（`SliverAppBar.large`）。
   6. 請假頁有兩個重新整理按鈕（統計和紀錄各一個）。
   7. 郵件包裹要先填收件人才能查詢，可以預先帶入本人姓名。
+
+## 校務系統成績（0.13.16）
+
+- 成績頁（`lib/features/grades/grades_screen.dart`）走 `AcademicPortalScreen`：先開 acade 的 `MainFrame.aspx`，再點選單 `menuLabel`，然後用 `gradeExtractScript` 讀 DOM。
+- **acade 的 `MainFrame` 一直載著 `timeoutFrame`（`timeout.aspx`），高度是 0，裡面有密碼欄。** 以前 `portalInteractionScript` 把它當成可見的登入框，所以三個分頁都卡在「請在學校網頁完成驗證或登入」。現在大小為 0 的 frame 和它底下的所有 frame 都不檢查。
+- 期中（GRD5131）和學期（GRD5130）會同時載入兩頁：
+  - `mainFrame` 是 `_01`，查詢頁，也有 `#DataGrid`，欄位是 學年期／系所／學號／姓名。
+  - `viewFrame` 是 `_02`，結果頁，欄位是 序號／學年度／學期／選別／中文課名／成績。
+  - 擷取時要挑表頭有「成績」的那頁，而且要等 `readyState === 'complete'`。結果頁沒有「xxx 學年度第 x 學期」字樣，學期名稱改從每列的學年度和學期組出來（`GradeCourse.semesterLabel`）。
+  - 成績還沒上傳時是「未上傳」；排名還沒出來時頁面寫「第 名」，App 會當成沒有排名。
+- 歷年成績的選單會導到 `MenuRedirect.aspx`，再用 `window.open` 開 `ccsys.niu.edu.tw/MvcTeam/Tutor/StudentCourseScoreSso?GUID=…`（App 的 `onCreateWindow` 會在同一個 WebView 載入），最後落在 `StudentCourseScore`，讀 `#accordion修課紀錄`。一年級上學期的帳號，這頁本來就是空的。
+- 驗證方式：用使用者提供的 acade cookie，以 headless Chrome 透過 DevTools Protocol 重現 App 的輪詢流程（導覽、檢查、點選單、擷取），三個分頁都能在 2 到 5 秒內讀到資料。**還沒在 App 裡用真實帳號實測過**；App 是用 SSO 換 GUID 登入，沒辦法直接帶 cookie 進去。
 
 ## 重要決策
 

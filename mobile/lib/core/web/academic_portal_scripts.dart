@@ -35,10 +35,14 @@ String academicNavigationScript(Uri? target) =>
 ''';
 
 /// Only reveal visible login/challenge controls, not hidden CAPTCHA tokens.
+/// A collapsed frame counts as hidden with everything in it: acade keeps its
+/// session-timeout login (timeout.aspx, with a password box) loaded in a
+/// zero-height frame, and only resizes it when the session actually ends.
 const portalInteractionScript = r'''
 (() => {
   function inspect(w) {
     try {
+      if (!w.innerWidth || !w.innerHeight) return null;
       const d = w.document;
       if (['acade.niu.edu.tw', 'ccsys.niu.edu.tw', 'ccsys1.niu.edu.tw', 'sso.niu.edu.tw'].includes(new URL(d.location.href).hostname)) {
         const controls = d.querySelectorAll('input[type="password"], input[id*="captcha" i], input[name*="captcha" i], input[id*="validatecode" i], input[name*="verifycode" i], .g-recaptcha, .h-captcha, .cf-turnstile, iframe[src*="recaptcha"], iframe[src*="hcaptcha"], iframe[src*="challenges.cloudflare.com"]');

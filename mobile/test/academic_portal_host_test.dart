@@ -140,7 +140,7 @@ const assert = require('node:assert/strict');
 const script = ${jsonEncode(portalInteractionScript)};
 let controls = [];
 const doc = {location: {href: 'https://acade.niu.edu.tw/NIU/Login.aspx?GUID=fixture'}, querySelectorAll: () => controls};
-global.window = {document: doc, frames: [], getComputedStyle: () => ({visibility: 'visible'})};
+global.window = {document: doc, frames: [], innerWidth: 400, innerHeight: 700, getComputedStyle: () => ({visibility: 'visible'})};
 assert.equal(eval(script), null);
 controls = [{type: 'hidden', getClientRects: () => [1]}];
 assert.equal(eval(script), null);
@@ -152,8 +152,15 @@ window.getComputedStyle = () => ({visibility: 'hidden'});
 assert.equal(eval(script), null);
 window.getComputedStyle = () => ({visibility: 'visible'});
 const child = {...window};
-window = {document: {location: {href: 'about:blank'}}, frames: [child]};
+window = {document: {location: {href: 'about:blank'}}, frames: [child], innerWidth: 400, innerHeight: 700};
 assert.equal(eval(script), 'interaction-required');
+// acade keeps its timeout login (a password box) in a zero-height frame.
+child.innerHeight = 0;
+assert.equal(eval(script), null);
+child.innerHeight = 700;
+window.innerWidth = 0;
+assert.equal(eval(script), null);
+window.innerWidth = 400;
 doc.location.href = 'https://example.com/';
 assert.equal(eval(script), null);
 ''',

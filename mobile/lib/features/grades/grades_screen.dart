@@ -74,6 +74,14 @@ class GradeCourse {
   final double credits;
   bool get failed => double.tryParse(score) != null && double.parse(score) < 60;
 
+  /// `115`, `1` → `115 學年度 上學期`; empty when the parts aren't a term.
+  static String semesterLabel(String year, String term) {
+    final name = {'1': '上', '2': '下', '3': '暑'}[term.trim()];
+    return RegExp(r'^\d{2,3}$').hasMatch(year.trim()) && name != null
+        ? '${year.trim()} 學年度 $name學期'
+        : '';
+  }
+
   static List<GradeCourse> parseHistoryRows(List<List<String>> rows) {
     final result = <GradeCourse>[];
     for (final row in rows) {
@@ -108,7 +116,9 @@ String gradeExtractScript(GradeMode mode) =>
   const summary = Array.from(doc.querySelectorAll('div.row table.table tr'), r => Array.from(r.querySelectorAll('td'), c => clean(c.textContent))).filter(r => r.length >= 4 && /^\d{3,4}$/.test(r[0]));
   return JSON.stringify({rows, summary});
   ''' : '''
-  const doc = docs.find(d => d.querySelector('#DataGrid') && d.URL.includes('${mode == GradeMode.midterm ? 'GRD5131' : 'GRD5130'}'));
+  // The query page (_01) has a DataGrid too; the results page is the one
+  // with a 成績 column. Wait for it to finish rather than read it half-built.
+  const doc = docs.find(d => d.URL.includes('${mode == GradeMode.midterm ? 'GRD5131' : 'GRD5130'}') && d.readyState === 'complete' && Array.from(d.querySelectorAll('#DataGrid tr:first-child > *'), c => clean(c.innerText)).includes('成績'));
   if (!doc) return null;
   const rows = Array.from(doc.querySelectorAll('#DataGrid tr'), r => Array.from(r.querySelectorAll('td'), c => clean(c.innerText))).filter(r => r.length >= 6 && r[4]);
   const rank = clean(doc.querySelector('#QTable2 > tbody > tr:nth-child(2) > td:nth-child(2) > table > tbody > tr:nth-child(2) > td:nth-child(4)')?.innerText);
@@ -209,7 +219,10 @@ class _GradesScreenState extends State<GradesScreen> {
           : rows
                 .map(
                   (r) => GradeCourse(
-                    semester: value['title']?.toString() ?? '',
+                    // The results page has no term heading; its rows do.
+                    semester: '${value['title'] ?? ''}'.isNotEmpty
+                        ? '${value['title']}'
+                        : GradeCourse.semesterLabel(r[1], r[2]),
                     name: r[4],
                     type: r[3],
                     score: r[5].isEmpty ? '尚未公布' : r[5],
@@ -219,7 +232,9 @@ class _GradesScreenState extends State<GradesScreen> {
       final semesters = courses.map((c) => c.semester).toSet().toList();
       if (mode == GradeMode.history) semesters.sort((a, b) => b.compareTo(a));
       final average = '${value['average'] ?? ''}';
-      final rank = '${value['rank'] ?? ''}';
+      // Before ranks are out the page shows a bare 「第 名」.
+      var rank = '${value['rank'] ?? ''}';
+      if (!RegExp(r'\d').hasMatch(rank)) rank = '';
       final summary = value['summary'] is List
           ? (value['summary'] as List).whereType<List>().toList()
           : const <List>[];
