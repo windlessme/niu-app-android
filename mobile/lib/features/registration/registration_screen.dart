@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../core/analytics/app_analytics.dart';
 import '../../core/demo/demo_data.dart';
 import '../../core/session/campus_session.dart';
 import '../../core/web/academic_portal_screen.dart';
@@ -38,10 +39,18 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     setState(() => busy = true);
     try {
       final completed = await certificate.open(data, save: save);
+      AppAnalytics.instance.event('certificate_open', {
+        'action': save ? 'save' : 'view',
+        'result': completed ? 'success' : 'cancelled',
+      });
       if (mounted && completed && save && epoch == session.coordinator.epoch) {
         showNiuMessage(context, '在學證明已儲存');
       }
     } catch (_) {
+      AppAnalytics.instance.event('certificate_open', {
+        'action': save ? 'save' : 'view',
+        'result': 'failure',
+      });
       if (mounted && epoch == session.coordinator.epoch) {
         showNiuMessage(
           context,

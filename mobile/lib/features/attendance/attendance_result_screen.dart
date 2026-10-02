@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../core/analytics/app_analytics.dart';
 import '../../shared/shared.dart';
 import '../moodle/moodle_repository.dart';
 import 'attendance_repository.dart';
@@ -103,6 +104,10 @@ class _AttendanceResultScreenState extends State<AttendanceResultScreen> {
 
   @override
   void dispose() {
+    // One report per scan, with the result the student last saw.
+    AppAnalytics.instance.event('attendance', {
+      'outcome': outcome?.name ?? 'no_answer',
+    });
     timeout?.cancel();
     controller?.stopLoading();
     super.dispose();

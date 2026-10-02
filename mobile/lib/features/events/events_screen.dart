@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../core/analytics/app_analytics.dart';
 import '../../core/session/campus_session.dart';
 import '../../core/web/academic_portal_screen.dart';
 import '../../shared/shared.dart';
@@ -519,7 +520,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       message: '「${event.name}」\n報名後可以在「我的報名」修改或取消。',
       confirmLabel: '報名',
     );
-    if (ok) await perform('正在報名', () => actions.register(event));
+    if (!ok) return;
+    await perform('正在報名', () => actions.register(event));
+    AppAnalytics.instance.result('event_register', result?.success ?? false);
   }
 
   Future<void> cancelRegistration() async {
@@ -532,6 +535,7 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
     );
     if (!ok) return;
     await perform('正在取消報名', () => actions.cancel(event));
+    AppAnalytics.instance.result('event_cancel', result?.success ?? false);
     if (mounted && (result?.success ?? false)) setState(() => cancelled = true);
   }
 
@@ -545,6 +549,9 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
         ),
       ),
     );
+    if (saved != null) {
+      AppAnalytics.instance.result('event_update', saved.success);
+    }
     if (!mounted || saved == null) return;
     setState(() {
       result = saved;

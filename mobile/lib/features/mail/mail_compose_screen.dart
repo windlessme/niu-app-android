@@ -2,6 +2,7 @@ import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/analytics/app_analytics.dart';
 import '../../shared/shared.dart';
 import 'mail_models.dart';
 import 'numail_client.dart';
@@ -190,11 +191,13 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
     try {
       final d = await _ensureDraft();
       await widget.service.send(d, data);
+      AppAnalytics.instance.event('mail_send', {'result': 'success'});
       done = true;
       HapticFeedback.mediumImpact();
       if (mounted) Navigator.pop(context, true);
     } on MailUncertain catch (e) {
       // Never resent automatically: the school may already have sent it.
+      AppAnalytics.instance.event('mail_send', {'result': 'unconfirmed'});
       done = true;
       if (!mounted) return;
       await showDialog<void>(
@@ -212,6 +215,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
       );
       if (mounted) Navigator.pop(context, false);
     } catch (e) {
+      AppAnalytics.instance.event('mail_send', {'result': 'failure'});
       if (!mounted) return;
       setState(() => sending = false);
       showNiuMessage(context, e is MailException ? e.message : '寄送失敗，請再試一次。');

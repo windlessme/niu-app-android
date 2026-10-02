@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../core/analytics/app_analytics.dart';
 import '../../core/session/campus_session.dart';
 import '../../shared/shared.dart';
 import '../authentication/remember_school_login.dart';
@@ -167,16 +168,30 @@ class _MailScreenState extends State<MailScreen> {
       signingIn = true;
       signInError = null;
     });
+    // Whether the on-device reading of the code was used as is: how well
+    // the recognizer does on the school's captcha.
+    final captcha = twoFactor
+        ? 'two_factor'
+        : c.guess == null
+        ? 'unread'
+        : c.guess == code.text.trim()
+        ? 'as_read'
+        : 'edited';
     try {
       final web = twoFactor
           ? await mailSession.twoFactor(c, code.text)
           : await mailSession.signIn(c, password.text, code.text);
+      AppAnalytics.instance.result('mail_login', true, {'captcha': captcha});
       if (!mounted || current != generation) return;
       challenge = null;
       password.clear();
       code.clear();
       await _ready(web, current);
     } on MailTwoFactorRequired catch (e) {
+      AppAnalytics.instance.event('mail_login', {
+        'result': 'two_factor',
+        'captcha': captcha,
+      });
       if (mounted) {
         setState(() {
           twoFactor = true;
@@ -185,6 +200,7 @@ class _MailScreenState extends State<MailScreen> {
         });
       }
     } catch (e) {
+      AppAnalytics.instance.result('mail_login', false, {'captcha': captcha});
       if (!mounted || current != generation) return;
       setState(
         () => signInError = e is MailException ? e.message : '登入失敗，請再試一次。',
