@@ -1,6 +1,6 @@
 # HANDOFF
 
-給接手的 Claude Code session。最後更新：2026-10-01。目前版本：**1.0.4+85**。
+給接手的 Claude Code session。最後更新：2026-10-03。目前版本：**1.0.4+85**。
 
 ## 專案概況
 
@@ -30,7 +30,14 @@
 - Firebase 設定檔（`google-services.json`，專案 `niu-life-ac16e`）也放在 repo 外：`/root/.config/niulife-firebase/google-services.json`，可以用 `NIULIFE_GOOGLE_SERVICES` 改路徑。建置時 Gradle 會把它複製到 `android/app/`（已加進 gitignore）並套用 Google Services 外掛；找不到檔案時照常建置，但 Analytics 會停用。
 - Upload key 的 SHA-256 指紋：`95:04:DD:13:D3:38:D6:E5:7C:83:89:42:9F:B0:A0:AB:25:4E:F1:1F:95:CE:AB:DC:5E:4B:B4:04:46:C8:4B:FA`。已經請使用者另外備份。
 - 已啟用 Play 應用程式簽署：發布用的金鑰由 Google 保管，這把只是 upload key。
-- 目前 internal 軌道上是 **1.0.4 (85)**。正式版由使用者在 Play Console 從 internal 升級（Claude 推 production 會被權限擋下，屬正常）。release 名稱用 `X.Y.Z (versionCode)`，附一句 zh-TW 版本說明。
+- Play 各軌道現況（2026-10-03 用 MCP 查過）：
+  - **正式版：1.0.0 (81)**，已發布。
+  - 公開測試（beta）：1.0.0 (81)。
+  - internal：**1.0.4 (85)**。
+- 正式版由使用者在 Play Console 升級（Claude 推 production 會被權限擋下，屬正常）。
+- **正式版不用每版都推**，只要 versionCode 比上一個正式版大就行。建議 internal 每版都推；等使用者在手機上測過、累積一批改動或有重要修正時，再挑一版推正式版。版本說明要寫成「從上一個正式版到現在的所有改變」，例如 internal 1.0.4 的說明。
+- 下一個正式版預計是 1.0.4，等使用者在手機上確認點名、小工具、上課中通知都正常。1.0.4 換了 AGP 9，只在模擬器上測過。
+- 公開測試的使用者會自動拿到 versionCode 較大的正式版，公開測試軌道不用特別處理。release 名稱用 `X.Y.Z (versionCode)`，附一句 zh-TW 版本說明。
 - 上傳流程（每個新版本都要做）：`flutter build appbundle --release`，然後用 MCP 依序 `edits_insert` → `bundles_upload` → `tracks_update`（internal，status `completed`）→ `edits_commit`。
 
 其他慣例：
@@ -254,6 +261,12 @@
 - **通知功能對齊 iOS，不多做。** 例如假日也不會略過上課提醒，提醒時間固定 10 分鐘。
 - Play 主題圖片（1024×500）建議用 App 的淺色配色：漸層 `#F2F3F7` 到 `#E5EEFC`，標題 `#15171C`，強調色 `#0A62D0`。
 
+## 不做的功能
+
+- **代點名**（掃描點名後幫其他同學點名）：使用者問過，Claude 拒絕，沒有後端的版本也不做，使用者已同意不做。不要再提或規劃。
+- 公車到站資訊：已放棄（見 1.0.1）。
+- UX 檢視第 3、4、5、7 項：維持現狀（見「導覽與 UX」）。
+
 ## 尚未驗證／已知事項
 
 - 通知、In-App Updates 都**沒在實機上測過**。In-App Updates 要用 Play 內部測試軌道，而且需要兩個不同的 versionCode 才測得出來。
@@ -263,11 +276,12 @@
 
 ## 可以接著做的事
 
-1. 在實機上驗證三種通知和點通知後的跳轉，必要時調整文案或時間。
-2. 等使用者把測試人員加進 internal 名單，再推版本號更大的 build，在實機上測 In-App Updates。
-3. 用 release 版上 Play 內部測試軌道，驗證 In-App Updates。
-4. 在實機上測試校園信箱：登入時驗證碼的辨識率、寄信（先寄給自己）、附件上傳和下載、搬移和刪除。
-5. 在實機上用真實帳密測試圖書館登入，包含登入學校時順便建立 session，以及在畫面上手動輸入密碼。
-6. 遠端彈窗公告，使用者問過，還沒做：建議做法是 `app-content/announcements.json` 加 revision，同一個 revision 只跳一次。
-7. 決定行事曆資料來源要不要改成本 repo。
-8. 視需要調整 Switch 關閉時的樣式。
+1. 等使用者在手機上確認 1.0.4 沒問題，請他把 1.0.4 推上正式版。
+2. 在實機上驗證三種通知和點通知後的跳轉，必要時調整文案或時間。
+3. 等使用者把測試人員加進 internal 名單，再推版本號更大的 build，在實機上測 In-App Updates。
+4. 用 release 版上 Play 內部測試軌道，驗證 In-App Updates。
+5. 在實機上測試校園信箱：登入時驗證碼的辨識率、寄信（先寄給自己）、附件上傳和下載、搬移和刪除。
+6. 在實機上用真實帳密測試圖書館登入，包含登入學校時順便建立 session，以及在畫面上手動輸入密碼。
+7. 遠端彈窗公告，使用者問過，還沒做：建議做法是 `app-content/announcements.json` 加 revision，同一個 revision 只跳一次。
+8. 決定行事曆資料來源要不要改成本 repo。
+9. 視需要調整 Switch 關閉時的樣式。
