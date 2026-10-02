@@ -11,27 +11,27 @@ void main() {
   ) async {
     final router = GoRouter(
       routes: [
-        ShellRoute(
-          builder: (context, state, child) =>
-              CampusShell(path: state.uri.path, child: child),
-          routes: [
-            GoRoute(
-              path: '/',
-              builder: (context, _) => Scaffold(
-                body: TextButton(
-                  onPressed: () => pushMoodle(
-                    context,
-                    const Scaffold(
-                      appBar: NiuAppBar(title: '課程'),
-                      body: Text('課程內容'),
+        CampusShell.route([
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/',
+                builder: (context, _) => Scaffold(
+                  body: TextButton(
+                    onPressed: () => pushMoodle(
+                      context,
+                      const Scaffold(
+                        appBar: NiuAppBar(title: '課程'),
+                        body: Text('課程內容'),
+                      ),
                     ),
+                    child: const Text('開啟課程'),
                   ),
-                  child: const Text('開啟課程'),
                 ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
+        ]),
       ],
     );
     addTearDown(router.dispose);

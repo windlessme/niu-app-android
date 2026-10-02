@@ -61,48 +61,59 @@ class _NiuAppState extends State<NiuApp> {
     observers: [libraryRouteObserver],
     redirect: (_, state) => campusDeepLink(state.uri),
     routes: [
-      ShellRoute(
-        builder: (_, state, child) =>
-            CampusShell(path: state.uri.path, child: child),
-        routes: [
-          GoRoute(
-            path: '/',
-            builder: (_, _) => ListenableBuilder(
-              listenable: session,
-              builder: (_, _) => CampusHomeScreen(
-                name: session.hasLocalAccount ? session.displayName : null,
-                department: session.profile['facultyName']?.toString(),
-                courses: _todayCourses(),
-                onRefresh: session.retryRestore,
-                offline: session.isOffline,
-                ssoNeedsReauthentication: session.ssoNeedsReauthentication,
-                hasSchedule: session.cachedSchedule != null,
-                onOpenCourse: _openCourse,
-                demo: session.isDemo,
-              ),
-            ),
-          ),
-          GoRoute(
-            path: '/schedule',
-            builder: (_, _) => AuthGate(
-              title: '課表',
-              allowLocalAccount: true,
-              child: ScheduleScreen(onOpenCourse: _openCourse),
-            ),
-          ),
-          GoRoute(
-            path: '/moodle',
-            builder: (_, _) => AuthGate(
-              title: 'M 園區',
-              allowLocalAccount: true,
-              child: ListenableBuilder(
+      CampusShell.route([
+        StatefulShellBranch(
+          preload: true,
+          routes: [
+            GoRoute(
+              path: '/',
+              builder: (_, _) => ListenableBuilder(
                 listenable: session,
-                builder: (_, _) => _moodleScreen(),
+                builder: (_, _) => CampusHomeScreen(
+                  name: session.hasLocalAccount ? session.displayName : null,
+                  department: session.profile['facultyName']?.toString(),
+                  courses: _todayCourses(),
+                  onRefresh: session.retryRestore,
+                  offline: session.isOffline,
+                  ssoNeedsReauthentication: session.ssoNeedsReauthentication,
+                  hasSchedule: session.cachedSchedule != null,
+                  onOpenCourse: _openCourse,
+                  demo: session.isDemo,
+                ),
               ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
+        StatefulShellBranch(
+          preload: true,
+          routes: [
+            GoRoute(
+              path: '/schedule',
+              builder: (_, _) => AuthGate(
+                title: '課表',
+                allowLocalAccount: true,
+                child: ScheduleScreen(onOpenCourse: _openCourse),
+              ),
+            ),
+          ],
+        ),
+        StatefulShellBranch(
+          preload: true,
+          routes: [
+            GoRoute(
+              path: '/moodle',
+              builder: (_, _) => AuthGate(
+                title: 'M 園區',
+                allowLocalAccount: true,
+                child: ListenableBuilder(
+                  listenable: session,
+                  builder: (_, _) => _moodleScreen(),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ]),
       GoRoute(
         path: '/login',
         builder: (context, _) => LoginScreen(

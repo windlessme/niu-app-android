@@ -107,6 +107,11 @@ void main() {
     await tester.drag(find.byType(ListView), const Offset(0, 350));
     await tester.pumpAndSettle();
     expect(loads, [2, 1, 0, 0, 1, 1]);
+    // A swipe moves to the next tab; the visited one does not reload.
+    await tester.fling(find.byType(PageView), const Offset(-300, 0), 1000);
+    await tester.pumpAndSettle();
+    expect(find.text('empty 1'), findsOneWidget);
+    expect(loads, [2, 1, 0, 0, 1, 1]);
   });
   test('conservative sections keep unknown text and explicit percentages', () {
     final sections = courseDetailSections(CoursePresentation(course));
