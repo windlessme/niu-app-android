@@ -23,6 +23,8 @@
 6. `python3 tool/publish_preview.py --apk build/app/outputs/flutter-apk/app-debug.apk --version X.Y.Z`
 7. 給使用者下載連結（`publish_preview.py` 會自動只保留最新 3 版，可以用 `--keep` 調整）：`http://161.248.44.73:8080/NIU-Life-X.Y.Z-preview.apk`
 
+下載伺服器是 systemd 的 `niu-downloads.service`（`/etc/systemd/system/`），用 `python3 -m http.server 8080` 提供 `/srv/niu-downloads`，以 `DynamicUser` 唯讀執行，開機自動啟動。連結打不開時先查 `systemctl status niu-downloads`。這個資料夾整個對外公開，不要放機密。
+
 ## Release 簽章與 Play 上傳
 
 - Upload key 在 repo 外面：`/root/.config/niulife-signing/upload-keystore.jks`，`key.properties` 也在同一個資料夾，密碼存在 `key.properties` 裡，權限是 600。可以用環境變數 `NIULIFE_KEY_PROPERTIES` 改路徑；找不到檔案時，release 會退回 debug 簽章。
