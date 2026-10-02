@@ -50,7 +50,7 @@ class NiuBackButton extends StatelessWidget {
 }
 
 /// Standard top bar for pages whose body is not a scrolling list
-/// (web views, scanners, full-screen tools).
+/// (web views, scanners, full-screen tools). Matches [NiuScrollPage].
 class NiuAppBar extends StatelessWidget implements PreferredSizeWidget {
   const NiuAppBar({
     super.key,
@@ -83,10 +83,9 @@ class NiuAppBar extends StatelessWidget implements PreferredSizeWidget {
   );
 }
 
-/// The canonical page: a collapsing Material top bar over a padded list.
+/// The canonical page: a one-row top bar over a padded list.
 ///
-/// Tab roots use a [large] bold title on the action row; secondary pages
-/// collapse from a medium title.
+/// Tab roots use a [large] title and no back button.
 /// Content is laid out as [children] with the shared gutter, or as raw
 /// [slivers] when a page needs lazy lists.
 class NiuScrollPage extends StatelessWidget {
@@ -129,37 +128,27 @@ class NiuScrollPage extends StatelessWidget {
     final bottomInset = bottomBar == null
         ? (NiuSpacing.xxl + systemInset).clamp(NiuSpacing.huge, double.infinity)
         : NiuSpacing.xxl;
-    // Tab roots put a bold title on the action row: a separate large-title
-    // row would leave a band of empty space above every tab's content.
-    final header = large
-        ? SliverAppBar(
-            pinned: true,
-            automaticallyImplyLeading: false,
-            leading: showBack ? const NiuBackButton() : null,
-            titleSpacing: showBack ? NiuSpacing.xs : NiuSpacing.gutter,
-            title: Semantics(
-              header: true,
-              child: Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
-            ),
-            actions: [
-              ...actions,
-              const SizedBox(width: NiuSpacing.xs),
-            ],
-          )
-        : SliverAppBar.medium(
-            automaticallyImplyLeading: false,
-            leading: showBack ? const NiuBackButton() : null,
-            title: Semantics(header: true, child: Text(title)),
-            actions: [
-              ...actions,
-              const SizedBox(width: NiuSpacing.xs),
-            ],
-          );
+    // One row for every page: back, title and actions together, as on
+    // [NiuAppBar]. Tab roots set the title larger, with no back button.
+    final header = SliverAppBar(
+      pinned: true,
+      automaticallyImplyLeading: false,
+      leading: showBack ? const NiuBackButton() : null,
+      titleSpacing: showBack ? NiuSpacing.xs : NiuSpacing.gutter,
+      title: Semantics(
+        header: true,
+        child: Text(
+          title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: large ? Theme.of(context).textTheme.headlineSmall : null,
+        ),
+      ),
+      actions: [
+        ...actions,
+        const SizedBox(width: NiuSpacing.xs),
+      ],
+    );
     Widget scroll = CustomScrollView(
       controller: controller,
       physics: const AlwaysScrollableScrollPhysics(),
@@ -184,7 +173,7 @@ class NiuScrollPage extends StatelessWidget {
     );
     if (onRefresh != null) {
       scroll = RefreshIndicator(
-        edgeOffset: large ? kToolbarHeight : 112,
+        edgeOffset: kToolbarHeight,
         onRefresh: onRefresh!,
         child: scroll,
       );
