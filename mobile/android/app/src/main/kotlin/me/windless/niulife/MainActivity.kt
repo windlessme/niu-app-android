@@ -7,6 +7,8 @@ import android.Manifest
 import android.content.Intent
 import android.content.ClipData
 import android.os.Build
+import android.os.Bundle
+import androidx.core.view.WindowCompat
 import androidx.core.content.FileProvider
 import org.json.JSONObject
 
@@ -98,6 +100,12 @@ class MainActivity : FlutterActivity() {
                     }
                 } catch (e: Exception) { result.error("schedule_error", e.message, null) }
             }
+    }
+    override fun onCreate(savedInstanceState: Bundle?) {
+        // Android 15+ draws edge to edge for apps targeting 35; older
+        // versions get the same layout, which the Flutter UI already pads.
+        WindowCompat.enableEdgeToEdge(window)
+        super.onCreate(savedInstanceState)
     }
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
