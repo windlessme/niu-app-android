@@ -42,57 +42,96 @@ class FakePostal extends PostalService {
 }
 
 void main() {
-  testWidgets(
-    'own name is filled on request, searched once and filtered locally',
-    (tester) async {
-      final queries = <PostalQuery>[];
-      final session = CampusSession(vault: MemoryVault(), platformCleanup: [])
-        ..account = 'b123'
-        ..profile = {'chName': '王小明'};
-      addTearDown(session.dispose);
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: NiuTheme.light,
-          home: PostalScreen(
-            session: session,
-            service: () => FakePostal(queries),
-          ),
+  testWidgets('own mail is searched on open, once, and filtered locally', (
+    tester,
+  ) async {
+    final queries = <PostalQuery>[];
+    final session = CampusSession(vault: MemoryVault(), platformCleanup: [])
+      ..account = 'b123'
+      ..profile = {'chName': '王小明'};
+    addTearDown(session.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: NiuTheme.light,
+        home: PostalScreen(
+          session: session,
+          service: () => FakePostal(queries),
         ),
-      );
-      await tester.pumpAndSettle();
-      // Nothing is filled or searched until the student asks.
-      expect(queries, isEmpty);
-      expect(
-        tester.widget<TextField>(find.byType(TextField).first).controller!.text,
-        '',
-      );
-      await tester.tap(find.text('帶入我的姓名'));
-      await tester.pump();
-      expect(find.text('帶入我的姓名'), findsNothing);
-      expect(queries, isEmpty);
-      await tester.tap(find.widgetWithText(FilledButton, '查詢'));
-      await tester.pumpAndSettle();
-      // 全部 queries every status (the school form accepts one at a time).
-      expect(queries.map((q) => q.status).toSet(), PostalStatus.values.toSet());
-      expect(queries.every((q) => q.name == '王小明'), isTrue);
-      expect(find.text('RR123'), findsOneWidget);
-      expect(find.text('1 筆'), findsOneWidget);
-      // Status chips filter the results locally without querying again.
-      queries.clear();
-      await tester.tap(find.text('已領取 0'));
-      await tester.pumpAndSettle();
-      expect(queries, isEmpty);
-      expect(find.text('沒有已領取的紀錄'), findsOneWidget);
-      await tester.tap(find.text('未領取 1'));
-      await tester.pumpAndSettle();
-      expect(find.text('RR123'), findsOneWidget);
-      // Edited criteria are flagged until searched again.
-      await tester.enterText(find.byType(TextField).first, '王大明');
-      await tester.pump();
-      expect(find.text('條件已變更，重新查詢以更新結果'), findsOneWidget);
-      expect(tester.takeException(), isNull);
-    },
-  );
+      ),
+    );
+    await tester.pumpAndSettle();
+    // Like iOS, the student's own mail is searched without asking.
+    expect(
+      tester.widget<TextField>(find.byType(TextField).first).controller!.text,
+      '王小明',
+    );
+    expect(find.text('帶入我的姓名'), findsNothing);
+    // 全部 queries every status (the school form accepts one at a time).
+    expect(
+      queries.map((q) => q.status).toList()..sort((a, b) => a.index - b.index),
+      PostalStatus.values,
+    );
+    expect(queries.every((q) => q.name == '王小明'), isTrue);
+    expect(find.text('RR123'), findsOneWidget);
+    expect(find.text('1 筆'), findsOneWidget);
+    expect(find.text('依登入姓名查詢'), findsOneWidget);
+    // Status chips filter the results locally without querying again.
+    queries.clear();
+    await tester.tap(find.text('已領取 0'));
+    await tester.pumpAndSettle();
+    expect(queries, isEmpty);
+    expect(find.text('沒有已領取的紀錄'), findsOneWidget);
+    await tester.tap(find.text('未領取 1'));
+    await tester.pumpAndSettle();
+    expect(find.text('RR123'), findsOneWidget);
+    // Edited criteria are flagged until searched again.
+    await tester.enterText(find.byType(TextField).first, '王大明');
+    await tester.pump();
+    expect(find.text('條件已變更，重新查詢以更新結果'), findsOneWidget);
+    // A profile update must not replace what the student typed.
+    queries.clear();
+    session
+      ..profile = {'chName': '王曉明'}
+      ..notifyListeners();
+    await tester.pumpAndSettle();
+    expect(queries, isEmpty);
+    await tester.tap(find.text('帶入我的姓名'));
+    await tester.pump();
+    expect(
+      tester.widget<TextField>(find.byType(TextField).first).controller!.text,
+      '王曉明',
+    );
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('a profile that arrives late searches the untouched form', (
+    tester,
+  ) async {
+    final queries = <PostalQuery>[];
+    final session = CampusSession(vault: MemoryVault(), platformCleanup: [])
+      ..account = 'b123'
+      // Before the school profile loads, the name only echoes the account.
+      ..profile = {'chName': 'B123'};
+    addTearDown(session.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: NiuTheme.light,
+        home: PostalScreen(
+          session: session,
+          service: () => FakePostal(queries),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(queries, isEmpty);
+    expect(find.text('帶入我的姓名'), findsNothing);
+    session
+      ..profile = {'chName': '王小明'}
+      ..notifyListeners();
+    await tester.pumpAndSettle();
+    expect(queries.length, PostalStatus.values.length);
+    expect(queries.every((q) => q.name == '王小明'), isTrue);
+    expect(find.text('RR123'), findsOneWidget);
+  });
   for (final dark in [false, true]) {
     testWidgets('narrow large text fits dark=$dark', (tester) async {
       tester.view.physicalSize = const Size(320, 700);
@@ -116,9 +155,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(tester.takeException(), isNull);
-      await tester.tap(find.text('帶入我的姓名'));
-      await tester.pump();
+      expect(find.text('RR123'), findsOneWidget);
       await tester.tap(find.widgetWithText(FilledButton, '查詢'));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
