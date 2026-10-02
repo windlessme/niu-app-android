@@ -62,6 +62,23 @@ class CampusNotifications {
     }
   }
 
+  /// Turns the in-class notification on with the saved semester dates, or
+  /// the current semester from the academic calendar.
+  Future<void> setClassNow(bool value) async {
+    if (value) {
+      await _queue;
+      await _saveSchedule(requireDates: true);
+    }
+    final applied = await gateway.setClassNow(enabled: value);
+    AppAnalytics.instance.event('notification_setting', {
+      'kind': 'class_now',
+      'enabled': value ? (applied ? 'on' : 'denied') : 'off',
+    });
+    if (!applied && value) {
+      throw StateError('通知權限未開啟');
+    }
+  }
+
   /// Recomputes every enabled kind. Calls are serialized; a failure in one
   /// kind does not stop the others and is rethrown at the end.
   Future<void> refresh() {

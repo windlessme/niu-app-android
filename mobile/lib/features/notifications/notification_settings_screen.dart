@@ -20,6 +20,7 @@ class NotificationSettingsScreen extends StatefulWidget {
 class _NotificationSettingsScreenState
     extends State<NotificationSettingsScreen> {
   bool assignments = false, calendar = false, classes = false;
+  bool classNow = false;
   bool loaded = false, busy = false, refreshing = false;
 
   @override
@@ -30,16 +31,19 @@ class _NotificationSettingsScreenState
 
   Future<void> _load() async {
     try {
+      final status = widget.gateway.reminderStatus();
       final values = await Future.wait([
         widget.notifications.enabled(CampusNotifications.assignmentsKey),
         widget.notifications.enabled(CampusNotifications.calendarKey),
-        widget.gateway.reminderStatus().then((s) => s.enabled),
+        status.then((s) => s.enabled),
+        status.then((s) => s.classNow),
       ]);
       if (!mounted) return;
       setState(() {
         assignments = values[0];
         calendar = values[1];
         classes = values[2];
+        classNow = values[3];
       });
     } catch (_) {
       /* Switches stay off when the device cannot report them. */
@@ -150,6 +154,23 @@ class _NotificationSettingsScreenState
                   rethrow;
                 }
               }, '無法開啟上課提醒，請先開啟課表並確認已連線'),
+            ),
+          ),
+          NiuRow(
+            icon: Icons.timelapse_rounded,
+            hue: NiuHue.teal,
+            title: '上課中通知',
+            subtitle: '上課時顯示課名、教室與下課倒數',
+            trailing: _switch(
+              classNow,
+              (value) => _toggle(value, (v) => classNow = v, (v) async {
+                try {
+                  await widget.notifications.setClassNow(v);
+                } catch (_) {
+                  if (mounted) setState(() => classNow = !v);
+                  rethrow;
+                }
+              }, '無法開啟上課中通知，請先開啟課表並確認已連線'),
             ),
           ),
         ],

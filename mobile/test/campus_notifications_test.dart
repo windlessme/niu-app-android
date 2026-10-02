@@ -16,6 +16,13 @@ class FakeGateway extends ScheduleGateway {
   @override
   Future<ReminderStatus> reminderStatus() async =>
       const ReminderStatus(enabled: false, permitted: true);
+  bool? classNow;
+  bool permitted = true;
+  @override
+  Future<bool> setClassNow({required bool enabled}) async {
+    classNow = enabled;
+    return !enabled || permitted;
+  }
 }
 
 void main() {
@@ -92,5 +99,31 @@ void main() {
     final snapshot = await BundledCalendarRepository(rootBundle).load(115);
     expect(snapshot.semesters.first.classesStart.toString(), '2026-09-07');
     expect(snapshot.semesters.first.end.toString(), '2027-01-31');
+  });
+
+  test('the in-class notice saves the timetable before switching on', () async {
+    SharedPreferences.setMockInitialValues({});
+    final native = <String>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(ScheduleGateway.channel, (call) async {
+          native.add(call.method);
+          return null;
+        });
+    addTearDown(
+      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(ScheduleGateway.channel, null),
+    );
+    final clock = DateTime(2026, 10, 2, 9, 30);
+    await notifications(clock: () => clock).setClassNow(true);
+    expect(native, contains('saveSnapshot'));
+    expect(gateway.classNow, isTrue);
+
+    gateway.permitted = false;
+    await expectLater(
+      notifications(clock: () => clock).setClassNow(true),
+      throwsStateError,
+    );
+    await notifications().setClassNow(false);
+    expect(gateway.classNow, isFalse);
   });
 }

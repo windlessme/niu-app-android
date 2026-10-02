@@ -42,9 +42,9 @@ internal object ScheduleReminders {
         if (next != null && selected != null) {
             prefs.edit().putLong("nextAt", next.toEpochMilli()).putString("nextTitle", selected.title)
                 .putString("nextRoom", selected.room).apply()
-            // Deliberately inexact: Doze and OEM battery policies can delay delivery.
-            c.getSystemService(AlarmManager::class.java).setAndAllowWhileIdle(
-                AlarmManager.RTC_WAKEUP, next.toEpochMilli(), pending(c))
+            // Inexact, stepping closer on each wake; Doze and OEM battery
+            // policies can still delay delivery.
+            c.getSystemService(AlarmManager::class.java).wakeBy(next.toEpochMilli(), pending(c))
         }
     }
     fun deliver(c: Context) {
@@ -77,7 +77,9 @@ class ScheduleAlarmReceiver : BroadcastReceiver() {
 class ScheduleRestoreReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         ScheduleReminders.reschedule(context)
+        ClassInProgress.refresh(context)
         CampusNotifications.reschedule(context)
         ScheduleWidget.refresh(context)
+        QuickWidget.refresh(context)
     }
 }
