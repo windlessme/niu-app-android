@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/analytics/app_analytics.dart';
 import '../../shared/shared.dart';
 import '../../core/platform/schedule_gateway.dart';
 import '../../core/platform/schedule_ics.dart';
@@ -169,6 +170,7 @@ class _ScheduleExportBarState extends State<ScheduleExportBar> {
     if (snapshot == null) return;
     current();
     await gateway.shareCalendar(exportScheduleIcs(snapshot!));
+    AppAnalytics.instance.event('schedule_export');
   });
 
   @override

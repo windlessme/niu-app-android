@@ -18,3 +18,4 @@
 **/.flutter-plugins-dependencies
 **/coverage/
 **/test_driver/*.json
+**/google-services.json

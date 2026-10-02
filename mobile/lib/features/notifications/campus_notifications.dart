@@ -1,5 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/analytics/app_analytics.dart';
 import '../../core/platform/schedule_gateway.dart';
 import '../../core/session/campus_session.dart';
 import '../../core/time/campus_date.dart';
@@ -37,6 +38,10 @@ class CampusNotifications {
 
   Future<void> setEnabled(String key, bool value) async {
     await (await SharedPreferences.getInstance()).setBool(key, value);
+    AppAnalytics.instance.event('notification_setting', {
+      'kind': key == assignmentsKey ? 'assignments' : 'calendar',
+      'enabled': value ? 'on' : 'off',
+    });
     await refresh();
   }
 
@@ -47,7 +52,12 @@ class CampusNotifications {
       await _queue;
       await _saveSchedule(requireDates: true);
     }
-    if (!await gateway.setReminders(enabled: value) && value) {
+    final applied = await gateway.setReminders(enabled: value);
+    AppAnalytics.instance.event('notification_setting', {
+      'kind': 'classes',
+      'enabled': value ? (applied ? 'on' : 'denied') : 'off',
+    });
+    if (!applied && value) {
       throw StateError('通知權限未開啟');
     }
   }

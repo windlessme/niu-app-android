@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../core/analytics/app_analytics.dart';
 import '../shared/shared.dart';
 
 /// The three root tabs. Each keeps its own state while the others are
@@ -31,12 +32,22 @@ class CampusShell extends StatefulWidget {
 
 class _CampusShellState extends State<CampusShell> {
   late final pages = PageController(initialPage: widget.shell.currentIndex);
+  static const _screens = ['home', 'schedule', 'moodle'];
+
+  @override
+  void initState() {
+    super.initState();
+    AppAnalytics.instance.screen(_screens[widget.shell.currentIndex]);
+  }
 
   @override
   void didUpdateWidget(CampusShell old) {
     super.didUpdateWidget(old);
     // A tab tap or a link moved the shell: follow it unless a swipe did.
     final index = widget.shell.currentIndex;
+    if (index != old.shell.currentIndex) {
+      AppAnalytics.instance.screen(_screens[index]);
+    }
     if (!pages.hasClients || pages.page?.round() == index) return;
     final from = pages.page!.round();
     final duration = NiuMotion.duration(context);
