@@ -1,6 +1,6 @@
 # HANDOFF
 
-給接手的 Claude Code session。最後更新：2026-10-01。目前版本：**1.0.0+81**。
+給接手的 Claude Code session。最後更新：2026-10-01。目前版本：**1.0.1+82**。
 
 ## 專案概況
 
@@ -30,7 +30,7 @@
 - Firebase 設定檔（`google-services.json`，專案 `niu-life-ac16e`）也放在 repo 外：`/root/.config/niulife-firebase/google-services.json`，可以用 `NIULIFE_GOOGLE_SERVICES` 改路徑。建置時 Gradle 會把它複製到 `android/app/`（已加進 gitignore）並套用 Google Services 外掛；找不到檔案時照常建置，但 Analytics 會停用。
 - Upload key 的 SHA-256 指紋：`95:04:DD:13:D3:38:D6:E5:7C:83:89:42:9F:B0:A0:AB:25:4E:F1:1F:95:CE:AB:DC:5E:4B:B4:04:46:C8:4B:FA`。已經請使用者另外備份。
 - 已啟用 Play 應用程式簽署：發布用的金鑰由 Google 保管，這把只是 upload key。
-- 目前 internal 軌道上是 **1.0.0 (81)**，作為第一個正式版的候選，由使用者在 Play Console 升級到正式版（Claude 推 production 會被權限擋下，屬正常）。release 名稱用 `X.Y.Z (versionCode)`，附一句 zh-TW 版本說明。
+- 目前 internal 軌道上是 **1.0.1 (82)**。正式版由使用者在 Play Console 從 internal 升級（Claude 推 production 會被權限擋下，屬正常）。release 名稱用 `X.Y.Z (versionCode)`，附一句 zh-TW 版本說明。
 - 上傳流程（每個新版本都要做）：`flutter build appbundle --release`，然後用 MCP 依序 `edits_insert` → `bundles_upload` → `tracks_update`（internal，status `completed`）→ `edits_commit`。
 
 其他慣例：
@@ -63,6 +63,7 @@
 | 0.13.18 | `d31839b` | 所有頁首統一成單列；請假頁只留一個重新整理（加下拉更新）；修好示範模式成績顯示「尚未更新」 |
 | 0.13.19 | `5963eff` | 加入 Google Analytics（Firebase）與設定開關；更新隱私權政策；開源專案連結改為本 repo；聯絡信箱改為 hi@windless.me |
 | 1.0.0 | `3cfef47` | 第一個正式版，內容同 0.13.19 |
+| 1.0.1 | （本次） | App 捷徑改為點名／課表／M 園區／入館碼並換圖示；新增「快捷列」小工具；上課中通知；上課提醒改為逐步逼近的鬧鐘；刪除公車殘留 |
 
 另外：
 
@@ -208,6 +209,23 @@
 - Manifest 預設 `firebase_analytics_collection_enabled=false`，App 讀到使用者的選擇後才開啟，所以使用者關閉後重新啟動也不會送資料。廣告 ID、AdServices、Install Referrer 權限都已移除，也關閉了自動畫面追蹤。
 - 驗證方式：用 release 版搭配 `adb shell setprop debug.firebase.analytics.app me.windless.niulife`，在 logcat 的 `FA` 看「Logging screen view」。已確認開啟時會上傳（204），關閉後切換頁面、重新啟動都是 0 筆。
 - **Play Console 的資料安全性表單要配合更新**（使用者處理）。
+
+## 捷徑、小工具與上課中通知（1.0.1）
+
+- **App 捷徑**（長按圖示）：`res/xml/shortcuts.xml` 有四個：快速點名、課表、M 園區、圖書館入館碼，分別開 `niulife://attendance`、`schedule`、`moodle`、`library`。圖示是 `drawable/shortcut_*.xml`（自適應圖示，淺藍底加主色圖案），圖案來自 Material Icons Round（Apache 2.0）。
+- **小工具**：
+  - 「快捷列」（`QuickWidget.kt`、`layout/quick_widget.xml`，4×1）：四個按鈕，對應同樣四個目的地。
+  - 「今日課表」（`ScheduleWidget`）：換成 App 的配色（`values/widget_colors.xml`，有深色版本），加圓角。
+- **上課中通知**（`ClassInProgress.kt`）：
+  - 「通知設定 → 上課中通知」，預設關閉；開啟時跟上課提醒一樣，會把課表和學期日期寫進原生端（`CampusNotifications.setClassNow`）。
+  - 上課時顯示一則低優先、常駐的通知：課名、教室、幾點下課、系統倒數，以及當天下一堂。下課時用 `setTimeoutAfter` 自動消失。
+  - 連續節次在 `scheduleBlocks` 已經合併成一個區塊，所以只會顯示一則通知。
+  - 在模擬器上把時間調到上課時段驗證過：會顯示、下課會消失、會自動接下一堂。
+- **鬧鐘都改用 `AlarmManager.wakeBy`**（在 `ScheduleStore.kt`）：
+  - 不精確的鬧鐘最多會延遲「距離觸發時間的 75%，上限 1 小時」。以前上課提醒排在幾天後，可能晚一小時才響。
+  - 現在每次只設在剩餘時間的 1/1.75 處，響了之後再排更近的一次，最後一步不到一分鐘，最多晚 45 秒。
+  - 不需要精準鬧鐘權限。Doze 仍可能延後。
+- 公車功能確定不做，`lib/features/bus` 和測試已刪除。
 
 ## 重要決策
 

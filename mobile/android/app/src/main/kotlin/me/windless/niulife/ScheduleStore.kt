@@ -1,11 +1,25 @@
 package me.windless.niulife
 
+import android.app.AlarmManager
+import android.app.PendingIntent
 import android.content.Context
 import org.json.JSONObject
 import java.time.LocalDate
 import java.time.ZoneId
 
 internal val scheduleZone: ZoneId = ZoneId.of("Asia/Taipei")
+
+/**
+ * Wakes no later than [at] without exact-alarm access. An inexact alarm may
+ * fire up to 75% of its delay late (capped at an hour), so a far wake lands
+ * part way there and the receiver sets the next, closer one; the last step
+ * is at most a minute out. Doze can still defer it.
+ */
+internal fun AlarmManager.wakeBy(at: Long, op: PendingIntent, now: Long = System.currentTimeMillis()) {
+    val delay = at - now
+    val trigger = if (delay <= 60_000) at else now + (delay / 1.75).toLong()
+    setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, trigger, op)
+}
 internal data class Block(val id: String, val title: String, val room: String,
     val weekday: Int, val startMinute: Int, val endMinute: Int)
 internal data class Snapshot(val start: LocalDate, val end: LocalDate, val blocks: List<Block>) {
@@ -43,10 +57,12 @@ internal object ScheduleStore {
         Snapshot.parse(json)
         check(prefs(c).edit().putString("snapshot", json.toString()).commit())
         ScheduleReminders.reschedule(c)
+        ClassInProgress.refresh(c)
         ScheduleWidget.refresh(c)
     }
     fun clear(c: Context) {
         ScheduleReminders.cancel(c)
+        ClassInProgress.cancel(c)
         CampusNotifications.clear(c)
         check(prefs(c).edit().clear().commit())
         c.cacheDir.resolve("calendar_exports").deleteRecursively()

@@ -1,12 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Long-press the app icon: the four things students open in a hurry. -->
 <shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
-    <shortcut android:shortcutId="attendance" android:enabled="true"
-        android:icon="@drawable/ic_notification" android:shortcutShortLabel="@string/shortcut_attendance">
+    <shortcut android:shortcutId="attendance" android:enabled="true" android:icon="@drawable/shortcut_attendance"
+        android:shortcutShortLabel="@string/shortcut_attendance" android:shortcutLongLabel="@string/shortcut_attendance_long">
         <intent android:action="android.intent.action.VIEW" android:targetPackage="me.windless.niulife"
             android:targetClass="me.windless.niulife.MainActivity" android:data="niulife://attendance" />
     </shortcut>
-    <shortcut android:shortcutId="library" android:enabled="true"
-        android:icon="@drawable/ic_notification" android:shortcutShortLabel="@string/shortcut_library">
+    <shortcut android:shortcutId="schedule" android:enabled="true" android:icon="@drawable/shortcut_schedule"
+        android:shortcutShortLabel="@string/shortcut_schedule" android:shortcutLongLabel="@string/shortcut_schedule">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="me.windless.niulife"
+            android:targetClass="me.windless.niulife.MainActivity" android:data="niulife://schedule" />
+    </shortcut>
+    <shortcut android:shortcutId="moodle" android:enabled="true" android:icon="@drawable/shortcut_moodle"
+        android:shortcutShortLabel="@string/shortcut_moodle" android:shortcutLongLabel="@string/shortcut_moodle">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="me.windless.niulife"
+            android:targetClass="me.windless.niulife.MainActivity" android:data="niulife://moodle" />
+    </shortcut>
+    <shortcut android:shortcutId="library" android:enabled="true" android:icon="@drawable/shortcut_library"
+        android:shortcutShortLabel="@string/shortcut_library" android:shortcutLongLabel="@string/shortcut_library_long">
         <intent android:action="android.intent.action.VIEW" android:targetPackage="me.windless.niulife"
             android:targetClass="me.windless.niulife.MainActivity" android:data="niulife://library" />
     </shortcut>

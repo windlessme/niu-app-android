@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@android:id/background" android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="horizontal" android:gravity="center_vertical" android:padding="8dp"
+    android:background="@drawable/widget_background">
+    <LinearLayout android:id="@+id/quick_attendance" android:layout_width="0dp" android:layout_height="match_parent"
+        android:layout_weight="1" android:orientation="vertical" android:gravity="center"
+        android:contentDescription="點名">
+        <FrameLayout android:layout_width="44dp" android:layout_height="44dp" android:background="@drawable/widget_tile">
+            <ImageView android:layout_width="24dp" android:layout_height="24dp" android:layout_gravity="center"
+                android:src="@drawable/ic_quick_attendance" android:importantForAccessibility="no" />
+        </FrameLayout>
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_marginTop="6dp" android:text="點名" android:textColor="@color/widget_text"
+            android:textSize="12sp" android:maxLines="1" />
+    </LinearLayout>
+    <LinearLayout android:id="@+id/quick_schedule" android:layout_width="0dp" android:layout_height="match_parent"
+        android:layout_weight="1" android:orientation="vertical" android:gravity="center"
+        android:contentDescription="課表">
+        <FrameLayout android:layout_width="44dp" android:layout_height="44dp" android:background="@drawable/widget_tile">
+            <ImageView android:layout_width="24dp" android:layout_height="24dp" android:layout_gravity="center"
+                android:src="@drawable/ic_quick_schedule" android:importantForAccessibility="no" />
+        </FrameLayout>
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_marginTop="6dp" android:text="課表" android:textColor="@color/widget_text"
+            android:textSize="12sp" android:maxLines="1" />
+    </LinearLayout>
+    <LinearLayout android:id="@+id/quick_moodle" android:layout_width="0dp" android:layout_height="match_parent"
+        android:layout_weight="1" android:orientation="vertical" android:gravity="center"
+        android:contentDescription="M 園區">
+        <FrameLayout android:layout_width="44dp" android:layout_height="44dp" android:background="@drawable/widget_tile">
+            <ImageView android:layout_width="24dp" android:layout_height="24dp" android:layout_gravity="center"
+                android:src="@drawable/ic_quick_moodle" android:importantForAccessibility="no" />
+        </FrameLayout>
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_marginTop="6dp" android:text="M 園區" android:textColor="@color/widget_text"
+            android:textSize="12sp" android:maxLines="1" />
+    </LinearLayout>
+    <LinearLayout android:id="@+id/quick_library" android:layout_width="0dp" android:layout_height="match_parent"
+        android:layout_weight="1" android:orientation="vertical" android:gravity="center"
+        android:contentDescription="入館碼">
+        <FrameLayout android:layout_width="44dp" android:layout_height="44dp" android:background="@drawable/widget_tile">
+            <ImageView android:layout_width="24dp" android:layout_height="24dp" android:layout_gravity="center"
+                android:src="@drawable/ic_quick_library" android:importantForAccessibility="no" />
+        </FrameLayout>
+        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:layout_marginTop="6dp" android:text="入館碼" android:textColor="@color/widget_text"
+            android:textSize="12sp" android:maxLines="1" />
+    </LinearLayout>
+</LinearLayout>
