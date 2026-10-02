@@ -7,7 +7,8 @@ import 'postal_service.dart';
 import '../demo/demo_services.dart';
 
 /// Campus mail and parcel lookup. One search covers every status (the school
-/// form takes one at a time); the status chips then filter locally.
+/// form takes one at a time); the status chips then filter locally. Like iOS,
+/// it opens on the student's own mail, searched by their profile name.
 class PostalScreen extends StatefulWidget {
   const PostalScreen({super.key, this.session, this.service});
   final CampusSession? session;
@@ -77,11 +78,42 @@ class _PostalScreenState extends State<PostalScreen> {
 
   bool get hasMore => pages.values.any((p) => p.nextForm != null);
 
-  /// The student's name from the verified school profile, if any.
-  String get ownName => session.profile['chName']?.toString().trim() ?? '';
+  /// The student's name from the verified school profile, if any. A profile
+  /// that only echoes the account is not a name.
+  String get ownName {
+    final name = session.profile['chName']?.toString().trim() ?? '';
+    return name.toLowerCase() == session.account?.trim().toLowerCase()
+        ? ''
+        : name;
+  }
+
+  /// The name this screen filled in by itself, so a late or changed profile
+  /// may replace it but never what the student typed.
+  String? autoName;
+
+  bool get untouched =>
+      phone.text.trim().isEmpty &&
+      tracking.text.trim().isEmpty &&
+      (name.text.trim().isEmpty || name.text.trim() == autoName);
+
+  @override
+  void initState() {
+    super.initState();
+    session.addListener(_searchOwnMail);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _searchOwnMail());
+  }
+
+  void _searchOwnMail() {
+    final own = ownName;
+    if (!mounted || own.isEmpty || own == autoName || !untouched) return;
+    if (autoName == null && (searched != null || loading)) return;
+    autoName = name.text = own;
+    search();
+  }
 
   @override
   void dispose() {
+    session.removeListener(_searchOwnMail);
     generation++;
     for (final c in clients.values) {
       c.close();
@@ -261,7 +293,13 @@ class _PostalScreenState extends State<PostalScreen> {
         if (searched != null && !(loading && pages.isEmpty))
           NiuSection(
             title: '查詢結果',
-            subtitle: stale ? '條件已變更，重新查詢以更新結果' : null,
+            subtitle: stale
+                ? '條件已變更，重新查詢以更新結果'
+                : searched!.name == autoName &&
+                      searched!.phone.isEmpty &&
+                      searched!.trackingNumber.isEmpty
+                ? '依登入姓名查詢'
+                : null,
             action: Text(
               '${all.length} 筆',
               style: theme.textTheme.bodyMedium?.copyWith(
