@@ -22,15 +22,14 @@
 5. `python3 tool/check_apk.py build/app/outputs/flutter-apk/app-debug.apk`
 6. `python3 tool/publish_preview.py --apk build/app/outputs/flutter-apk/app-debug.apk --version X.Y.Z`
 7. 給使用者下載連結（`publish_preview.py` 會自動只保留最新 3 版，可以用 `--keep` 調整）：`http://<preview-server>:8080/NIU-Life-X.Y.Z-preview.apk`
-
-下載伺服器是 systemd 的 `niu-downloads.service`（`/etc/systemd/system/`），用 `python3 -m http.server 8080` 提供 `/srv/niu-downloads`，以 `DynamicUser` 唯讀執行，開機自動啟動。連結打不開時先查 `systemctl status niu-downloads`。這個資料夾整個對外公開，不要放機密。
+8. `flutter build appbundle --release`，上傳到 Play internal 軌道（步驟見下節）。**每個新版本都要推。**
 
 ## Release 簽章與 Play 上傳
 
 - Upload key 在 repo 外面：`/root/.config/niulife-signing/upload-keystore.jks`，`key.properties` 也在同一個資料夾，密碼存在 `key.properties` 裡，權限是 600。可以用環境變數 `NIULIFE_KEY_PROPERTIES` 改路徑；找不到檔案時，release 會退回 debug 簽章。
 - Upload key 的 SHA-256 指紋：`95:04:DD:13:D3:38:D6:E5:7C:83:89:42:9F:B0:A0:AB:25:4E:F1:1F:95:CE:AB:DC:5E:4B:B4:04:46:C8:4B:FA`。已經請使用者另外備份。
 - 已啟用 Play 應用程式簽署：發布用的金鑰由 Google 保管，這把只是 upload key。
-- 上傳流程：`flutter build appbundle --release`，然後用 MCP 依序 `edits_insert` → `bundles_upload` → `tracks_update`（internal，status `completed`）→ `edits_commit`。
+- 上傳流程（每個新版本都要做）：`flutter build appbundle --release`，然後用 MCP 依序 `edits_insert` → `bundles_upload` → `tracks_update`（internal，status `completed`）→ `edits_commit`。
 
 其他慣例：
 
