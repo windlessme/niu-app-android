@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:html/parser.dart' as html;
 import 'package:niu_mobile/core/session/campus_session.dart';
 import 'package:niu_mobile/features/demo/demo_services.dart';
 import 'package:niu_mobile/features/mail/mail_body_view.dart';
@@ -185,6 +186,30 @@ void main() {
       );
       expect(blocked, isNot(contains('tracker.example')));
       expect(blocked, contains('ms.niu.edu.tw/api/mails'));
+    });
+
+    test('pictures keep their shape when narrowed', () {
+      final word = html
+          .parse(
+            sanitizeMailHtml(
+              '<img src="a" width=624 height=312 '
+              'style="width:6.5in;height:3.25in">'
+              '<img src="b" width="800" height="400">'
+              '<img src="c" style="width:100%;height:200px">'
+              '<img src="d" height="20">',
+            ),
+          )
+          .querySelectorAll('img');
+      expect(
+        word[0].attributes['style'],
+        'width:6.5in;aspect-ratio:auto 6.5 / 3.25',
+      );
+      expect(word[0].attributes['height'], isNull);
+      expect(word[1].attributes['style'], 'aspect-ratio:auto 800 / 400');
+      expect(word[1].attributes['width'], '800');
+      expect(word[2].attributes['style'], 'width:100%');
+      // Only a height: nothing to narrow it by, so it stays.
+      expect(word[3].attributes['height'], '20');
     });
   });
 

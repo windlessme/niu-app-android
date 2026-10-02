@@ -1,6 +1,6 @@
 # HANDOFF
 
-給接手的 Claude Code session。最後更新：2026-10-01。目前版本：**0.13.13+74**。
+給接手的 Claude Code session。最後更新：2026-10-01。目前版本：**0.13.14+75**。
 
 ## 專案概況
 
@@ -52,6 +52,7 @@
 | 0.13.11 | `e6f8407` | 校園信箱（全原生，見下節） |
 | 0.13.12 | `d95e17b` | 修好讀信顯示、刪除和移動誤報失敗；右上角改成 App 內的學校信箱網頁 |
 | 0.13.13 | `5521874` | 寬版信件縮到螢幕寬度，加「原始大小」全螢幕檢視；信件列表改成分頁 |
+| 0.13.14 | （本次） | 修好信件圖片在窄螢幕上變形 |
 
 另外：
 
@@ -147,6 +148,7 @@
   - 寬版信件會用 CSS `zoom` 縮小到螢幕寬度。**Android WebView 的 `innerWidth` 會被寬內容撐大**，所以畫面寬度改由 Flutter 端量好，用 `VIEW_WIDTH` 注入頁面。
   - 縮小時信件上方會顯示「原始大小」，打開 `MailOriginalScreen`：全螢幕顯示，可以雙指縮放。
   - 信件列表改成每頁 20 封，用上一頁、下一頁切換，點頁碼可以跳頁。原本的捲到底自動載入已經拿掉。
+- 0.13.14：Word／Outlook 產生的信會把圖片寫成行內 `style="width:6.5in;height:3.2in"`，優先權高過 `height:auto`，被 `max-width` 縮窄後就變形。`sanitizeMailHtml` 現在只要圖片有寬度，就拿掉固定高度，改用 `aspect-ratio: auto w / h`；CSS 另外加 `object-fit:contain` 當保險。已在 Chrome 以 390px 寬驗證各種寫法的比例都正確。
 - 這台機器有 Android 模擬器：`/opt/android-sdk/emulator/emulator -avd niu_api36 -no-window -gpu swiftshader_indirect`，可以用示範帳號登入測試 UI。
 
 ## 重要決策
