@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/next_root" android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:gravity="center_vertical" android:padding="14dp"
+    android:background="@drawable/widget_background" android:contentDescription="下一堂課，點一下開啟課表">
+    <TextView android:id="@+id/next_label" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="下一堂" android:textColor="@color/widget_glyph" android:textSize="12sp"
+        android:textStyle="bold" android:maxLines="1" android:ellipsize="end" />
+    <TextView android:id="@+id/next_title" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="4dp" android:text="課表" android:textColor="@color/widget_text"
+        android:textSize="17sp" android:textStyle="bold" android:maxLines="2" android:ellipsize="end" />
+    <TextView android:id="@+id/next_detail" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="4dp" android:text="" android:textColor="@color/widget_text_secondary"
+        android:textSize="13sp" android:maxLines="2" android:ellipsize="end" />
+</LinearLayout>

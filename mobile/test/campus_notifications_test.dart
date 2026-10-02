@@ -30,11 +30,23 @@ void main() {
   late CampusSession session;
   late FakeGateway gateway;
 
+  // What reached the native schedule channel (the device timetable copy).
+  final native = <String>[];
   setUp(() async {
     session = CampusSession(vault: MemoryVault(), platformCleanup: []);
     await session.enterDemo();
     gateway = FakeGateway();
+    native.clear();
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(ScheduleGateway.channel, (call) async {
+          native.add(call.method);
+          return null;
+        });
   });
+  tearDown(
+    () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(ScheduleGateway.channel, null),
+  );
   tearDown(() => session.dispose());
 
   CampusNotifications notifications({DateTime Function()? clock}) =>
@@ -103,16 +115,6 @@ void main() {
 
   test('the in-class notice saves the timetable before switching on', () async {
     SharedPreferences.setMockInitialValues({});
-    final native = <String>[];
-    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-        .setMockMethodCallHandler(ScheduleGateway.channel, (call) async {
-          native.add(call.method);
-          return null;
-        });
-    addTearDown(
-      () => TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(ScheduleGateway.channel, null),
-    );
     final clock = DateTime(2026, 10, 2, 9, 30);
     await notifications(clock: () => clock).setClassNow(true);
     expect(native, contains('saveSnapshot'));
@@ -125,5 +127,13 @@ void main() {
     );
     await notifications().setClassNow(false);
     expect(gateway.classNow, isFalse);
+  });
+
+  test('the timetable reaches the device even with reminders off', () async {
+    // The home-screen widgets read the device copy.
+    SharedPreferences.setMockInitialValues({});
+    final clock = DateTime(2026, 10, 2, 9, 30);
+    await notifications(clock: () => clock).refresh();
+    expect(native, contains('saveSnapshot'));
   });
 }

@@ -1076,7 +1076,7 @@ class _SubmitSheet extends StatelessWidget {
             const SizedBox(height: NiuSpacing.md),
             const NiuBanner(
               tone: NiuTone.neutral,
-              message: '送出後會進入學校審核，不代表已核准。',
+              message: '送出後會進入學校審核，無法在 App 內撤回。',
             ),
             const SizedBox(height: NiuSpacing.lg),
             Row(

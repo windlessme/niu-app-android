@@ -109,11 +109,11 @@ class CampusNotifications {
         failure ??= error;
       }
     }
+    // The widgets, class reminders and the in-class notice all read the
+    // device copy, so keep it current whenever the timetable is known.
     try {
-      if ((await gateway.reminderStatus()).enabled) {
-        current();
-        await _saveSchedule();
-      }
+      current();
+      await _saveSchedule();
     } catch (error) {
       failure ??= error;
     }
