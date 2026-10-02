@@ -353,4 +353,41 @@ assert.equal(eval(script),null);eval(script);assert.equal(clicks,1);
       session.dispose();
     });
   }
+
+  testWidgets('one refresh reads totals and records together', (tester) async {
+    final session = CampusSession(vault: MemoryVault(), platformCleanup: []);
+    await session.enterDemo();
+    addTearDown(session.dispose);
+    var reads = 0;
+    final observer = _PushCounter(() => reads++);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: NiuTheme.light,
+        navigatorObservers: [observer],
+        home: LeaveScreen(session: session),
+      ),
+    );
+    await tester.pumpAndSettle();
+    // First visit with no cache reads both parts.
+    expect(reads, 2);
+    expect(find.text('事假'), findsWidgets);
+
+    // A single control, not one per section.
+    expect(find.byTooltip('更新請假資料'), findsOneWidget);
+    expect(find.byTooltip('更新統計'), findsNothing);
+    expect(find.widgetWithText(TextButton, '更新'), findsNothing);
+
+    await tester.tap(find.byTooltip('更新請假資料'));
+    await tester.pumpAndSettle();
+    expect(reads, 4);
+  });
+}
+
+class _PushCounter extends NavigatorObserver {
+  _PushCounter(this.onPush);
+  final VoidCallback onPush;
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    if (previousRoute != null) onPush();
+  }
 }
