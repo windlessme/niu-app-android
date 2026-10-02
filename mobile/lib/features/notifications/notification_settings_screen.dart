@@ -94,8 +94,26 @@ class _NotificationSettingsScreenState
     }
   }
 
-  Widget _switch(bool value, ValueChanged<bool> onChanged) =>
-      Switch(value: value, onChanged: loaded && !busy ? onChanged : null);
+  /// A setting row that toggles from anywhere on it, not just the switch.
+  Widget _switchRow({
+    required IconData icon,
+    required NiuHue hue,
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    final enabled = loaded && !busy;
+    return NiuRow(
+      icon: icon,
+      hue: hue,
+      title: title,
+      subtitle: subtitle,
+      chevron: false,
+      onTap: enabled ? () => onChanged(!value) : null,
+      trailing: Switch(value: value, onChanged: enabled ? onChanged : null),
+    );
+  }
 
   @override
   Widget build(BuildContext context) => NiuScrollPage(
@@ -103,75 +121,68 @@ class _NotificationSettingsScreenState
     children: [
       NiuGroup(
         children: [
-          NiuRow(
+          _switchRow(
             icon: Icons.assignment_turned_in_outlined,
             hue: NiuHue.blue,
             title: '作業死線通知',
             subtitle: 'M 園區作業截止前一天提醒',
-            trailing: _switch(
-              assignments,
-              (value) => _toggle(
-                value,
-                (v) => assignments = v,
-                (v) => widget.notifications.setEnabled(
-                  CampusNotifications.assignmentsKey,
-                  v,
-                ),
-                '已儲存設定，但暫時無法取得 M 園區作業',
+            value: assignments,
+            onChanged: (value) => _toggle(
+              value,
+              (v) => assignments = v,
+              (v) => widget.notifications.setEnabled(
+                CampusNotifications.assignmentsKey,
+                v,
               ),
+              '已儲存設定，但暫時無法取得 M 園區作業',
             ),
           ),
-          NiuRow(
+          _switchRow(
             icon: Icons.event_note_outlined,
             hue: NiuHue.pink,
             title: '重要日期通知',
             subtitle: '學年行事曆重要日期前一天提醒',
-            trailing: _switch(
-              calendar,
-              (value) => _toggle(
-                value,
-                (v) => calendar = v,
-                (v) => widget.notifications.setEnabled(
-                  CampusNotifications.calendarKey,
-                  v,
-                ),
-                '已儲存設定，但暫時無法讀取行事曆',
+            value: calendar,
+            onChanged: (value) => _toggle(
+              value,
+              (v) => calendar = v,
+              (v) => widget.notifications.setEnabled(
+                CampusNotifications.calendarKey,
+                v,
               ),
+              '已儲存設定，但暫時無法讀取行事曆',
             ),
           ),
-          NiuRow(
+          _switchRow(
             icon: NiuIcons.notifications,
             hue: NiuHue.orange,
             title: '上課前提醒',
             subtitle: '每週固定於上課前 10 分鐘提醒',
-            trailing: _switch(
-              classes,
-              (value) => _toggle(value, (v) => classes = v, (v) async {
-                try {
-                  await widget.notifications.setClassReminders(v);
-                } catch (_) {
-                  if (mounted) setState(() => classes = !v);
-                  rethrow;
-                }
-              }, '無法開啟上課提醒，請先開啟課表並確認已連線'),
-            ),
+            value: classes,
+            onChanged: (value) => _toggle(value, (v) => classes = v, (v) async {
+              try {
+                await widget.notifications.setClassReminders(v);
+              } catch (_) {
+                if (mounted) setState(() => classes = !v);
+                rethrow;
+              }
+            }, '無法開啟上課提醒，請先開啟課表並確認已連線'),
           ),
-          NiuRow(
+          _switchRow(
             icon: Icons.timelapse_rounded,
             hue: NiuHue.teal,
             title: '上課中通知',
             subtitle: '上課時顯示課名、教室與下課倒數',
-            trailing: _switch(
-              classNow,
-              (value) => _toggle(value, (v) => classNow = v, (v) async {
-                try {
-                  await widget.notifications.setClassNow(v);
-                } catch (_) {
-                  if (mounted) setState(() => classNow = !v);
-                  rethrow;
-                }
-              }, '無法開啟上課中通知，請先開啟課表並確認已連線'),
-            ),
+            value: classNow,
+            onChanged: (value) =>
+                _toggle(value, (v) => classNow = v, (v) async {
+                  try {
+                    await widget.notifications.setClassNow(v);
+                  } catch (_) {
+                    if (mounted) setState(() => classNow = !v);
+                    rethrow;
+                  }
+                }, '無法開啟上課中通知，請先開啟課表並確認已連線'),
           ),
         ],
       ),
