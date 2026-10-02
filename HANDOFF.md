@@ -1,6 +1,6 @@
 # HANDOFF
 
-給接手的 Claude Code session。最後更新：2026-10-01。目前版本：**0.13.16+77**。
+給接手的 Claude Code session。最後更新：2026-10-01。目前版本：**0.13.17+78**。
 
 ## 專案概況
 
@@ -29,7 +29,7 @@
 - Upload key 在 repo 外面：`/root/.config/niulife-signing/upload-keystore.jks`，`key.properties` 也在同一個資料夾，密碼存在 `key.properties` 裡，權限是 600。可以用環境變數 `NIULIFE_KEY_PROPERTIES` 改路徑；找不到檔案時，release 會退回 debug 簽章。
 - Upload key 的 SHA-256 指紋：`95:04:DD:13:D3:38:D6:E5:7C:83:89:42:9F:B0:A0:AB:25:4E:F1:1F:95:CE:AB:DC:5E:4B:B4:04:46:C8:4B:FA`。已經請使用者另外備份。
 - 已啟用 Play 應用程式簽署：發布用的金鑰由 Google 保管，這把只是 upload key。
-- 目前 internal 軌道上是 **0.13.16 (77)**。release 名稱用 `X.Y.Z (versionCode)`，附一句 zh-TW 版本說明。
+- 目前 internal 軌道上是 **0.13.17 (78)**。release 名稱用 `X.Y.Z (versionCode)`，附一句 zh-TW 版本說明。
 - 上傳流程（每個新版本都要做）：`flutter build appbundle --release`，然後用 MCP 依序 `edits_insert` → `bundles_upload` → `tracks_update`（internal，status `completed`）→ `edits_commit`。
 
 其他慣例：
@@ -57,6 +57,7 @@
 | 0.13.14 | `08b780f` | 修好信件圖片在窄螢幕上變形 |
 | 0.13.15 | `695a652` | 首頁／課表／M 園區可左右滑切換並保留狀態，返回鍵先回首頁；課程詳情分頁可左右滑 |
 | 0.13.16 | `091abb9` | 修好成績三個分頁都卡在「請在學校網頁完成驗證」；期中／學期成績改讀結果頁 |
+| 0.13.17 | （本次） | 成績、在學證明加快取（`dfca5eb`）；課表、M 園區的標題和按鈕放同一列，拿掉上方留白 |
 
 另外：
 
@@ -170,7 +171,7 @@
   2. 首頁的姓名出現兩次（左上角和問候語）。
   3. 首頁今天的課上完後，只顯示「今天沒有接下來的課」，可以改成顯示明天第一堂。
   4. M 園區的課程列表和課程詳情會顯示內部代碼（例如 `1151_B3E0101A`），對使用者來說是雜訊。
-  5. 主分頁的大標題上方留白很多（`SliverAppBar.large`）。
+  5. ~~主分頁的大標題上方留白很多~~：0.13.17 已處理。`NiuScrollPage(large: true)` 改成單列的 `SliverAppBar`，粗體標題（`headlineSmall`）和按鈕放同一列。
   6. 請假頁有兩個重新整理按鈕（統計和紀錄各一個）。
   7. 郵件包裹要先填收件人才能查詢，可以預先帶入本人姓名。
 
@@ -186,9 +187,9 @@
 - 歷年成績的選單會導到 `MenuRedirect.aspx`，再用 `window.open` 開 `ccsys.niu.edu.tw/MvcTeam/Tutor/StudentCourseScoreSso?GUID=…`（App 的 `onCreateWindow` 會在同一個 WebView 載入），最後落在 `StudentCourseScore`，讀 `#accordion修課紀錄`。一年級上學期的帳號，這頁本來就是空的。
 - 驗證方式：用使用者提供的 acade cookie，以 headless Chrome 透過 DevTools Protocol 重現 App 的輪詢流程（導覽、檢查、點選單、擷取），三個分頁都能在 2 到 5 秒內讀到資料。**還沒在 App 裡用真實帳號實測過**；App 是用 SSO 換 GUID 登入，沒辦法直接帶 cookie 進去。
 
-## 尚未發布（下個版本一起發）
+## 成績與在學證明快取（0.13.17）
 
-- **成績、在學證明加快取**（使用者要求先 commit、不發版）：
+- 成績、在學證明加了快取：
   - `PortalSnapshotCache`（`lib/core/session/portal_snapshot_cache.dart`）存在 vault 的 `portalCache`，綁帳號，登出時清掉。key 有 `grades.midterm`、`grades.finalTerm`、`grades.history`、`registration`。
   - `AcademicPortalScreen` 新增 `cacheKey`：打開時先顯示上次的資料，上方用 `NiuSyncStatus` 顯示「正在更新」，背景照常向學校讀取，讀到後換成新資料並更新快取。讀取失敗、逾時或學校要求登入時，保留舊資料並顯示「更新失敗，顯示上次的資料」和「再試一次」。沒有快取時，行為和以前一樣。
   - 在學證明的 PDF 是直接向 ccsys 的 `StudyProved/{學號}` 下載，不靠 WebView session，所以顯示快取時也能用。

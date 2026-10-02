@@ -58,6 +58,11 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('課表內容'), findsOneWidget);
       expect(tester.takeException(), isNull);
+      // The tab title shares the action row; content starts right below it.
+      expect(
+        tester.getTopLeft(find.text('課表內容')).dy,
+        lessThan(kToolbarHeight + NiuSpacing.xl),
+      );
       // Tab roots have no back arrow; the navigation bar switches tabs.
       expect(find.byTooltip('返回'), findsNothing);
       for (final label in ['首頁', 'M 園區']) {

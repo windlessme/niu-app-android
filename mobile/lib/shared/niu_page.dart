@@ -85,7 +85,8 @@ class NiuAppBar extends StatelessWidget implements PreferredSizeWidget {
 
 /// The canonical page: a collapsing Material top bar over a padded list.
 ///
-/// Tab roots use [large] titles; secondary pages collapse from a medium title.
+/// Tab roots use a [large] bold title on the action row; secondary pages
+/// collapse from a medium title.
 /// Content is laid out as [children] with the shared gutter, or as raw
 /// [slivers] when a page needs lazy lists.
 class NiuScrollPage extends StatelessWidget {
@@ -128,11 +129,23 @@ class NiuScrollPage extends StatelessWidget {
     final bottomInset = bottomBar == null
         ? (NiuSpacing.xxl + systemInset).clamp(NiuSpacing.huge, double.infinity)
         : NiuSpacing.xxl;
+    // Tab roots put a bold title on the action row: a separate large-title
+    // row would leave a band of empty space above every tab's content.
     final header = large
-        ? SliverAppBar.large(
+        ? SliverAppBar(
+            pinned: true,
             automaticallyImplyLeading: false,
             leading: showBack ? const NiuBackButton() : null,
-            title: Semantics(header: true, child: Text(title)),
+            titleSpacing: showBack ? NiuSpacing.xs : NiuSpacing.gutter,
+            title: Semantics(
+              header: true,
+              child: Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+            ),
             actions: [
               ...actions,
               const SizedBox(width: NiuSpacing.xs),
@@ -171,7 +184,7 @@ class NiuScrollPage extends StatelessWidget {
     );
     if (onRefresh != null) {
       scroll = RefreshIndicator(
-        edgeOffset: large ? 152 : 112,
+        edgeOffset: large ? kToolbarHeight : 112,
         onRefresh: onRefresh!,
         child: scroll,
       );
