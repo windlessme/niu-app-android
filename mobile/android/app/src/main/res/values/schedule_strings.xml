@@ -1,5 +1,12 @@
 <resources>
-    <string name="shortcut_attendance">出缺席</string>
-    <string name="shortcut_library">圖書館</string>
+    <string name="shortcut_attendance">點名</string>
+    <string name="shortcut_attendance_long">快速點名</string>
+    <string name="shortcut_schedule">課表</string>
+    <string name="shortcut_moodle">M 園區</string>
+    <string name="shortcut_library">入館碼</string>
+    <string name="shortcut_library_long">圖書館入館碼</string>
+    <string name="quick_widget_label">快捷列</string>
+    <string name="schedule_widget_label">今日課表</string>
     <string name="widget_description">宜大今日課表，點一下開啟完整課表</string>
+    <string name="quick_widget_description">一鍵開啟點名、課表、M 園區與圖書館入館碼</string>
 </resources>

@@ -47,10 +47,17 @@ class MainActivity : FlutterActivity() {
                             ScheduleReminders.reschedule(this)
                             result.success(!enabled || ScheduleReminders.permitted(this))
                         }
+                        "setClassNow" -> {
+                            val enabled = call.argument<Boolean>("enabled") ?: false
+                            ScheduleStore.prefs(this).edit().putBoolean(ClassInProgress.key, enabled).apply()
+                            ClassInProgress.refresh(this)
+                            result.success(!enabled || ScheduleReminders.permitted(this))
+                        }
                         "reminderStatus" -> {
                             val snapshot = ScheduleStore.load(this)
                             result.success(mapOf(
                                 "enabled" to ScheduleStore.prefs(this).getBoolean("reminders", false),
+                                "classNow" to ScheduleStore.prefs(this).getBoolean(ClassInProgress.key, false),
                                 "permitted" to ScheduleReminders.permitted(this),
                                 "semesterStart" to snapshot?.start?.toString(),
                                 "semesterEnd" to snapshot?.end?.toString(),
@@ -99,6 +106,7 @@ class MainActivity : FlutterActivity() {
     override fun onResume() {
         super.onResume()
         ScheduleReminders.reschedule(this)
+        ClassInProgress.refresh(this)
         CampusNotifications.reschedule(this)
         ScheduleWidget.refresh(this)
     }
@@ -108,6 +116,7 @@ class MainActivity : FlutterActivity() {
             permissionResult?.success(ScheduleReminders.permitted(this))
             permissionResult = null
             ScheduleReminders.reschedule(this)
+            ClassInProgress.refresh(this)
         }
     }
 }

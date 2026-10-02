@@ -64,6 +64,11 @@ class ScheduleGateway {
       }) ??
       false;
 
+  /// The ongoing notification while a class is under way.
+  Future<bool> setClassNow({required bool enabled}) async =>
+      await channel.invokeMethod<bool>('setClassNow', {'enabled': enabled}) ??
+      false;
+
   /// Class reminder switch and the semester dates saved on this device.
   Future<ReminderStatus> reminderStatus() async {
     final data =
@@ -71,6 +76,7 @@ class ScheduleGateway {
         const {};
     return ReminderStatus(
       enabled: data['enabled'] == true,
+      classNow: data['classNow'] == true,
       permitted: data['permitted'] == true,
       semesterStart: data['semesterStart'] as String?,
       semesterEnd: data['semesterEnd'] as String?,
@@ -91,10 +97,11 @@ class ReminderStatus {
   const ReminderStatus({
     required this.enabled,
     required this.permitted,
+    this.classNow = false,
     this.semesterStart,
     this.semesterEnd,
   });
-  final bool enabled, permitted;
+  final bool enabled, permitted, classNow;
   final String? semesterStart, semesterEnd;
 }
 

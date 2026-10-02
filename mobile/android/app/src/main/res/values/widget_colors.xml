@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widget and shortcut colours follow the app palette (NiuColors). -->
+<resources>
+    <color name="widget_background">#FFFFFF</color>
+    <color name="widget_text">#15171C</color>
+    <color name="widget_text_secondary">#5A5F6B</color>
+    <color name="widget_tile">#E5EEFC</color>
+    <color name="widget_glyph">#0A62D0</color>
+    <color name="shortcut_background">#E5EEFC</color>
+    <color name="shortcut_glyph">#0A62D0</color>
+</resources>
