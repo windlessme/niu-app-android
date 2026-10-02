@@ -1,6 +1,6 @@
 # HANDOFF
 
-給接手的 Claude Code session。最後更新：2026-10-01。目前版本：**1.0.2+83**。
+給接手的 Claude Code session。最後更新：2026-10-01。目前版本：**1.0.3+84**。
 
 ## 專案概況
 
@@ -30,7 +30,7 @@
 - Firebase 設定檔（`google-services.json`，專案 `niu-life-ac16e`）也放在 repo 外：`/root/.config/niulife-firebase/google-services.json`，可以用 `NIULIFE_GOOGLE_SERVICES` 改路徑。建置時 Gradle 會把它複製到 `android/app/`（已加進 gitignore）並套用 Google Services 外掛；找不到檔案時照常建置，但 Analytics 會停用。
 - Upload key 的 SHA-256 指紋：`95:04:DD:13:D3:38:D6:E5:7C:83:89:42:9F:B0:A0:AB:25:4E:F1:1F:95:CE:AB:DC:5E:4B:B4:04:46:C8:4B:FA`。已經請使用者另外備份。
 - 已啟用 Play 應用程式簽署：發布用的金鑰由 Google 保管，這把只是 upload key。
-- 目前 internal 軌道上是 **1.0.2 (83)**。正式版由使用者在 Play Console 從 internal 升級（Claude 推 production 會被權限擋下，屬正常）。release 名稱用 `X.Y.Z (versionCode)`，附一句 zh-TW 版本說明。
+- 目前 internal 軌道上是 **1.0.3 (84)**。正式版由使用者在 Play Console 從 internal 升級（Claude 推 production 會被權限擋下，屬正常）。release 名稱用 `X.Y.Z (versionCode)`，附一句 zh-TW 版本說明。
 - 上傳流程（每個新版本都要做）：`flutter build appbundle --release`，然後用 MCP 依序 `edits_insert` → `bundles_upload` → `tracks_update`（internal，status `completed`）→ `edits_commit`。
 
 其他慣例：
@@ -65,6 +65,7 @@
 | 1.0.0 | `3cfef47` | 第一個正式版，內容同 0.13.19 |
 | 1.0.1 | `2c6f051` | App 捷徑改為點名／課表／M 園區／入館碼並換圖示；新增「快捷列」小工具；上課中通知；上課提醒改為逐步逼近的鬧鐘；刪除公車殘留 |
 | 1.0.2 | `efff9bc` | 修好快速點名冷啟動停在 M 園區；課表小工具改為總是讀得到課表；新增「下一堂課」小工具，「今日課表」加上快速點名與入館碼按鈕；請假確認提示改文字 |
+| 1.0.3 | （本次） | 通知設定的開關整列都可以點 |
 
 另外：
 
@@ -244,7 +245,7 @@
 
 - 通知、In-App Updates 都**沒在實機上測過**。In-App Updates 要用 Play 內部測試軌道，而且需要兩個不同的 versionCode 才測得出來。
 - `NiuSection` 改成基線對齊、`NiuRow` 的值改成填滿空間，都會影響全 App。只用測試環境渲染確認過幾個畫面。
-- 開關（Switch）在關閉狀態時看不到軌道外框，只剩灰色圓點。這是主題原本的樣式，還沒處理。
+- 開關（Switch）在關閉狀態時看不到軌道外框，只剩灰色圓點。這是主題原本的樣式，還沒處理。（通知設定和統計開關都已改成整列可點。）
 - 行事曆資料的網址指向 `qian403/NIU-app`，不是本 repo（`calendar_repository.dart` 的 `baseUrl`）。要不要改成自己維護，還沒決定。
 
 ## 可以接著做的事
