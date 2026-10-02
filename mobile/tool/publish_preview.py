@@ -12,6 +12,7 @@ parser.add_argument("--apk", type=Path, required=True)
 parser.add_argument("--version", required=True)
 parser.add_argument("--destination", type=Path, default=Path("/srv/niu-downloads"))
 parser.add_argument("--apksigner", default="/opt/android-sdk/build-tools/36.0.0/apksigner")
+parser.add_argument("--keep", type=int, default=3, help="previews to keep, newest first")
 args = parser.parse_args()
 if not all(c.isalnum() or c in ".-_" for c in args.version):
     raise SystemExit("Invalid version")
@@ -37,4 +38,21 @@ page = f'''<!doctype html><html lang="zh-Hant"><meta charset="utf-8">
 <p>此為開發測試版本，校務登入及各項功能仍需真實帳號與裝置驗證。</p>
 <h3>檔案 SHA-256</h3><code>{digest}</code></html>'''
 (args.destination / "index.html").write_text(page)
+
+
+
+def version_key(path):
+    """NIU-Life-0.13.10-preview.apk sorts after 0.13.9."""
+    raw = path.name[len("NIU-Life-"):-len("-preview.apk")]
+    return [int(part) if part.isdigit() else part for part in raw.replace("-", ".").split(".")]
+
+
+# Each preview is ~200 MB; older ones are dropped with their checksums.
+previews = sorted(args.destination.glob("NIU-Life-*-preview.apk"), key=version_key)
+for old in previews[: max(0, len(previews) - max(args.keep, 1))]:
+    if old.name == filename:
+        continue
+    old.unlink()
+    old.with_name(f"{old.name}.sha256").unlink(missing_ok=True)
+metadata["kept"] = [p.name for p in sorted(args.destination.glob("NIU-Life-*-preview.apk"), key=version_key)]
 print(json.dumps(metadata, indent=2))
