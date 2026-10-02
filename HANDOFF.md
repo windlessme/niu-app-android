@@ -1,6 +1,6 @@
 # HANDOFF
 
-給接手的 Claude Code session。最後更新：2026-10-01。目前版本：**1.0.3+84**。
+給接手的 Claude Code session。最後更新：2026-10-01。目前版本：**1.0.4+85**。
 
 ## 專案概況
 
@@ -30,7 +30,7 @@
 - Firebase 設定檔（`google-services.json`，專案 `niu-life-ac16e`）也放在 repo 外：`/root/.config/niulife-firebase/google-services.json`，可以用 `NIULIFE_GOOGLE_SERVICES` 改路徑。建置時 Gradle 會把它複製到 `android/app/`（已加進 gitignore）並套用 Google Services 外掛；找不到檔案時照常建置，但 Analytics 會停用。
 - Upload key 的 SHA-256 指紋：`95:04:DD:13:D3:38:D6:E5:7C:83:89:42:9F:B0:A0:AB:25:4E:F1:1F:95:CE:AB:DC:5E:4B:B4:04:46:C8:4B:FA`。已經請使用者另外備份。
 - 已啟用 Play 應用程式簽署：發布用的金鑰由 Google 保管，這把只是 upload key。
-- 目前 internal 軌道上是 **1.0.3 (84)**。正式版由使用者在 Play Console 從 internal 升級（Claude 推 production 會被權限擋下，屬正常）。release 名稱用 `X.Y.Z (versionCode)`，附一句 zh-TW 版本說明。
+- 目前 internal 軌道上是 **1.0.4 (85)**。正式版由使用者在 Play Console 從 internal 升級（Claude 推 production 會被權限擋下，屬正常）。release 名稱用 `X.Y.Z (versionCode)`，附一句 zh-TW 版本說明。
 - 上傳流程（每個新版本都要做）：`flutter build appbundle --release`，然後用 MCP 依序 `edits_insert` → `bundles_upload` → `tracks_update`（internal，status `completed`）→ `edits_commit`。
 
 其他慣例：
@@ -66,6 +66,7 @@
 | 1.0.1 | `2c6f051` | App 捷徑改為點名／課表／M 園區／入館碼並換圖示；新增「快捷列」小工具；上課中通知；上課提醒改為逐步逼近的鬧鐘；刪除公車殘留 |
 | 1.0.2 | `efff9bc` | 修好快速點名冷啟動停在 M 園區；課表小工具改為總是讀得到課表；新增「下一堂課」小工具，「今日課表」加上快速點名與入館碼按鈕；請假確認提示改文字 |
 | 1.0.3 | `c1d4634` | 通知設定的開關整列都可以點 |
+| 1.0.4 | `ed0c502`、（本次） | 升級 AGP 9.1.1／Gradle 9.3.1／Kotlin 2.4.0，啟用最佳化資源縮減；舊版 Android 也採用無邊框畫面 |
 
 另外：
 
@@ -233,6 +234,18 @@
   - 現在每次只設在剩餘時間的 1/1.75 處，響了之後再排更近的一次，最後一步不到一分鐘，最多晚 45 秒。
   - 不需要精準鬧鐘權限。Doze 仍可能延後。
 - 公車功能確定不做，`lib/features/bus` 和測試已刪除。
+
+## 建置工具（1.0.4）
+
+- 依 Play Console 的建議，升級到 Flutter 3.47.5 範本使用的版本：**AGP 9.1.1、Gradle 9.3.1、Kotlin 2.4.0**，google-services 外掛升到 4.4.4。Flutter 支援的 AGP 最高是 9.2，不要升到 9.3 以上。
+  - **升級建置工具時，`toolchain.json` 要一起改**，`tool/check_toolchain.py` 會比對，CI 也會檢查。
+  - Gradle wrapper 的 `distributionSha256Sum` 要用 Gradle 官方公布的值。
+  - AGP 9 預設開啟最佳化資源縮減（build 產物裡有 `optimized_processed_res`）。
+  - `flutter_inappwebview_android` 1.1.3（2024 年後就沒更新）還在用 `proguard-android.txt`，AGP 9 預設不允許，所以 `gradle.properties` 加了 `android.r8.proguardAndroidTxt.disallowed=false`。插件更新後就拿掉。
+  - `android.builtInKotlin=false`、`android.newDsl=false` 是 Flutter 遷移工具加的，先保留。
+- **無邊框畫面**：`MainActivity.onCreate` 呼叫 `WindowCompat.enableEdgeToEdge(window)`（需要 androidx.core 1.17.0），讓 Android 14 以下也跟 15 以上一樣畫到系統列底下。
+- 這台機器多了 Android 14 模擬器 `niu_api34`，可以測舊版 Android。release 版在上面驗證過：示範登入、主分頁、信件底部按鈕、設定頁捲到底，都沒有被系統列遮住。
+- 發版指令請整串用 `set -e`。曾經發生驗證失敗，但後面不同行的 commit／push 還是執行，結果推了一個 CI 會失敗的 commit（`ed0c502`）。
 
 ## 重要決策
 
