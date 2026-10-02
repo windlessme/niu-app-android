@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:niu_mobile/app/app.dart';
 import 'package:niu_mobile/app/providers.dart';
 import 'package:niu_mobile/features/academic_calendar/calendar_repository.dart';
+import 'package:niu_mobile/features/home/home_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class FixtureCalendarRepository implements CalendarRepository {
@@ -39,7 +40,17 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('行事曆'), 200);
+    // Scroll the home page, not the tab pager around it.
+    await tester.scrollUntilVisible(
+      find.text('行事曆'),
+      200,
+      scrollable: find
+          .descendant(
+            of: find.byType(CampusHomeScreen),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
     await tester.ensureVisible(find.text('行事曆'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('行事曆'));
