@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:niu_mobile/core/web/academic_portal_screen.dart';
 import 'package:niu_mobile/features/schedule/schedule_screen.dart';
@@ -65,6 +68,45 @@ void main() {
       expect(records.last.credits, 1.5);
     },
   );
+
+  test('term labels come from the results rows', () {
+    expect(GradeCourse.semesterLabel('115', '1'), '115 學年度 上學期');
+    expect(GradeCourse.semesterLabel(' 114 ', '2'), '114 學年度 下學期');
+    expect(GradeCourse.semesterLabel('1151', 'B3E0101A'), '');
+    expect(GradeCourse.semesterLabel('115', '4'), '');
+  });
+
+  test('term grades are read from the results page, once it has loaded', () {
+    // acade shows a query page (_01, also a #DataGrid) next to the results
+    // page (_02); only the one with a 成績 column holds the grades.
+    final result = Process.runSync('node', [
+      '-e',
+      '''
+const assert = require('node:assert/strict');
+const script = ${jsonEncode(gradeExtractScript(GradeMode.midterm))};
+const cell = t => ({innerText: t, textContent: t});
+function page(path, header, rows, readyState = 'complete') {
+  // The header row is <th> cells, so it has no <td>.
+  const trs = [[], ...rows].map(r => ({querySelectorAll: () => r.map(cell)}));
+  return {
+    URL: 'https://acade.niu.edu.tw/NIU/Application/GRD/GRD51/' + path,
+    readyState,
+    body: {innerText: ''},
+    querySelector: () => null,
+    querySelectorAll: s => s === '#DataGrid tr:first-child > *' ? header.map(cell) : s === '#DataGrid tr' ? trs : [],
+  };
+}
+const query = page('GRD5131_01.aspx', ['', '學年期', '系所名稱', '學號', '中文姓名'], [['詳', '1151', '資工系', 'B1', '王']]);
+const results = page('GRD5131_02.aspx', ['序號', '學年度', '學期', '選別', '中文課名', '成績'], [['1', '115', '1', '必修', '資料結構', '未上傳']], 'loading');
+global.window = {document: query, frames: [{document: results, frames: []}]};
+assert.equal(eval(script), null);
+results.readyState = 'complete';
+const value = JSON.parse(eval(script));
+assert.deepEqual(value.rows, [['1', '115', '1', '必修', '資料結構', '未上傳']]);
+''',
+    ]);
+    expect(result.exitCode, 0, reason: '${result.stderr}');
+  });
 
   test('four-value graduation fixture expands non-counted requirements', () {
     expect(GraduationData.normalizeHours(['1', '2', '3', '4']), [
