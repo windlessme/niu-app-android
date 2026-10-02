@@ -294,22 +294,13 @@ assert.equal(eval(script),null);eval(script);assert.equal(clicks,1);
         await tester.pumpAndSettle();
         final scroll = find.byType(Scrollable).first;
         await tester.scrollUntilVisible(
-          find.text('下一頁'),
+          find.text('更新紀錄'),
           100,
           scrollable: scroll,
         );
-        expect(
-          tester
-              .widget<TextButton>(find.widgetWithText(TextButton, '上一頁'))
-              .onPressed,
-          isNull,
-        );
-        expect(
-          tester
-              .widget<TextButton>(find.widgetWithText(TextButton, '下一頁'))
-              .onPressed,
-          isNull,
-        );
+        // A single page needs no pager.
+        expect(find.text('上一頁'), findsNothing);
+        expect(find.text('下一頁'), findsNothing);
         final position = tester.state<ScrollableState>(scroll).position;
         position.jumpTo(position.maxScrollExtent);
         await tester.pump();

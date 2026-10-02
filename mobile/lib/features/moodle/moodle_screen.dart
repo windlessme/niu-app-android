@@ -177,7 +177,7 @@ class _MoodleScreenState extends State<MoodleScreen> {
             message: error ?? '用學校帳號登入一次，就能在這裡看課程、公告、作業和成績。',
             action: FilledButton(
               onPressed: () async {
-                await Navigator.of(context).push<bool>(
+                await Navigator.of(context, rootNavigator: true).push<bool>(
                   MaterialPageRoute(builder: (_) => const LoginScreen()),
                 );
                 if (mounted) await restoreOrLogin();

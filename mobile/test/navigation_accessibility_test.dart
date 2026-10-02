@@ -15,25 +15,29 @@ void main() {
       addTearDown(tester.view.resetDevicePixelRatio);
       final router = GoRouter(
         routes: [
-          ShellRoute(
-            builder: (context, state, child) =>
-                CampusShell(path: state.uri.path, child: child),
-            routes: [
-              GoRoute(
-                path: '/',
-                builder: (_, _) => const Scaffold(body: Text('首頁內容')),
-              ),
-              GoRoute(
-                path: '/schedule',
-                builder: (_, _) => const NiuScrollPage(
-                  title: '課表',
-                  large: true,
-                  showBack: false,
-                  children: [Text('課表內容')],
+          CampusShell.route([
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/',
+                  builder: (_, _) => const Scaffold(body: Text('首頁內容')),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/schedule',
+                  builder: (_, _) => const NiuScrollPage(
+                    title: '課表',
+                    large: true,
+                    showBack: false,
+                    children: [Text('課表內容')],
+                  ),
+                ),
+              ],
+            ),
+          ]),
         ],
       );
       addTearDown(router.dispose);

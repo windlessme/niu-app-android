@@ -453,7 +453,7 @@ class _LeaveScreenState extends State<LeaveScreen> {
                     child: LeaveRecordContent(record: raw),
                   ),
                 ),
-              if (list is Map)
+              if (list is Map && pages > 1)
                 Row(
                   children: [
                     TextButton(

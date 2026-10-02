@@ -342,7 +342,7 @@ class _EventsScreenState extends State<EventsScreen> {
       actions: [
         NiuIconButton(
           tooltip: '同步活動',
-          icon: Icons.sync_rounded,
+          icon: NiuIcons.refresh,
           onPressed: syncing ? null : sync,
         ),
       ],
