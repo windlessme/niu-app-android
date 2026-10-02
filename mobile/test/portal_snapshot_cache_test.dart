@@ -100,4 +100,25 @@ void main() {
     await tester.pump(const Duration(seconds: 2));
     expect(find.text('無法取得資料'), findsOneWidget);
   });
+
+  testWidgets('a demo page counts as just updated', (tester) async {
+    session.account = null;
+    await session.enterDemo();
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: NiuTheme.light,
+        home: AcademicPortalScreen(
+          title: '成績',
+          session: session,
+          cacheKey: 'grades.history',
+          extractScript: 'null',
+          demoSnapshot: () => {'rows': []},
+          snapshotBuilder: (_, value) => const Text('示範成績'),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(find.text('示範成績'), findsOneWidget);
+    expect(find.text('尚未更新'), findsNothing);
+  });
 }

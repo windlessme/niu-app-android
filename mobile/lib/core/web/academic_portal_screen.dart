@@ -303,6 +303,7 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen>
     if (!mounted || current != generation) return;
     setState(() {
       snapshot = parsed;
+      snapshotAt = DateTime.now();
       loading = false;
       error = null;
     });

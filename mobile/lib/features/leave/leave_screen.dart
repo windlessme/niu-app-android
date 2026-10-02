@@ -44,9 +44,7 @@ class _LeaveScreenState extends State<LeaveScreen> {
     if (mounted && snapshots.isEmpty && error == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         if (!mounted || ModalRoute.of(context)?.isCurrent != true) return;
-        await open(keyName: 'statistics');
-        if (!mounted || !snapshots.containsKey('statistics')) return;
-        await open(keyName: 'list');
+        await refreshAll();
       });
     }
   }
@@ -58,13 +56,14 @@ class _LeaveScreenState extends State<LeaveScreen> {
     super.dispose();
   }
 
-  Future<void> open({
+  /// Reads one part from the school; true once it is saved.
+  Future<bool> open({
     String? keyName,
     Map<String, dynamic>? record,
     bool application = false,
     int page = 1,
   }) async {
-    if (busy || !session.hasLocalAccount) return;
+    if (busy || !session.hasLocalAccount) return false;
     if (application) {
       final applicationOwner = session.account;
       final applicationEpoch = session.coordinator.epoch;
@@ -88,7 +87,7 @@ class _LeaveScreenState extends State<LeaveScreen> {
           session.coordinator.epoch == applicationEpoch) {
         await open(keyName: 'list');
       }
-      return;
+      return false;
     }
     final owner = session.account!;
     final epoch = session.coordinator.epoch;
@@ -140,7 +139,7 @@ class _LeaveScreenState extends State<LeaveScreen> {
           ),
         ),
       );
-      if (value == null) return;
+      if (value == null) return false;
       repository.guard(epoch, owner);
       if (record != null && mounted) {
         if (!value.containsKey('workflow')) {
@@ -168,11 +167,24 @@ class _LeaveScreenState extends State<LeaveScreen> {
       };
       await repository.save(next, epoch, owner);
       if (mounted) setState(() => snapshots = next);
+      return true;
     } catch (_) {
       if (mounted) setState(() => error = '更新沒有完成，顯示上次的資料');
+      return false;
     } finally {
       if (mounted) setState(() => busy = false);
     }
+  }
+
+  /// One refresh for the page: totals, then the records page on screen.
+  /// Backing out of the first read skips the second.
+  Future<void> refreshAll() async {
+    final list = snapshots['list'];
+    final page = list is Map && list['data'] is Map
+        ? int.tryParse('${list['data']['page']}') ?? 1
+        : 1;
+    if (!await open(keyName: 'statistics') || !mounted) return;
+    await open(keyName: 'list', page: page);
   }
 
   Widget detail(
@@ -337,6 +349,14 @@ class _LeaveScreenState extends State<LeaveScreen> {
     }
     return NiuScrollPage(
       title: '請假',
+      actions: [
+        NiuIconButton(
+          icon: NiuIcons.refresh,
+          tooltip: '更新請假資料',
+          onPressed: busy ? null : refreshAll,
+        ),
+      ],
+      onRefresh: refreshAll,
       children: [
         if (error != null) ...[
           NiuBanner(tone: NiuTone.warning, message: error!),
@@ -357,12 +377,6 @@ class _LeaveScreenState extends State<LeaveScreen> {
                       unit: '節',
                       large: true,
                     ),
-                  ),
-                  NiuIconButton(
-                    icon: NiuIcons.refresh,
-                    tooltip: '更新統計',
-                    tonal: true,
-                    onPressed: busy ? null : () => open(keyName: 'statistics'),
                   ),
                 ],
               ),
@@ -387,10 +401,6 @@ class _LeaveScreenState extends State<LeaveScreen> {
         ),
         NiuSection(
           title: '請假紀錄',
-          action: TextButton(
-            onPressed: busy ? null : () => open(keyName: 'list'),
-            child: const Text('更新'),
-          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
