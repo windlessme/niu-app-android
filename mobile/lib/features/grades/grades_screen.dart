@@ -207,6 +207,7 @@ class _GradesScreenState extends State<GradesScreen> {
       onChanged: (value) => setState(() => mode = value),
     ),
     menuLabel: menus[mode],
+    cacheKey: 'grades.${mode.name}',
     extractScript: gradeExtractScript(mode),
     demoSnapshot: () => DemoData.grades(mode.name),
     snapshotBuilder: (context, value) {

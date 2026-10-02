@@ -13,6 +13,7 @@ import '../../features/authentication/school_reauthorization.dart';
 import '../../features/authentication/remember_school_login.dart';
 import '../../features/events/event_login_service.dart';
 import '../session/campus_session.dart';
+import '../session/portal_snapshot_cache.dart';
 import 'portal_policy.dart';
 import 'academic_portal_scripts.dart';
 
@@ -37,7 +38,12 @@ class AcademicPortalScreen extends StatefulWidget {
     this.loadTimeout = const Duration(seconds: 60),
     this.header,
     this.demoSnapshot,
+    this.cacheKey,
   });
+
+  /// Keeps the last snapshot under this key (see [PortalSnapshotCache]) and
+  /// shows it while a fresh one loads, or instead of an error.
+  final String? cacheKey;
 
   /// Review demo: the value this page's extraction would return. Without it,
   /// the page is unavailable in demo mode; no WebView is ever created.
@@ -91,6 +97,8 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen>
   bool eventLoginRequired = false;
   bool eventRecoveryAttempted = false;
   late String readRun;
+  CachedSnapshot? cached;
+  DateTime? snapshotAt;
 
   @override
   void initState() {
@@ -158,6 +166,7 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen>
       generation++;
       setState(() {
         snapshot = null;
+        cached = null;
         entry = null;
         error = '已登出，請重新登入。';
         loading = false;
@@ -216,6 +225,7 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen>
       await showDemo(current);
       return;
     }
+    unawaited(restoreCache(current));
     syncWork();
     menuClicked = false;
     try {
@@ -244,6 +254,32 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen>
         syncWork();
       }
     }
+  }
+
+  Future<void> restoreCache(int current) async {
+    final key = widget.cacheKey;
+    if (key == null || cached != null) return;
+    final owner = session.account;
+    final value = await PortalSnapshotCache.of(session).read(key);
+    if (!mounted ||
+        current != generation ||
+        value == null ||
+        session.account != owner) {
+      return;
+    }
+    setState(() => cached = value);
+  }
+
+  void saveCache(dynamic value) {
+    final key = widget.cacheKey;
+    final owner = session.account;
+    if (key == null || owner == null || value is! Map<String, dynamic>) return;
+    setState(() => cached = CachedSnapshot(DateTime.now(), value));
+    unawaited(
+      PortalSnapshotCache.of(
+        session,
+      ).write(key, value, epoch: epoch, owner: owner).catchError((_) {}),
+    );
   }
 
   Future<void> showDemo(int current) async {
@@ -500,8 +536,10 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen>
           if (widget.bridge) session.confirmAcademicSession(epoch);
           await widget.onSnapshot?.call(parsed, epoch);
           if (!mounted || current != generation || error != null) return;
+          saveCache(parsed);
           setState(() {
             snapshot = parsed;
+            snapshotAt = DateTime.now();
             loading = false;
             error = null;
           });
@@ -558,10 +596,14 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen>
   @override
   Widget build(BuildContext context) {
     final viewGeneration = generation;
+    // A fresh snapshot, or the cached one while that loads or fails.
+    final shown = snapshot ?? cached?.data;
+    final showContent =
+        shown != null && !schoolPage && widget.snapshotBuilder != null;
     final nativeCover =
-        !schoolPage &&
-        widget.extractScript != null &&
-        (snapshot == null || widget.snapshotBuilder == null);
+        !schoolPage && widget.extractScript != null && !showContent;
+    final stale = snapshot == null && cached != null;
+    final blocked = error != null || interactionRequired || eventLoginRequired;
     return Scaffold(
       appBar: NiuAppBar(
         title: widget.title,
@@ -634,9 +676,9 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen>
                 children: [
                   if (entry != null)
                     ExcludeSemantics(
-                      excluding: nativeCover,
+                      excluding: nativeCover || showContent,
                       child: IgnorePointer(
-                        ignoring: nativeCover,
+                        ignoring: nativeCover || showContent,
                         child: Offstage(
                           offstage:
                               snapshot != null &&
@@ -772,13 +814,38 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen>
                         ),
                       ),
                     ),
-                  if (snapshot != null &&
-                      !schoolPage &&
-                      widget.snapshotBuilder != null)
+                  if (showContent)
                     Positioned.fill(
                       child: ColoredBox(
                         color: Theme.of(context).scaffoldBackgroundColor,
-                        child: widget.snapshotBuilder!(context, snapshot),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            if (widget.cacheKey != null)
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  NiuSpacing.gutter,
+                                  NiuSpacing.xs,
+                                  NiuSpacing.gutter,
+                                  NiuSpacing.xs,
+                                ),
+                                child: NiuSyncStatus(
+                                  updatedAt: stale
+                                      ? cached!.updatedAt
+                                      : snapshotAt,
+                                  refreshing: stale && !blocked,
+                                  failed: stale && blocked,
+                                  offline: stale && session.isOffline,
+                                  onRetry: stale && error != null
+                                      ? start
+                                      : null,
+                                ),
+                              ),
+                            Expanded(
+                              child: widget.snapshotBuilder!(context, shown),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   if (nativeCover)
