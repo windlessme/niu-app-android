@@ -21,7 +21,7 @@
 4. `flutter build apk --debug`
 5. `python3 tool/check_apk.py build/app/outputs/flutter-apk/app-debug.apk`
 6. `python3 tool/publish_preview.py --apk build/app/outputs/flutter-apk/app-debug.apk --version X.Y.Z`
-7. 給使用者下載連結：`http://<preview-server>:8080/NIU-Life-X.Y.Z-preview.apk`
+7. 給使用者下載連結（`publish_preview.py` 會自動只保留最新 3 版，可以用 `--keep` 調整）：`http://<preview-server>:8080/NIU-Life-X.Y.Z-preview.apk`
 
 ## Release 簽章與 Play 上傳
 
