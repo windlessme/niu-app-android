@@ -13,7 +13,7 @@ import '../core/session/campus_session.dart';
 import '../features/academic_calendar/calendar_screen.dart';
 import '../features/authentication/login_screen.dart';
 import '../features/authentication/remember_school_login.dart';
-import '../features/attendance/attendance_screen.dart';
+import '../features/attendance/attendance_entry.dart';
 import '../features/events/events_screen.dart';
 import '../features/grades/grades_screen.dart';
 import '../features/graduation/graduation_screen.dart';
@@ -194,11 +194,9 @@ class _NiuAppState extends State<NiuApp> {
         builder: (_, _) => AuthGate(
           title: '點名',
           allowLocalAccount: true,
-          child: ListenableBuilder(
-            listenable: session,
-            builder: (_, _) => moodle == null
-                ? _moodleScreen(forAttendance: true)
-                : AttendanceScannerScreen(repository: moodle!),
+          child: AttendanceEntry(
+            restore: _restoreMoodle,
+            signIn: (_) => _moodleScreen(forAttendance: true),
           ),
         ),
       ),

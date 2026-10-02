@@ -63,7 +63,6 @@ internal object ClassInProgress {
         return null
     }
 
-    private fun clock(minute: Int) = "%02d:%02d".format(minute / 60, minute % 60)
 
     private fun show(c: Context, block: Block, end: Instant, next: Block?, now: Instant) {
         val manager = c.getSystemService(NotificationManager::class.java)
