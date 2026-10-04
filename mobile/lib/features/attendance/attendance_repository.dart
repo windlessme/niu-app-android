@@ -4,7 +4,7 @@ import 'package:html/parser.dart' as html;
 import '../moodle/moodle_repository.dart';
 import '../moodle/moodle_web_session.dart';
 import '../../core/demo/demo_data.dart';
-import '../demo/demo_services.dart';
+import '../moodle/moodle_demo.dart';
 
 enum AttendanceStatus { present, late, absent, leave, pending }
 

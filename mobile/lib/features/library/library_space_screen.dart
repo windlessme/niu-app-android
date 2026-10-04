@@ -5,7 +5,7 @@ import '../../core/session/campus_session.dart';
 import '../../core/time/campus_date.dart';
 import '../../shared/shared.dart';
 import '../authentication/remember_school_login.dart';
-import '../demo/demo_services.dart';
+import 'space_demo.dart';
 import 'library_space_session.dart';
 import 'space_booking_controller.dart';
 import 'space_models.dart';

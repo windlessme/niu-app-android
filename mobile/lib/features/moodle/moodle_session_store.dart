@@ -2,7 +2,7 @@ import 'dart:convert';
 import '../../core/network/school_clients.dart';
 import '../../core/session/campus_session.dart';
 import 'moodle_repository.dart';
-import '../demo/demo_services.dart';
+import 'moodle_demo.dart';
 
 /// One encrypted envelope prevents mixed-account token/private-token pairs.
 class MoodleSessionStore {

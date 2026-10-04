@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 import '../../core/session/campus_session.dart';
 import 'registration_data.dart';
-import '../demo/demo_services.dart';
+import '../../core/demo/demo_documents.dart';
 
 bool isCertificatePdf(int? status, String? contentType, List<int> bytes) =>
     status == 200 &&

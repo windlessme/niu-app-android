@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../shared/shared.dart';
-import 'events_screen.dart';
+import 'event_models.dart';
 
 /// Status text always comes from the school; missing values are never capacity.
 class EventStatusPill extends StatelessWidget {

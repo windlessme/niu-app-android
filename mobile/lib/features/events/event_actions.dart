@@ -5,6 +5,7 @@ import '../../core/session/campus_session.dart';
 import 'event_login_service.dart';
 import 'event_portal.dart';
 import 'events_screen.dart';
+import 'event_models.dart';
 
 /// Outcome of one register / save / cancel request.
 class EventActionResult {

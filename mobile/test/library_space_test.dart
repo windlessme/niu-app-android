@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:niu_mobile/core/session/campus_session.dart';
 import 'package:niu_mobile/core/time/campus_date.dart';
-import 'package:niu_mobile/features/demo/demo_services.dart';
+import 'package:niu_mobile/features/library/space_demo.dart';
 import 'package:niu_mobile/features/library/library_space_screen.dart';
 import 'package:niu_mobile/features/library/library_space_session.dart';
 import 'package:niu_mobile/features/library/space_booking_controller.dart';

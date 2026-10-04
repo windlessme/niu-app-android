@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:niu_mobile/features/events/events_screen.dart';
+import 'package:niu_mobile/features/events/event_models.dart';
 
 void main() {
   List<String> labels(String raw) =>
