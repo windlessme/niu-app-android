@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../shared/shared.dart';
 import 'leave_application_data.dart';
+import 'leave_widgets.dart';
 
 /// School period choices grouped by date, with per-day select all.
 class LeavePeriodSheet extends StatefulWidget {
@@ -64,7 +65,7 @@ class _LeavePeriodSheetState extends State<LeavePeriodSheet> {
                             children: [
                               Expanded(
                                 child: Text(
-                                  displayLeaveDate(entry.key),
+                                  leaveDayLabel(entry.key),
                                   style: theme.textTheme.titleSmall,
                                 ),
                               ),
@@ -93,8 +94,22 @@ class _LeavePeriodSheetState extends State<LeavePeriodSheet> {
                           children: [
                             for (final p in entry.value)
                               NiuRow(
-                                title: p.period,
-                                subtitle: p.course.isEmpty ? null : p.course,
+                                leading: _PeriodPill(
+                                  label: leavePeriodNumber(p.period) == null
+                                      ? p.period
+                                      : leavePeriodLabel([p.period]),
+                                  selected: chosen.contains(p.value),
+                                ),
+                                title: p.course.isEmpty ? '未列出課程' : p.course,
+                                subtitle:
+                                    [
+                                          p.teacher,
+                                          p.room,
+                                          leavePeriodTime(p.period),
+                                        ]
+                                        .where((v) => v.isNotEmpty)
+                                        .join(' · ')
+                                        .ifEmpty,
                                 chevron: false,
                                 onTap: () => setState(
                                   () => chosen.contains(p.value)
@@ -165,7 +180,11 @@ class LeaveSubmitSheet extends StatelessWidget {
                         ? displayLeaveDate(data.start)
                         : '${displayLeaveDate(data.start)} – ${displayLeaveDate(data.end)}',
                   ),
-                  NiuKeyValue(label: '節次', value: '${data.total ?? '-'} 節'),
+                  NiuKeyValue(label: '節次', value: '共 ${data.total ?? '-'} 節'),
+                  if (data.periodEntries.isNotEmpty) ...[
+                    const SizedBox(height: NiuSpacing.sm),
+                    LeavePeriodSchedule(entries: data.periodEntries),
+                  ],
                   const Divider(height: NiuSpacing.xl),
                   Text('事由', style: theme.textTheme.labelMedium),
                   const SizedBox(height: NiuSpacing.xs),
@@ -212,4 +231,38 @@ String leaveRangeSummary(String start, String end) {
   String day(DateTime d) => '${d.month}/${d.day}（${'一二三四五六日'[d.weekday - 1]}）';
   if (from == to) return day(from);
   return '${day(from)} – ${day(to)}・${to.difference(from).inDays + 1} 天';
+}
+
+/// The period number in the picker, filled once chosen.
+class _PeriodPill extends StatelessWidget {
+  const _PeriodPill({required this.label, required this.selected});
+  final String label;
+  final bool selected;
+  @override
+  Widget build(BuildContext context) {
+    final colors = NiuColors.of(context);
+    return Container(
+      width: 64,
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(
+        color: selected ? colors.accent : colors.fill,
+        borderRadius: BorderRadius.circular(NiuRadius.sm),
+      ),
+      child: Text(
+        label,
+        textAlign: TextAlign.center,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+          fontWeight: FontWeight.w700,
+          fontFeatures: tabularFigures,
+          color: selected ? colors.onAccent : colors.ink,
+        ),
+      ),
+    );
+  }
+}
+
+extension on String {
+  String? get ifEmpty => isEmpty ? null : this;
 }

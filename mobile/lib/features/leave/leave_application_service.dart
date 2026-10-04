@@ -218,6 +218,8 @@ class SchoolLeaveApplication implements LeaveApplicationGateway {
               date: row['date'] as String,
               period: row['period'] as String,
               course: row['course'] as String,
+              teacher: (row['teacher'] as String?) ?? '',
+              room: (row['room'] as String?) ?? '',
               selected: row['selected'] == true,
             ),
         ];
