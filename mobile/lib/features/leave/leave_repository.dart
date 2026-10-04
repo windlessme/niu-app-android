@@ -106,7 +106,10 @@ class LeaveRepository {
                         '簽核日期',
                         '關卡說明',
                         '簽核單位',
-                      ].any((key) => step[key] is! String),
+                      ].any((key) => step[key] is! String) ||
+                      ['簽核人', '簽核意見'].any(
+                        (key) => step.containsKey(key) && step[key] is! String,
+                      ),
                 ))) {
           throw const FormatException('Invalid workflow');
         }
@@ -339,8 +342,13 @@ const leaveWorkflowExtract = r'''
  const headers=Array.from(table.rows[0]?.cells||[],c=>clean(c.textContent));
  const fields=['簽核狀況','簽核日期','關卡說明','簽核單位'];
  if(!fields.every(f=>headers.includes(f)))return null;
+ // Who signed and what they wrote, when the school lists them (as iOS reads).
+ const columns=[...fields,...['簽核人','簽核意見'].filter(f=>headers.includes(f))];
  const workflow=Array.from(table.rows).slice(1).filter(r=>r.cells.length===headers.length)
-   .map(r=>Object.fromEntries(fields.map(f=>[f,clean(r.cells[headers.indexOf(f)].textContent)])));
- return JSON.stringify({workflow});
+   .map(r=>Object.fromEntries(columns.map(f=>[f,clean(r.cells[headers.indexOf(f)].textContent)])));
+ const cells=Array.from(document.querySelectorAll('td'));
+ const at=cells.findIndex(c=>clean(c.textContent)==='簽核流程：');
+ const workflowName=at<0?'':clean(cells[at+1]?.textContent).replace(/^\d+-\s*/,'');
+ return JSON.stringify({workflow,workflowName});
 })()
 ''';
