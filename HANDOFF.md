@@ -1,6 +1,6 @@
 # HANDOFF
 
-給接手的 Claude Code session。最後更新：2026-10-03。目前版本：**1.0.5+86**。
+給接手的 Claude Code session。最後更新：2026-10-04。目前版本：**1.0.6+87**。
 
 ## 專案概況
 
@@ -15,7 +15,7 @@
 
 在 `mobile/` 底下執行：
 
-1. `set -o pipefail; tool/verify.sh`，包含 calendar/toolchain/DOM 檢查、`dart format`、`flutter analyze`、`flutter test`，目前 342 項測試。
+1. `set -o pipefail; tool/verify.sh`，包含 calendar/toolchain/分層/DOM 檢查、`dart format`、`flutter analyze`、`flutter test`，目前 342 項測試。
 2. 把 `pubspec.yaml` 的 patch 版號和 build number 各加一。
 3. commit 到 `main`，**push 到 origin main**。
 4. `flutter build apk --debug`
@@ -33,10 +33,10 @@
 - Play 各軌道現況（2026-10-03 用 MCP 查過）：
   - **正式版：1.0.0 (81)**，已發布。
   - 公開測試（beta）：1.0.0 (81)。
-  - internal：**1.0.5 (86)**。
+  - internal：**1.0.6 (87)**。
 - 正式版由使用者在 Play Console 升級（Claude 推 production 會被權限擋下，屬正常）。
 - **正式版不用每版都推**，只要 versionCode 比上一個正式版大就行。建議 internal 每版都推；等使用者在手機上測過、累積一批改動或有重要修正時，再挑一版推正式版。版本說明要寫成「從上一個正式版到現在的所有改變」，例如 internal 1.0.4 的說明。
-- 下一個正式版預計是 1.0.5（含 1.0.4 的改動），等使用者在手機上確認點名、小工具、上課中通知都正常。1.0.4 換了 AGP 9，只在模擬器上測過。
+- 下一個正式版預計是 1.0.6（含 1.0.4、1.0.5 的改動），等使用者在手機上確認點名、小工具、上課中通知都正常。1.0.4 換了 AGP 9，只在模擬器上測過。
 - 公開測試的使用者會自動拿到 versionCode 較大的正式版，公開測試軌道不用特別處理。release 名稱用 `X.Y.Z (versionCode)`，附一句 zh-TW 版本說明。
 - 上傳流程（每個新版本都要做）：`flutter build appbundle --release`，然後用 MCP 依序 `edits_insert` → `bundles_upload` → `tracks_update`（internal，status `completed`）→ `edits_commit`。
 
@@ -75,6 +75,7 @@
 | 1.0.3 | `c1d4634` | 通知設定的開關整列都可以點 |
 | 1.0.4 | `ed0c502`、`cab9fe1` | 升級 AGP 9.1.1／Gradle 9.3.1／Kotlin 2.4.0，啟用最佳化資源縮減；舊版 Android 也採用無邊框畫面 |
 | 1.0.5 | `e5f70ad` | 郵件包裹打開時自動用登入姓名查詢自己的郵件，和 iOS 一樣 |
+| 1.0.6 | `6398bc2`–`bfdee44` | 整理程式架構，使用者看不到差異（見「程式架構整理」） |
 
 另外：
 
@@ -265,6 +266,21 @@
   - 結果是自動查的，會顯示「依登入姓名查詢」。
 - 和 iOS 的差異：iOS 把自己的包裹和「其他查詢」分成兩個畫面；Android 維持同一個表單，改姓名就能查別人。
 
+## 程式架構整理（1.0.6）
+
+完整說明在 `docs/android-flutter-architecture.md` 的「結構」一節。重點：
+
+- `lib/` 分四層：shared → core → features → app，下層不能引用上層。`tool/check_architecture.py` 會檢查，`verify.sh` 也會跑。
+- **示範模式**：每個功能有自己的 `*_demo.dart`（例如 `postal/postal_demo.dart`），原本集中的 `features/demo/demo_services.dart` 已刪除。示範用 PDF 與結果文字在 `core/demo/demo_documents.dart`。
+- 校務系統 WebView 畫面從 `core/web` 搬到 `features/academic_portal/`。
+- Model 不放在 screen 檔：`events/event_models.dart`、`schedule/schedule_models.dart`；設定頁拆出 `privacy_screen.dart`、`credits_screen.dart`；GitHub raw 下載在 `core/network/public_content.dart`；校曆 providers 在 `academic_calendar/calendar_providers.dart`。
+- 測試資料夾對應 `lib/`（`test/features/<功能>/`），共用假物件在 `test/support/fakes.dart`，HTML／jsdom 在 `test/fixtures/`。
+- 2026-09-30 的 UI 檢視紀錄移到 `docs/archive/`。
+- 還沒處理、可以接著做的：
+  - 超過 1000 行的畫面檔可以再拆：`library_space_screen.dart`（1582）、`moodle_screen.dart`（1418）、`leave_application_screen.dart`（1115）、`mail_screen.dart`（1011）。
+  - `moodle` 和 `attendance` 互相引用（課程頁開點名、點名用 M 園區 repository）；`authentication/login_screen.dart` 登入後直接建立 M 園區、活動、信箱、圖書館的 session。目前可運作，要拆的話可以改成在 app 層註冊。
+  - `tool/smoke_android.sh` 還在找已經不存在的「校園」分頁，而且需要先登入，要重寫才能用。
+
 ## 重要決策
 
 - **不架後端。** 需要遠端內容時沿用 credits 的做法：GitHub 上的靜態 JSON，加上 App 內建的離線版本和 revision 號碼。
@@ -287,7 +303,7 @@
 
 ## 可以接著做的事
 
-1. 等使用者在手機上確認 1.0.5 沒問題，請他把 1.0.5 推上正式版。
+1. 等使用者在手機上確認 1.0.6 沒問題，請他把 1.0.6 推上正式版。
 2. 在實機上驗證三種通知和點通知後的跳轉，必要時調整文案或時間。
 3. 等使用者把測試人員加進 internal 名單，再推版本號更大的 build，在實機上測 In-App Updates。
 4. 用 release 版上 Play 內部測試軌道，驗證 In-App Updates。
