@@ -15,7 +15,7 @@
 
 在 `mobile/` 底下執行：
 
-1. `set -o pipefail; tool/verify.sh`，包含 calendar/toolchain/分層/DOM 檢查、`dart format`、`flutter analyze`、`flutter test`，目前 362 項測試。
+1. `set -o pipefail; tool/verify.sh`，包含 calendar/toolchain/分層/DOM 檢查、`dart format`、`flutter analyze`、`flutter test`，目前 361 項測試。
 2. 把 `pubspec.yaml` 的 patch 版號和 build number 各加一。
 3. commit 到 `main`，**push 到 origin main**。
 4. `flutter build apk --debug`
