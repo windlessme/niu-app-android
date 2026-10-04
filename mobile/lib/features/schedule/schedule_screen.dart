@@ -341,8 +341,13 @@ class _ScheduleViewState extends State<ScheduleView> {
             const SizedBox(height: NiuSpacing.xl),
             ScheduleWeekView(
               schedule: widget.schedule,
-              today: today,
-              minute: minute,
+              now: now,
+              // Fill the screen below the switch: title bar, tab bar, the
+              // switch itself and the sync line take the rest.
+              height:
+                  MediaQuery.sizeOf(context).height -
+                  MediaQuery.paddingOf(context).vertical -
+                  290,
               onOpenCourse: widget.onOpenCourse,
             ),
             if (widget.updatedAt != null || widget.offline) ...[

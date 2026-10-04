@@ -46,8 +46,8 @@ void main() {
       _app(
         ScheduleWeekView(
           schedule: ClassSchedule.fromRows(_rows),
-          today: 0,
-          minute: 9 * 60 + 30,
+          // Monday 2026-10-05, 09:30 in Taipei.
+          now: DateTime(2026, 10, 5, 9, 30),
         ),
       ),
     );
@@ -74,33 +74,93 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('used weekends appear and narrow screens scroll sideways', (
+  for (final width in [320.0, 390.0]) {
+    testWidgets('Saturday and Sunday classes fit without scrolling '
+        '(width $width)', (tester) async {
+      tester.view.physicalSize = Size(width, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final rows = [
+        for (final r in _rows) [...r],
+      ];
+      rows[2][7] = '張老師\n服務學習\n操場';
+      rows[3][8] = '林老師\n校外實習\n校外';
+      await tester.pumpWidget(
+        _app(
+          ScheduleWeekView(
+            schedule: ClassSchedule.fromRows(rows),
+            now: DateTime(2026, 10, 10, 9, 30),
+          ),
+          width: width,
+        ),
+      );
+      expect(find.text('六'), findsOneWidget);
+      expect(find.text('日'), findsOneWidget);
+      expect(find.text('服務學習'), findsOneWidget);
+      // Every day fits the width; nothing scrolls sideways.
+      expect(
+        find.byWidgetPredicate(
+          (w) =>
+              w is SingleChildScrollView &&
+              w.scrollDirection == Axis.horizontal,
+        ),
+        findsNothing,
+      );
+      final sunday = tester.getRect(find.bySemanticsLabel(RegExp('^校外實習')));
+      expect(sunday.right, lessThanOrEqualTo(width + 0.5));
+      // Saturday 10/10 is today.
+      expect(find.bySemanticsLabel(RegExp('^今天，星期六')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('days carry their dates and a line marks the time', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(320, 700);
+    tester.view.physicalSize = const Size(390, 900);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    final rows = [
-      for (final r in _rows) [...r],
-    ];
-    rows[1][7] = '張老師\n服務學習\n操場';
-    await tester.pumpWidget(
-      _app(
-        ScheduleWeekView(schedule: ClassSchedule.fromRows(rows)),
-        width: 320,
-      ),
+    Future<void> at(DateTime now) => tester.pumpWidget(
+      _app(ScheduleWeekView(schedule: ClassSchedule.fromRows(_rows), now: now)),
     );
-    expect(find.text('六'), findsOneWidget);
-    expect(find.text('日'), findsNothing);
-    expect(
-      find.byWidgetPredicate(
-        (w) =>
-            w is SingleChildScrollView && w.scrollDirection == Axis.horizontal,
-      ),
-      findsOneWidget,
-    );
-    expect(tester.takeException(), isNull);
+    await at(DateTime(2026, 10, 7, 9, 35)); // Wednesday, in period 2.
+    expect(find.text('10/5'), findsOneWidget); // Monday of that week.
+    expect(find.text('10/9'), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp('^今天，星期三')), findsOneWidget);
+    expect(find.bySemanticsLabel('現在時間'), findsOneWidget);
+    final period2 = tester.getRect(find.text('2'));
+    final period3 = tester.getRect(find.text('3'));
+    final line = tester.getRect(find.bySemanticsLabel('現在時間'));
+    expect(line.center.dy, greaterThan(period2.top));
+    expect(line.center.dy, lessThan(period3.top));
+    // Before the first shown period and after the last, no line.
+    await at(DateTime(2026, 10, 7, 7, 0));
+    expect(find.bySemanticsLabel('現在時間'), findsNothing);
+    await at(DateTime(2026, 10, 7, 18, 0));
+    expect(find.bySemanticsLabel('現在時間'), findsNothing);
+  });
+
+  testWidgets('rows grow to fill the height they are given', (tester) async {
+    Future<double> rowFor(double height) async {
+      await tester.pumpWidget(
+        _app(
+          ScheduleWeekView(
+            schedule: ClassSchedule.fromRows(_rows),
+            height: height,
+          ),
+        ),
+      );
+      return tester.getTopLeft(find.text('3')).dy -
+          tester.getTopLeft(find.text('2')).dy;
+    }
+
+    final short = await rowFor(0);
+    final tall = await rowFor(600);
+    expect(tall, greaterThan(short));
+    // Never so tall that four periods stop reading as a table.
+    expect(tall, lessThanOrEqualTo(short * 1.6 + 0.5));
   });
 
   testWidgets('the schedule page remembers 整週', (tester) async {
