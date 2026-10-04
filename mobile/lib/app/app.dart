@@ -39,6 +39,8 @@ import 'auth_gate.dart';
 import 'campus_shell.dart';
 import 'deep_links.dart';
 import '../features/academic_calendar/calendar_providers.dart';
+import '../features/moodle/moodle_links.dart';
+import '../features/moodle/moodle_course_screen.dart';
 
 class NiuApp extends StatefulWidget {
   const NiuApp({super.key});

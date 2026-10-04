@@ -1,4 +1,6 @@
+import 'moodle_repository.dart';
 import 'course_presentation.dart';
+import '../../shared/shared.dart';
 
 /// Formats Moodle week headings without changing unrecognised section names.
 String courseDateRange(String value) {
@@ -138,4 +140,16 @@ List<Map<String, dynamic>> sortCourseAssignments(
       return order == 0 ? a.$1.compareTo(b.$1) : order;
     });
   return indexed.map((entry) => entry.$2).toList();
+}
+
+NiuTone submissionTone(Object? status) => switch (status) {
+  'submitted' => NiuTone.success,
+  'draft' => NiuTone.warning,
+  'new' || 'reopened' => NiuTone.accent,
+  _ => NiuTone.neutral,
+};
+
+String gradeValue(Object? value) {
+  final text = plain(value).trim();
+  return text.isEmpty || text == '-' || text == '—' ? '未提供' : text;
 }

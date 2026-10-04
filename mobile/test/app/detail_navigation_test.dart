@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:niu_mobile/app/campus_shell.dart';
-import 'package:niu_mobile/features/moodle/moodle_screen.dart';
 import 'package:niu_mobile/shared/shared.dart';
+import 'package:niu_mobile/features/moodle/moodle_links.dart';
 
 void main() {
   testWidgets('Moodle details hide root tabs and back restores the root page', (

@@ -1,6 +1,6 @@
 # HANDOFF
 
-給接手的 Claude Code session。最後更新：2026-10-04。目前版本：**1.0.6+87**。
+給接手的 Claude Code session。最後更新：2026-10-04。目前版本：**1.0.7+88**。
 
 ## 專案概況
 
@@ -33,10 +33,10 @@
 - Play 各軌道現況（2026-10-03 用 MCP 查過）：
   - **正式版：1.0.0 (81)**，已發布。
   - 公開測試（beta）：1.0.0 (81)。
-  - internal：**1.0.6 (87)**。
+  - internal：**1.0.7 (88)**。
 - 正式版由使用者在 Play Console 升級（Claude 推 production 會被權限擋下，屬正常）。
 - **正式版不用每版都推**，只要 versionCode 比上一個正式版大就行。建議 internal 每版都推；等使用者在手機上測過、累積一批改動或有重要修正時，再挑一版推正式版。版本說明要寫成「從上一個正式版到現在的所有改變」，例如 internal 1.0.4 的說明。
-- 下一個正式版預計是 1.0.6（含 1.0.4、1.0.5 的改動），等使用者在手機上確認點名、小工具、上課中通知都正常。1.0.4 換了 AGP 9，只在模擬器上測過。
+- 下一個正式版預計是 1.0.7（含 1.0.4、1.0.5 的改動），等使用者在手機上確認點名、小工具、上課中通知都正常。1.0.4 換了 AGP 9，只在模擬器上測過。
 - 公開測試的使用者會自動拿到 versionCode 較大的正式版，公開測試軌道不用特別處理。release 名稱用 `X.Y.Z (versionCode)`，附一句 zh-TW 版本說明。
 - 上傳流程（每個新版本都要做）：`flutter build appbundle --release`，然後用 MCP 依序 `edits_insert` → `bundles_upload` → `tracks_update`（internal，status `completed`）→ `edits_commit`。
 
@@ -76,6 +76,7 @@
 | 1.0.4 | `ed0c502`、`cab9fe1` | 升級 AGP 9.1.1／Gradle 9.3.1／Kotlin 2.4.0，啟用最佳化資源縮減；舊版 Android 也採用無邊框畫面 |
 | 1.0.5 | `e5f70ad` | 郵件包裹打開時自動用登入姓名查詢自己的郵件，和 iOS 一樣 |
 | 1.0.6 | `6398bc2`–`bfdee44` | 整理程式架構，使用者看不到差異（見「程式架構整理」） |
+| 1.0.7 | （本次） | 拆開超過 1000 行的畫面檔，使用者看不到差異 |
 
 另外：
 
@@ -276,8 +277,11 @@
 - Model 不放在 screen 檔：`events/event_models.dart`、`schedule/schedule_models.dart`；設定頁拆出 `privacy_screen.dart`、`credits_screen.dart`；GitHub raw 下載在 `core/network/public_content.dart`；校曆 providers 在 `academic_calendar/calendar_providers.dart`。
 - 測試資料夾對應 `lib/`（`test/features/<功能>/`），共用假物件在 `test/support/fakes.dart`，HTML／jsdom 在 `test/fixtures/`。
 - 2026-09-30 的 UI 檢視紀錄移到 `docs/archive/`。
+- 1.0.7 拆開超過 1000 行的畫面檔，現在最大的是 `academic_portal_screen.dart`（989 行）：
+  - 圖書館預約：步驟卡片、日期條、時段在 `space_booking_steps.dart`，底部預約列與確認頁在 `space_booking_bar.dart`，我的預約卡片在 `space_reservation_card.dart`。
+  - M 園區：一個畫面一個檔，`moodle_screen.dart`（分頁）、`moodle_courses_screen.dart`（課程列表與 `MoodleList`）、`moodle_course_screen.dart`、`moodle_module_screen.dart`、`moodle_forum_screen.dart`、`moodle_assignment_screen.dart`；`pushMoodle`、`openMoodleUrl`、附件按鈕在 `moodle_links.dart`。
+  - 請假申請的節次與送出確認頁在 `leave_application_sheets.dart`；信件列表項目與分頁在 `mail_list_widgets.dart`。
 - 還沒處理、可以接著做的：
-  - 超過 1000 行的畫面檔可以再拆：`library_space_screen.dart`（1582）、`moodle_screen.dart`（1418）、`leave_application_screen.dart`（1115）、`mail_screen.dart`（1011）。
   - `moodle` 和 `attendance` 互相引用（課程頁開點名、點名用 M 園區 repository）；`authentication/login_screen.dart` 登入後直接建立 M 園區、活動、信箱、圖書館的 session。目前可運作，要拆的話可以改成在 app 層註冊。
   - `tool/smoke_android.sh` 還在找已經不存在的「校園」分頁，而且需要先登入，要重寫才能用。
 
@@ -303,7 +307,7 @@
 
 ## 可以接著做的事
 
-1. 等使用者在手機上確認 1.0.6 沒問題，請他把 1.0.6 推上正式版。
+1. 等使用者在手機上確認 1.0.7 沒問題，請他把 1.0.7 推上正式版。
 2. 在實機上驗證三種通知和點通知後的跳轉，必要時調整文案或時間。
 3. 等使用者把測試人員加進 internal 名單，再推版本號更大的 build，在實機上測 In-App Updates。
 4. 用 release 版上 Play 內部測試軌道，驗證 In-App Updates。
