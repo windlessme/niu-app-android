@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:niu_mobile/core/platform/schedule_gateway.dart';
 import 'package:niu_mobile/core/session/campus_session.dart';
 import 'package:niu_mobile/features/academic_calendar/calendar_repository.dart';
-import 'package:niu_mobile/features/demo/demo_services.dart';
+import 'package:niu_mobile/features/moodle/moodle_demo.dart';
 import 'package:niu_mobile/features/notifications/campus_notifications.dart';
 import 'package:niu_mobile/features/notifications/notification_settings_screen.dart';
 import 'package:niu_mobile/shared/shared.dart';

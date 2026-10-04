@@ -4,6 +4,7 @@ import 'package:niu_mobile/features/events/event_actions.dart';
 import 'package:niu_mobile/features/events/events_screen.dart';
 import 'package:niu_mobile/features/events/event_widgets.dart';
 import 'package:niu_mobile/shared/shared.dart';
+import 'package:niu_mobile/features/events/event_models.dart';
 
 class SnapshotRoute extends StatefulWidget {
   const SnapshotRoute({super.key, this.events});

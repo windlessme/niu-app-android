@@ -8,7 +8,7 @@ import '../../core/network/school_clients.dart';
 import '../../core/session/campus_session.dart';
 import '../../shared/shared.dart';
 import 'library_repository.dart';
-import '../demo/demo_services.dart';
+import 'library_demo.dart';
 
 /// Register with the navigator that owns this screen, including popup routes.
 final libraryRouteObserver = RouteObserver<ModalRoute<dynamic>>();

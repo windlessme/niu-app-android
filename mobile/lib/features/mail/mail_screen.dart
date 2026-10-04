@@ -6,7 +6,7 @@ import '../../core/analytics/app_analytics.dart';
 import '../../core/session/campus_session.dart';
 import '../../shared/shared.dart';
 import '../authentication/remember_school_login.dart';
-import '../demo/demo_services.dart';
+import 'mail_demo.dart';
 import 'mail_compose_screen.dart';
 import 'mail_detail_screen.dart';
 import 'mail_format.dart';

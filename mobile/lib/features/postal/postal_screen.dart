@@ -4,7 +4,7 @@ import '../../core/session/campus_session.dart';
 import '../../shared/shared.dart';
 import 'postal_models.dart';
 import 'postal_service.dart';
-import '../demo/demo_services.dart';
+import 'postal_demo.dart';
 
 /// Campus mail and parcel lookup. One search covers every status (the school
 /// form takes one at a time); the status chips then filter locally. Like iOS,

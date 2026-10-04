@@ -13,7 +13,7 @@ import '../authentication/school_reauthorization.dart';
 import 'leave_application_data.dart';
 import 'leave_application_service.dart';
 import 'leave_notice.dart';
-import '../demo/demo_services.dart';
+import 'leave_demo.dart';
 
 /// The school form stays mounted behind the native UI, including its upload and
 /// period-picker frames. No saved Cookie fixture or school credentials are used.

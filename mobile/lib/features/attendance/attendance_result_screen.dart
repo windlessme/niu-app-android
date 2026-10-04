@@ -9,7 +9,7 @@ import '../../core/analytics/app_analytics.dart';
 import '../../shared/shared.dart';
 import '../moodle/moodle_repository.dart';
 import 'attendance_repository.dart';
-import '../demo/demo_services.dart';
+import '../moodle/moodle_demo.dart';
 import '../../core/demo/demo_account.dart';
 
 /// Reads the page Moodle returns after an attendance link is opened.
