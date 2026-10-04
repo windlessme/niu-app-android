@@ -57,7 +57,7 @@ verification remains required.
 ```sh
 npm install --prefix /tmp/opencode/sso-dom-check --no-audit --no-fund jsdom
 cd mobile
-dart test/fixtures/emit_login_fill_script.dart | NODE_PATH=/tmp/opencode/sso-dom-check/node_modules node test/sso_login_fill_dom.cjs
+dart test/fixtures/emit_login_fill_script.dart | NODE_PATH=/tmp/opencode/sso-dom-check/node_modules node test/fixtures/sso_login_fill_dom.cjs
 ```
 
 The harness checks field filling and events, waiting on the disabled button, a
