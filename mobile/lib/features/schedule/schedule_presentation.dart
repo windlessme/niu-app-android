@@ -31,6 +31,9 @@ class ScheduleLesson {
   }
 }
 
+/// 「第 3 節」 or 「3」 → 「3」, for compact period labels.
+String schedulePeriodNumber(String label) => _periodText(label);
+
 String _periodText(String label) => label
     .trim()
     .replaceFirst(RegExp(r'^第\s*'), '')

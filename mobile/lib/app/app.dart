@@ -33,6 +33,8 @@ import '../features/settings/settings_screen.dart';
 import '../features/postal/postal_screen.dart';
 import '../features/registration/registration_screen.dart';
 import '../features/leave/leave_screen.dart';
+import '../core/demo/demo_account.dart';
+import '../features/announcements/announcement_board.dart';
 import '../features/settings/credits_repository.dart';
 import '../shared/niu_theme.dart';
 import 'auth_gate.dart';
@@ -82,6 +84,9 @@ class _NiuAppState extends State<NiuApp> {
                   hasSchedule: session.cachedSchedule != null,
                   onOpenCourse: _openCourse,
                   demo: session.isDemo,
+                  announcements: storeScreenshots
+                      ? null
+                      : const AnnouncementBoard(),
                 ),
               ),
             ),

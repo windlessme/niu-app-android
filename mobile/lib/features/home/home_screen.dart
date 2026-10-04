@@ -38,7 +38,11 @@ class CampusHomeScreen extends StatelessWidget {
     this.hasSchedule = false,
     this.onOpenCourse,
     this.demo = false,
+    this.announcements,
   });
+
+  /// Announcement cards under the greeting (see AnnouncementBoard).
+  final Widget? announcements;
 
   /// Google Play review demo: everything shown is sample data.
   final bool demo;
@@ -98,6 +102,7 @@ class CampusHomeScreen extends StatelessWidget {
                   style: theme.textTheme.headlineLarge,
                 ),
               ),
+              ?announcements,
               // Store screenshots show the app as students see it.
               if (demo && !storeScreenshots) ...[
                 const SizedBox(height: NiuSpacing.lg),

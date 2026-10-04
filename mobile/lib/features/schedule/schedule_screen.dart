@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/demo/demo_data.dart';
 import '../academic_portal/academic_portal_screen.dart';
 import 'schedule_export.dart';
@@ -6,6 +7,7 @@ import '../../core/session/campus_session.dart';
 import '../../shared/shared.dart';
 import 'schedule_presentation.dart';
 import 'schedule_models.dart';
+import 'schedule_week_view.dart';
 
 const scheduleExtractScript = r'''
 (() => {
@@ -298,6 +300,29 @@ class _ScheduleViewState extends State<ScheduleView> {
           DateTime.now().toUtc().add(const Duration(hours: 8)).weekday) -
       1;
 
+  /// 整週 or 單日; remembered on this device across visits.
+  bool week = false;
+  static const _weekKey = 'scheduleWeekView';
+
+  @override
+  void initState() {
+    super.initState();
+    SharedPreferences.getInstance().then((prefs) {
+      final saved = prefs.getBool(_weekKey);
+      if (mounted && saved != null && saved != week) {
+        setState(() => week = saved);
+      }
+    }, onError: (_) {});
+  }
+
+  void _setWeek(bool value) {
+    setState(() => week = value);
+    SharedPreferences.getInstance().then(
+      (prefs) => prefs.setBool(_weekKey, value),
+      onError: (_) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -305,67 +330,96 @@ class _ScheduleViewState extends State<ScheduleView> {
     final today = now.weekday - 1;
     final minute = now.hour * 60 + now.minute;
     final lessons = lessonsByDay[scheduleWeekdays[selected]]!;
-    final children = [
-      _DayPicker(
-        selected: selected,
-        today: today,
-        hasLessons: [
-          for (final day in scheduleWeekdays) lessonsByDay[day]!.isNotEmpty,
-        ],
-        onSelected: (index) => setState(() => selected = index),
-      ),
-      const SizedBox(height: NiuSpacing.xxl),
-      Semantics(
-        header: true,
-        child: Text(
-          selected == today
-              ? '今天・${scheduleWeekdays[selected]}'
-              : scheduleWeekdays[selected],
-          style: theme.textTheme.titleLarge,
-        ),
-      ),
-      const SizedBox(height: 2),
-      Text(
-        lessons.isEmpty
-            ? '沒有課'
-            : '${lessons.length} 堂課・${lessons.first.start}–${lessons.last.end}',
-        style: theme.textTheme.bodySmall?.copyWith(
-          fontFeatures: tabularFigures,
-        ),
-      ),
-      const SizedBox(height: NiuSpacing.lg),
-      if (lessons.isEmpty)
-        NiuCard(
-          child: NiuEmpty(
-            padding: const EdgeInsets.symmetric(
-              vertical: NiuSpacing.xxl,
-              horizontal: NiuSpacing.lg,
+    final mode = NiuSegmented<bool>(
+      segments: const [(false, '單日'), (true, '整週')],
+      value: week,
+      onChanged: _setWeek,
+    );
+    final children = week
+        ? [
+            mode,
+            const SizedBox(height: NiuSpacing.xl),
+            ScheduleWeekView(
+              schedule: widget.schedule,
+              today: today,
+              minute: minute,
+              onOpenCourse: widget.onOpenCourse,
             ),
-            icon: NiuIcons.sunny,
-            tone: NiuTone.warning,
-            title: selected == today ? '今天沒有課' : '這天沒有課',
-            message: '留點時間給自己。',
-          ),
-        ),
-      for (final lesson in lessons)
-        Padding(
-          padding: const EdgeInsets.only(bottom: NiuSpacing.md),
-          child: _LessonTile(
-            lesson: lesson,
-            onOpen: widget.onOpenCourse,
-            current:
-                selected == today &&
-                _minutes(lesson.start) != null &&
-                _minutes(lesson.end) != null &&
-                _minutes(lesson.start)! <= minute &&
-                minute < _minutes(lesson.end)!,
-          ),
-        ),
-      if (widget.updatedAt != null || widget.offline) ...[
-        const SizedBox(height: NiuSpacing.md),
-        NiuSyncStatus(updatedAt: widget.updatedAt, offline: widget.offline),
-      ],
-    ];
+            if (widget.updatedAt != null || widget.offline) ...[
+              const SizedBox(height: NiuSpacing.lg),
+              NiuSyncStatus(
+                updatedAt: widget.updatedAt,
+                offline: widget.offline,
+              ),
+            ],
+          ]
+        : [
+            mode,
+            const SizedBox(height: NiuSpacing.lg),
+            _DayPicker(
+              selected: selected,
+              today: today,
+              hasLessons: [
+                for (final day in scheduleWeekdays)
+                  lessonsByDay[day]!.isNotEmpty,
+              ],
+              onSelected: (index) => setState(() => selected = index),
+            ),
+            const SizedBox(height: NiuSpacing.xxl),
+            Semantics(
+              header: true,
+              child: Text(
+                selected == today
+                    ? '今天・${scheduleWeekdays[selected]}'
+                    : scheduleWeekdays[selected],
+                style: theme.textTheme.titleLarge,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              lessons.isEmpty
+                  ? '沒有課'
+                  : '${lessons.length} 堂課・${lessons.first.start}–${lessons.last.end}',
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontFeatures: tabularFigures,
+              ),
+            ),
+            const SizedBox(height: NiuSpacing.lg),
+            if (lessons.isEmpty)
+              NiuCard(
+                child: NiuEmpty(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: NiuSpacing.xxl,
+                    horizontal: NiuSpacing.lg,
+                  ),
+                  icon: NiuIcons.sunny,
+                  tone: NiuTone.warning,
+                  title: selected == today ? '今天沒有課' : '這天沒有課',
+                  message: '留點時間給自己。',
+                ),
+              ),
+            for (final lesson in lessons)
+              Padding(
+                padding: const EdgeInsets.only(bottom: NiuSpacing.md),
+                child: _LessonTile(
+                  lesson: lesson,
+                  onOpen: widget.onOpenCourse,
+                  current:
+                      selected == today &&
+                      _minutes(lesson.start) != null &&
+                      _minutes(lesson.end) != null &&
+                      _minutes(lesson.start)! <= minute &&
+                      minute < _minutes(lesson.end)!,
+                ),
+              ),
+            if (widget.updatedAt != null || widget.offline) ...[
+              const SizedBox(height: NiuSpacing.md),
+              NiuSyncStatus(
+                updatedAt: widget.updatedAt,
+                offline: widget.offline,
+              ),
+            ],
+          ];
     if (widget.embedded) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

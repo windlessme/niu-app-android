@@ -5,6 +5,7 @@ import '../notifications/campus_notifications.dart';
 import '../notifications/notification_settings_screen.dart';
 import '../../shared/shared.dart';
 import 'credits_repository.dart';
+import '../announcements/announcements_screen.dart';
 import 'privacy_screen.dart';
 import 'credits_screen.dart';
 
@@ -263,6 +264,17 @@ class SettingsScreen extends StatelessWidget {
         const NiuEyebrow('關於'),
         NiuGroup(
           children: [
+            NiuRow(
+              icon: Icons.campaign_rounded,
+              hue: NiuHue.blue,
+              title: '公告',
+              subtitle: 'App 的最新消息與重要通知',
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const AnnouncementsScreen(),
+                ),
+              ),
+            ),
             FutureBuilder<AppVersion?>(
               future: AppVersion.current(),
               builder: (context, snapshot) => NiuRow(
