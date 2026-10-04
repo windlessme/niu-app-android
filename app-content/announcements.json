@@ -1,5 +1,17 @@
 {
   "schemaVersion": 1,
-  "revision": 1,
-  "announcements": []
+  "revision": 2,
+  "announcements": [
+    {
+      "id": "2026-10-05-test",
+      "title": "測試公告",
+      "body": "這是一則測試公告，用來確認首頁卡片、彈出視窗與「設定 → 公告」都正常。10/6 過後會自動消失，也可以按右上角的叉叉關掉。",
+      "level": "info",
+      "popup": true,
+      "start": "2026-10-05",
+      "end": "2026-10-06",
+      "url": "https://github.com/windlessme/niu-app-android",
+      "linkLabel": "開源專案"
+    }
+  ]
 }

@@ -25,5 +25,10 @@ void main() {
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(find.text('版本'), 200);
     expect(find.text('1.2.3 (45)'), findsOneWidget);
+    // 版本 closes the 關於 group, right below 開源授權.
+    expect(
+      tester.getTopLeft(find.text('版本')).dy,
+      greaterThan(tester.getTopLeft(find.text('開源授權')).dy),
+    );
   });
 }

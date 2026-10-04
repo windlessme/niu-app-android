@@ -275,16 +275,6 @@ class SettingsScreen extends StatelessWidget {
                 ),
               ),
             ),
-            FutureBuilder<AppVersion?>(
-              future: AppVersion.current(),
-              builder: (context, snapshot) => NiuRow(
-                icon: NiuIcons.info,
-                hue: NiuHue.gray,
-                title: '版本',
-                value: snapshot.data?.toString() ?? '—',
-                chevron: false,
-              ),
-            ),
             NiuRow(
               icon: Icons.feedback_outlined,
               hue: NiuHue.orange,
@@ -333,6 +323,16 @@ class SettingsScreen extends StatelessWidget {
               onTap: () => showLicensePage(
                 context: context,
                 applicationName: 'NIU-Life',
+              ),
+            ),
+            FutureBuilder<AppVersion?>(
+              future: AppVersion.current(),
+              builder: (context, snapshot) => NiuRow(
+                icon: NiuIcons.info,
+                hue: NiuHue.gray,
+                title: '版本',
+                value: snapshot.data?.toString() ?? '—',
+                chevron: false,
               ),
             ),
           ],
