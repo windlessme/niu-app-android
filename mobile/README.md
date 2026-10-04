@@ -29,14 +29,18 @@ flutter test integration_test/academic_dom_test.dart -d <device-id>
 It loads synthetic HTML, not a real school account, and verifies native WebView
 dimensions and the production schedule/graduation extraction scripts.
 
-For an already booted Android emulator/device:
+For an already booted Android emulator/device, after `flutter build apk --debug`:
 
 ```sh
-bash tool/smoke_android.sh
+NIU_DEMO_PASSWORD=… python3 tool/smoke_android.py
 ```
 
-This installs the debug APK and checks home/calendar navigation using UI
-Automator, writing screenshots and UI dumps to a temporary folder.
+It reinstalls the debug APK with cleared data, signs in with the Play review
+demo account (demo mode never contacts the school), opens the three tabs,
+every campus service on the home grid and the notification settings, and
+fails if a page does not appear or Flutter logs an error. Screenshots go to a
+temporary folder (`--out` to choose). The demo password is not in the repo;
+without it only the login screen is checked.
 
 The preview integrates SSO, academic schedule/grades/graduation/events,
 Moodle courses/announcements/resources/assignments/grades, attendance scanning,
