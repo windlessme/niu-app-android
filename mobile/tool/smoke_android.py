@@ -103,6 +103,16 @@ class Smoke:
         self.adb("shell", "input", "text", value)
         time.sleep(0.5)
 
+    def dismiss_announcements(self, seconds: float = 6) -> None:
+        """Close any popup announcement published in app-content."""
+        deadline = time.time() + seconds
+        while time.time() < deadline:
+            if self.find("知道了", exact=True) is not None:
+                self.tap("知道了", exact=True)
+            elif self.find("校園服務") is not None:
+                return
+            time.sleep(1)
+
     def home(self) -> None:
         self.tap("第 1 個分頁", timeout=10)
         self.wait("校園服務")
@@ -134,7 +144,8 @@ def main() -> int:
     s.adb("shell", "am", "start", "-W", "-n", f"{PACKAGE}/.MainActivity")
 
     # A fresh install opens the home screen as a guest.
-    s.wait("校園服務", timeout=40)
+    s.dismiss_announcements(seconds=40)
+    s.wait("校園服務", timeout=10)
     s.shot("guest-home")
     s.tap("登入校務系統")
     s.wait("學號", exact=True, widget="EditText")

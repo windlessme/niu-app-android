@@ -1,4 +1,11 @@
-# 特別感謝名單
+# App 公開內容
+
+這個資料夾的 JSON 會被 App 從 GitHub `main` 分支直接讀取，不需要後端。修改後推到 `main` 就會生效，不必發新版 App。
+
+- `credits.json`：特別感謝名單（見下方）
+- `announcements.json`：公告（見最下方）
+
+## 特別感謝名單
 
 `credits.json` 是唯一維護來源。App 從本專案（windlessme/niu-app-android）`main` 分支讀取；同樣內容也內建於 `mobile/lib/features/settings/credits_repository.dart` 的 `bundled`，供首次離線開啟使用，修改名單時兩者一起更新。
 
@@ -14,3 +21,46 @@
 App 驗證格式、大小、ID 唯一性及 revision 後才原子替換快取。網路錯誤、未知 schema、舊版或有問題的資料不會清空有效名單。取消或過期請求不會覆寫較新的回應。這是公開內容，登出不需刪除；不會上傳校務帳號或個資。
 
 僅更新名單不需增加 App Build 或重新上架。首次導入此功能，以及修改原生呈現／解析邏輯，才需要發行新 App。開源授權文件另隨 App 打包，不依賴此感謝名單。
+
+## 公告
+
+`announcements.json` 是 App 首頁公告卡片、彈出視窗與「設定 → 公告」的來源。App 開啟首頁時讀取，同一小時內不重複讀取；「設定 → 公告」下拉可立即重讀。讀到的內容會快取，離線也能看。
+
+```json
+{
+  "schemaVersion": 1,
+  "revision": 2,
+  "announcements": [
+    {
+      "id": "2026-10-maintenance",
+      "title": "校務系統今晚維護",
+      "body": "學校公告 10/8 22:00–24:00 系統維護，期間無法查詢成績與請假。",
+      "level": "warning",
+      "popup": true,
+      "start": "2026-10-07",
+      "end": "2026-10-08",
+      "url": "https://www.niu.edu.tw/",
+      "linkLabel": "學校公告",
+      "maxVersion": "1.0.11"
+    }
+  ]
+}
+```
+
+| 欄位 | 必填 | 說明 |
+|---|---|---|
+| `id` | ✓ | 每則唯一、不要重複使用。使用者關掉卡片、看過彈窗都用它記住。 |
+| `title` | ✓ | 100 字以內。 |
+| `body` | ✓ | 2000 字以內，卡片只顯示前兩行，點開看全文。 |
+| `level` | | `info`（預設，藍色）或 `warning`（橘色、標「重要」）。 |
+| `popup` | | `true` 時第一次看到會跳出視窗，每台裝置只跳一次。 |
+| `start`／`end` | | `YYYY-MM-DD`，台北時間，包含當天。不填就是不限。 |
+| `url`／`linkLabel` | | 只接受 HTTPS；按鈕文字預設「開啟連結」。 |
+| `minVersion`／`maxVersion` | | 只給這個版本範圍的 App 看，例如 `maxVersion: "1.0.11"` 可提醒舊版更新。 |
+
+規則：
+
+1. 每次修改都把 `revision` 加一，`schemaVersion` 維持 `1`。App 不接受較舊的 revision，同一個 revision 也不能有不同內容。
+2. 過期的公告可以直接刪掉，或留著讓 `end` 自動隱藏。整份格式有任何錯誤時，App 會繼續顯示上一份有效的內容。
+3. App 內建的 `AnnouncementRepository.bundled` 永遠是空清單（內建的公告在舊版 App 上會一直留著），發公告不用改程式。CI（`verify.sh`）會檢查這個檔案的格式，推上去後如果 CI 失敗，代表格式寫錯，App 會繼續顯示上一份。
+4. GitHub raw 有快取，推上去後最多約 5 分鐘才會被讀到。

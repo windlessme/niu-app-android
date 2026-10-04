@@ -2,9 +2,9 @@ name: Android Flutter
 
 on:
   pull_request:
-    paths: ['mobile/**', 'calendar-data/**', '.github/workflows/android.yml']
+    paths: ['mobile/**', 'calendar-data/**', 'app-content/**', '.github/workflows/android.yml']
   push:
-    paths: ['mobile/**', 'calendar-data/**', '.github/workflows/android.yml']
+    paths: ['mobile/**', 'calendar-data/**', 'app-content/**', '.github/workflows/android.yml']
   workflow_dispatch:
 
 permissions:
