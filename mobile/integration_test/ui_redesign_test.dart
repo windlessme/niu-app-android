@@ -7,6 +7,7 @@ import 'package:niu_mobile/features/graduation/graduation_screen.dart';
 import 'package:niu_mobile/features/graduation/graduation_dashboard.dart';
 import 'package:niu_mobile/features/moodle/course_presentation.dart';
 import 'package:niu_mobile/features/moodle/course_widgets.dart';
+import 'package:niu_mobile/features/schedule/schedule_models.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();

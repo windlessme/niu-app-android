@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../core/demo/demo_data.dart';
 import '../../core/session/campus_session.dart';
-import '../../core/web/academic_portal_screen.dart';
+import '../academic_portal/academic_portal_screen.dart';
 import '../../shared/shared.dart';
 import 'leave_repository.dart';
 import 'leave_widgets.dart';

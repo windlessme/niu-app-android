@@ -4,18 +4,18 @@ import 'dart:collection';
 
 import 'package:flutter/material.dart';
 
-import '../analytics/app_analytics.dart';
+import '../../core/analytics/app_analytics.dart';
 import '../../shared/shared.dart';
 
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
-import '../../features/authentication/login_screen.dart';
-import '../../features/authentication/school_reauthorization.dart';
-import '../../features/authentication/remember_school_login.dart';
-import '../../features/events/event_login_service.dart';
-import '../session/campus_session.dart';
-import '../session/portal_snapshot_cache.dart';
-import 'portal_policy.dart';
+import '../authentication/login_screen.dart';
+import '../authentication/school_reauthorization.dart';
+import '../authentication/remember_school_login.dart';
+import '../events/event_login_service.dart';
+import '../../core/session/campus_session.dart';
+import '../../core/session/portal_snapshot_cache.dart';
+import '../../core/web/portal_policy.dart';
 import 'academic_portal_scripts.dart';
 
 /// Visible school-page fallback and an optional native presentation of its DOM.

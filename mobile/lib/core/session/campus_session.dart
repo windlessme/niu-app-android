@@ -278,15 +278,6 @@ class CampusSession extends ChangeNotifier {
     return uri;
   }
 
-  Future<void> clearSchedule() async {
-    try {
-      await _nativeWrite;
-    } catch (_) {
-      /* Clear failed writes as well. */
-    }
-    await const ScheduleGateway().clear();
-  }
-
   Future<void> saveSchedule(
     ScheduleSnapshot snapshot, {
     required int epoch,

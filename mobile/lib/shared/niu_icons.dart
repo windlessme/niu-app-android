@@ -21,7 +21,6 @@ abstract final class NiuIcons {
   static const leave = Icons.event_busy_rounded;
   static const events = Icons.confirmation_number_rounded;
   static const settings = Icons.settings_rounded;
-  static const bus = Icons.directions_bus_rounded;
   static const course = Icons.class_rounded;
   static const notifications = Icons.notifications_none_rounded;
 

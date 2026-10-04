@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import '../../core/session/campus_session.dart';
-import '../../core/web/academic_portal_scripts.dart';
+import '../academic_portal/academic_portal_scripts.dart';
 import 'event_login_service.dart';
 
 /// Use the shared event cookies; SSO's GUID does not authenticate MvcTeam.

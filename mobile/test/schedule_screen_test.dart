@@ -5,7 +5,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:niu_mobile/core/session/cached_schedule.dart';
 import 'package:niu_mobile/core/session/campus_session.dart';
-import 'package:niu_mobile/core/web/academic_portal_screen.dart';
+import 'package:niu_mobile/features/academic_portal/academic_portal_screen.dart';
 import 'package:niu_mobile/features/schedule/schedule_export.dart';
 import 'package:niu_mobile/features/schedule/schedule_screen.dart';
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:niu_mobile/features/home/home_screen.dart';
 import 'package:niu_mobile/features/schedule/schedule_screen.dart';
+import 'package:niu_mobile/features/schedule/schedule_models.dart';
 
 void main() {
   testWidgets('tapping today\'s course opens it in M 園區', (tester) async {

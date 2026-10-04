@@ -5,7 +5,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../core/analytics/app_analytics.dart';
 import '../../core/session/campus_session.dart';
-import '../../core/web/academic_portal_screen.dart';
+import '../academic_portal/academic_portal_screen.dart';
 import '../../shared/shared.dart';
 import 'event_portal.dart';
 import 'event_actions.dart';

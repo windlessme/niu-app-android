@@ -3,9 +3,9 @@ import 'dart:io';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/services.dart';
-import 'package:dio/dio.dart';
 
 import '../../core/time/campus_date.dart';
+import '../../core/network/public_content.dart';
 
 class CalendarEvent {
   CalendarEvent.fromJson(Map<String, dynamic> json)
@@ -213,20 +213,18 @@ CalendarSnapshot decodeCalendar(List<int> data, Map<String, dynamic> entry) {
   );
 }
 
-typedef CalendarFetch = Future<List<int>> Function(Uri url);
-
 /// Serializes commits, keeping the index and its verified payload in one atomic
 /// envelope. A delayed response can never replace a newer revision.
 class CachedCalendarRepository implements CalendarRepository {
   CachedCalendarRepository({
     required AssetBundle bundle,
     required this.cacheDirectory,
-    CalendarFetch? fetch,
+    PublicContentFetch? fetch,
   }) : bundled = BundledCalendarRepository(bundle),
-       fetch = fetch ?? download;
+       fetch = fetch ?? fetchPublicContent;
   final BundledCalendarRepository bundled;
   final Directory cacheDirectory;
-  final CalendarFetch fetch;
+  final PublicContentFetch fetch;
   static final baseUrl = Uri.parse(
     'https://raw.githubusercontent.com/qian403/NIU-app/main/calendar-data/',
   );
@@ -234,21 +232,6 @@ class CachedCalendarRepository implements CalendarRepository {
   final _hashes = <int, String>{};
   final _pending = <int, Future<CalendarSnapshot>>{};
   Future<void> _commit = Future.value();
-
-  static Future<List<int>> download(Uri url) async {
-    final response = await Dio(
-      BaseOptions(
-        connectTimeout: const Duration(seconds: 12),
-        receiveTimeout: const Duration(seconds: 15),
-        responseType: ResponseType.bytes,
-        headers: {'Accept': 'application/json'},
-      ),
-    ).get<List<int>>(url.toString());
-    if (response.statusCode != 200 || response.data == null) {
-      throw const FormatException('HTTP response');
-    }
-    return response.data!;
-  }
 
   Future<List<Map<String, dynamic>>> _remoteIndex() async {
     final bytes = await fetch(baseUrl.resolve('index.json'));

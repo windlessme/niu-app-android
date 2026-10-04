@@ -305,16 +305,6 @@ class _MailBodyViewState extends State<MailBodyView> {
   );
 }
 
-/// Visible text of a message, for tests and screen readers.
-String mailPlainText(String source) {
-  final doc = html.parse(source);
-  return (doc.body?.nodes ?? const <dom.Node>[])
-      .map((n) => n.text ?? '')
-      .join(' ')
-      .replaceAll(RegExp(r'\s+'), ' ')
-      .trim();
-}
-
 /// A message at its own width, full screen: the only scroller on the page,
 /// so wide layouts pan and pinch-zoom smoothly.
 class MailOriginalScreen extends StatelessWidget {

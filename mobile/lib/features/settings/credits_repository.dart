@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
-import '../academic_calendar/calendar_repository.dart';
+import '../../core/network/public_content.dart';
 
 class CreditsDocument {
   CreditsDocument._(
@@ -89,10 +89,10 @@ class CreditsSnapshot {
 }
 
 class CreditsRepository {
-  CreditsRepository({this.cacheDirectory, CalendarFetch? fetch})
-    : fetch = fetch ?? CachedCalendarRepository.download;
+  CreditsRepository({this.cacheDirectory, PublicContentFetch? fetch})
+    : fetch = fetch ?? fetchPublicContent;
   final Directory? cacheDirectory;
-  final CalendarFetch fetch;
+  final PublicContentFetch fetch;
   CreditsSnapshot? _current;
   Future<CreditsSnapshot>? _pending;
   static final url = Uri.parse(

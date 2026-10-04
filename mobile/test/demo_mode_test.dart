@@ -6,7 +6,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:niu_mobile/core/demo/demo_account.dart';
 import 'package:niu_mobile/core/demo/demo_data.dart';
 import 'package:niu_mobile/core/session/campus_session.dart';
-import 'package:niu_mobile/core/web/academic_portal_screen.dart';
+import 'package:niu_mobile/features/academic_portal/academic_portal_screen.dart';
 import 'package:niu_mobile/features/attendance/attendance_repository.dart';
 import 'package:niu_mobile/features/authentication/login_screen.dart';
 import 'package:niu_mobile/features/events/events_demo.dart';
@@ -20,10 +20,10 @@ import 'package:niu_mobile/features/leave/leave_repository.dart';
 import 'package:niu_mobile/features/postal/postal_models.dart';
 import 'package:niu_mobile/features/registration/certificate_service.dart';
 import 'package:niu_mobile/features/registration/registration_data.dart';
-import 'package:niu_mobile/features/schedule/schedule_screen.dart';
 import 'package:niu_mobile/shared/shared.dart';
 import 'features/authentication_session_test.dart' show MemoryVault;
 import 'package:niu_mobile/features/events/event_models.dart';
+import 'package:niu_mobile/features/schedule/schedule_models.dart';
 
 void main() {
   test('only the exact review credentials enter the demo', () {
