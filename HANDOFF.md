@@ -321,7 +321,7 @@
 
 - `lib/features/schedule/schedule_week_view.dart`：橫軸星期（一～五，週末有課才出現）、縱軸節次（只顯示整週第一堂到最後一堂的範圍）。用 `scheduleLessons(..., mergeConsecutive: true)` 把同一堂課的連續節次合成一格；顏色依課名雜湊，同一門課每天同色；今天的欄位淡色底、上課中的格子加外框；點格子開底部面板（時間、教室、老師、開啟 M 園區課程）。
 - 1.0.14 重新設計：`ScheduleWeekView(now:, height:)` 由課表頁傳入台北時間與可用高度（螢幕高度扣掉約 290dp 的標題列、切換、底部分頁與同步列），列高在 58dp～93dp 間填滿畫面；星期下方有日期；今天整欄淡藍底；`_NowLine` 依節次時間把紅線放在現在的位置（下課時間停在節次交界，第一節前、最後一節後不顯示）；課程格是較深的課程色底＋左側色條；**所有天數都塞進螢幕寬度，不再左右捲動**，欄寬小於 56dp 時字縮小一級。
-- 這台模擬器之前被設成 `wm density 210`（畫面像兩倍大的平板），2026-10-05 已 `adb shell wm density reset` 回 420；截圖檢查版面請用預設密度。
+- 這台模擬器的快照帶著 `wm density 210`（畫面像兩倍大的平板），每次開機都會回到 210。檢查版面前先 `adb shell wm density reset` 回 420（真實手機的大小）。`smoke_android.py` 在兩種密度都跑過。
 - 課表頁上方的「單日／整週」切換存在 SharedPreferences 的 `scheduleWeekView`。
 
 ## 公告（1.0.12）

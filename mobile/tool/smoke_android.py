@@ -68,18 +68,25 @@ class Smoke:
                 return node
         return None
 
-    def wait(self, text: str, timeout: float = 20, exact: bool = False, widget: str | None = None) -> ET.Element:
+    def wait(
+        self, text: str, timeout: float = 20, exact: bool = False, widget: str | None = None, scroll: bool = False
+    ) -> ET.Element:
+        """scroll: swipe the page up between tries, for items below the fold."""
         deadline = time.time() + timeout
         while time.time() < deadline:
             node = self.find(text, exact, widget)
             if node is not None:
                 return node
+            if scroll:
+                self.adb("shell", "input", "swipe", "540", "1700", "540", "900", "300")
             time.sleep(1)
         self.shot(f"missing-{text}")
         raise AssertionError(f"「{text}」did not appear within {timeout:.0f}s")
 
-    def tap(self, text: str, exact: bool = False, timeout: float = 20, widget: str | None = None) -> None:
-        node = self.wait(text, timeout, exact, widget)
+    def tap(
+        self, text: str, exact: bool = False, timeout: float = 20, widget: str | None = None, scroll: bool = False
+    ) -> None:
+        node = self.wait(text, timeout, exact, widget, scroll)
         x1, y1, x2, y2 = map(int, re.findall(r"\d+", node.get("bounds")))
         self.adb("shell", "input", "tap", str((x1 + x2) // 2), str((y1 + y2) // 2))
 
@@ -179,17 +186,19 @@ def main() -> int:
     s.home()
 
     for tile, proof in SERVICES:
-        s.tap(tile + "，")  # tiles read 「校園信箱，收信、寫信與附件」
+        s.tap(tile + "，", scroll=True)  # tiles read 「校園信箱，收信、寫信與附件」
         s.wait(proof, timeout=30)
         time.sleep(1)
         s.shot(tile)
         s.check_log(tile)
         s.back()
-        s.wait("校園服務")
+        s.wait("校園服務", scroll=True)
         print(f"  ✓ {tile}")
 
+    for _ in range(3):  # back to the top of home, where the gear is
+        s.adb("shell", "input", "swipe", "540", "700", "540", "1900", "200")
     s.tap("設定", exact=True)
-    s.tap("通知設定")
+    s.tap("通知設定", scroll=True)
     s.wait("上課中通知")
     s.shot("notification-settings")
     s.check_log("notification settings")
