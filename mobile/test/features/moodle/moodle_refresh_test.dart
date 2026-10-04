@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:niu_mobile/features/moodle/moodle_screen.dart';
+import 'package:niu_mobile/features/moodle/moodle_courses_screen.dart';
 
 void main() {
   testWidgets('refresh retains results, handles sync errors and recovers', (

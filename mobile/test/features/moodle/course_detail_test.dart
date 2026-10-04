@@ -6,7 +6,8 @@ import 'package:niu_mobile/features/moodle/course_detail_widgets.dart';
 import 'package:niu_mobile/features/moodle/course_presentation.dart';
 import 'package:niu_mobile/features/moodle/course_widgets.dart';
 import 'package:niu_mobile/features/moodle/moodle_repository.dart';
-import 'package:niu_mobile/features/moodle/moodle_screen.dart';
+import 'package:niu_mobile/features/moodle/moodle_module_screen.dart';
+import 'package:niu_mobile/features/moodle/moodle_course_screen.dart';
 
 class DetailRepository extends MoodleRepository {
   DetailRepository()
