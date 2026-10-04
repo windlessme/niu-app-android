@@ -11,7 +11,7 @@ import 'package:niu_mobile/core/storage/credential_vault.dart';
 import 'package:niu_mobile/features/leave/leave_application_service.dart';
 import 'package:niu_mobile/features/leave/leave_application_screen.dart';
 import 'package:niu_mobile/shared/shared.dart';
-import '../test/leave_application_screen_test.dart' show FixtureLeaveGateway;
+import '../test/features/leave/leave_application_screen_test.dart' show FixtureLeaveGateway;
 
 class _Vault implements CredentialVault {
   @override
