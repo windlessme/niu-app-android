@@ -1,10 +1,8 @@
 # NIU-Life Flutter Android
 
 Flutter SDK: **3.47.5**, Java **17**, Android SDK **36**.
-Android build: AGP **8.11.1**, Gradle **8.14.3**, Kotlin **2.2.20**.
-AGP 9 is not yet compatible with the selected InAppWebView Android package;
-see the build decision in `../docs/android-flutter-architecture.md`.
-Flutter currently accepts this combination but prints future-support warnings.
+Android build: AGP **9.1.1**, Gradle **9.3.1**, Kotlin **2.4.0**
+(`toolchain.json` is the source of truth; `tool/check_toolchain.py` compares).
 
 ## Run
 
@@ -38,8 +36,7 @@ bash tool/smoke_android.sh
 ```
 
 This installs the debug APK and checks home/calendar navigation using UI
-Automator. Screenshots and UI dumps are written to `/tmp/opencode` on this
-development host.
+Automator, writing screenshots and UI dumps to a temporary folder.
 
 The preview integrates SSO, academic schedule/grades/graduation/events,
 Moodle courses/announcements/resources/assignments/grades, attendance scanning,
@@ -55,13 +52,14 @@ expired sessions provide a school-login reconnect action preserving the target.
 Use real accounts only in manual device testing; never commit credentials.
 
 The application ID is `me.windless.niulife`, the permanent Google Play package name.
-Confirm the publisher-owned permanent ID before the first Play upload.
 
 Calendar assets are generated from `../calendar-data`, including index hashes.
 Update the canonical data first, then run the sync tool. CI checks for drift.
 
 The repository interfaces can be overridden through Riverpod for fixtures;
-see `test/app_navigation_test.dart`. Unit tests never contact school services.
+see `test/app/app_navigation_test.dart`. Unit tests never contact school services.
+Tests mirror `lib/` (`test/features/<feature>/…`); shared fakes live in
+`test/support/fakes.dart`. Layer rules are checked by `tool/check_architecture.py`.
 
 Since 0.4.1, a rejected SSO restore marks only school authentication as needing
 reconnection. Local timetable data and independent Moodle/event credentials are

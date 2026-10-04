@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../app/providers.dart';
+import 'calendar_providers.dart';
 import '../../core/time/campus_date.dart';
 import '../../shared/shared.dart';
 import 'calendar_repository.dart';

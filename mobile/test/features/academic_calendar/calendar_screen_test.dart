@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:niu_mobile/app/providers.dart';
+import 'package:niu_mobile/features/academic_calendar/calendar_providers.dart';
 import 'package:niu_mobile/features/academic_calendar/calendar_repository.dart';
 import 'package:niu_mobile/features/academic_calendar/calendar_screen.dart';
 import 'package:niu_mobile/shared/niu_theme.dart';

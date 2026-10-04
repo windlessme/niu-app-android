@@ -4,13 +4,43 @@
 
 ## 結構
 
-- `mobile/lib/app/`：啟動組裝、go_router 路由及三個主頁籤（首頁、課表、M 園區）。
-- `mobile/lib/features/`：依功能分組的畫面、presentation models、repositories。
-- `mobile/lib/core/`：HTTP、校務 WebView、Session、憑證儲存及 Android 橋接。
-- `mobile/lib/shared/`：語意色彩、字級、間距、圓角及共用 UI 元件。
-- `mobile/android/`：課表 Widget、提醒、快捷與文件預覽／儲存。
+`mobile/lib/` 分四層，下層不能引用上層，由 `tool/check_architecture.py`（`verify.sh` 會跑）檢查：
 
-Riverpod 管理校曆資料來源與非同步狀態；CampusSession 使用 ChangeNotifier。頁面 UI 使用 StatefulWidget，詳情沿用 Navigator。校務資料由手機直接連學校，公開校曆／致謝讀取 GitHub；本庫沒有自建校務後端。
+| 層 | 位置 | 內容 | 可引用 |
+|---|---|---|---|
+| app | `lib/app/` | 啟動、go_router 路由（`app.dart`）、登入閘門、三個主分頁的 shell、深層連結 | 全部 |
+| features | `lib/features/<功能>/` | 各功能的畫面、models、repository／service、demo 實作 | 其他 feature、core、shared |
+| core | `lib/core/<領域>/` | Session、憑證儲存、HTTP、原生橋接、分析、示範資料、時間 | core、shared |
+| shared | `lib/shared/` | 設計 tokens 與共用元件（`shared.dart` 匯出全部） | shared |
+
+`mobile/android/` 是原生端：小工具、提醒鬧鐘、上課中通知、捷徑、文件預覽／儲存。
+
+### core 的領域
+
+| 資料夾 | 內容 |
+|---|---|
+| `session/` | `CampusSession`（ChangeNotifier，登入狀態與帳號範圍的資料）、`SessionCoordinator`（epoch，避免登出後寫回）、課表／畢業門檻／校務頁快取 |
+| `storage/` | `CredentialVault`：裝置安全儲存 |
+| `network/` | `school_clients.dart`：學校 API 用的 Dio；`public_content.dart`：從 GitHub raw 讀公開 JSON（不帶憑證） |
+| `platform/` | Flutter ↔ Android 橋接：課表給小工具／提醒、ICS、App 版本、In-App Updates |
+| `web/` | WebView 共用規則：`PortalPolicy`（可開哪些網址）、活動系統 Cookie |
+| `analytics/` | Firebase Analytics，只送固定名稱 |
+| `demo/` | 示範帳號、示範資料、示範用 PDF 與結果文字 |
+| `time/` | `CampusDate`：台北時區的日期 |
+
+### 功能資料夾的慣例
+
+- 檔名：`*_screen.dart` 畫面；`*_models.dart` 資料型別；`*_repository.dart`／`*_service.dart`／`*_client.dart` 連線；`*_presentation.dart` 給畫面用的整理邏輯；`*_widgets.dart` 只在這個功能用的元件；`*_scripts.dart` 注入校方網頁的 JavaScript。
+- **Model 不放在 screen 檔裡**，其他檔案要用 model 時不必引用整個畫面。
+- **示範模式**：每個功能把示範實作放在自己的 `*_demo.dart`（例如 `postal_demo.dart` 的 `DemoPostalService`），畫面用 `session.isDemo` 選擇；共用的示範資料在 `core/demo/`。
+- 只有「其他校園服務」從首頁服務格進入，名稱、圖示、顏色集中在 `features/home/campus_services.dart`。
+- `features/academic_portal/` 是校務系統（acade）的 WebView 畫面，成績、課表、畢業門檻、在學證明、請假、活動都透過它讀資料。
+
+### 測試
+
+`mobile/test/` 的資料夾對應 `lib/`：`test/app/`、`test/core/<領域>/`、`test/shared/`、`test/features/<功能>/`。共用的假物件（`MemoryVault`、`FixtureSso`、`WireAdapter` 等）在 `test/support/fakes.dart`；HTML、SVG 與 jsdom 腳本在 `test/fixtures/`。測試只用合成資料，不連學校。
+
+Riverpod 只管理校曆資料來源（`features/academic_calendar/calendar_providers.dart`）；其餘畫面用 StatefulWidget，詳情頁用 Navigator。校務資料由手機直接連學校，公開校曆／致謝讀取 GitHub；沒有自建後端。
 
 ## 登入與資料界線
 
@@ -29,7 +59,7 @@ Riverpod 管理校曆資料來源與非同步狀態；CampusSession 使用 Chang
 
 畢業門檻首次讀取後，以 `graduationCache` 儲存帳號、UTC 更新時間與校方解析結果於裝置安全儲存。後續開啟優先顯示快取，僅手動更新時連線；離線或 SSO 過期仍可查看，更新失敗／返回不清除舊資料。快取不跨帳號，登出立即清除記憶體並等待進行中的寫入後清除儲存；損壞或不支援版本的快取視為未儲存。畫面保留校方未知值，不以零代替。
 
-郵件包裹查詢使用校方公開的 `ccsys2.niu.edu.tw/GA/Postal/`（不需登入、不帶校務憑證），與 iOS 相同地重送該頁的 WebForms 查詢表單；「帶入我的姓名」按鈕可填入校方個人資料的姓名（`chName`），不會自動填入或查詢；預設同時查詢未領取、已領取與退件（校方表單一次只接受一種狀態，App 以各自獨立的連線並行查詢後合併）。頁面格式改變時視為錯誤而非空結果。
+郵件包裹查詢使用校方公開的 `ccsys2.niu.edu.tw/GA/Postal/`（不需登入、不帶校務憑證），與 iOS 相同地重送該頁的 WebForms 查詢表單；與 iOS 一樣，打開時用校方個人資料的姓名（`chName`）自動查詢，profile 晚到時只在表單沒被改過時才重查；預設同時查詢未領取、已領取與退件（校方表單一次只接受一種狀態，App 以各自獨立的連線並行查詢後合併）。頁面格式改變時視為錯誤而非空結果。
 
 首頁今日課程與課表的課程可點選，依課名對應 M 園區課程（全形半形與空白正規化、保留括號內容、同名取最新學期）；沒有 M 園區登入或找不到對應課程時直接切到 M 園區分頁。
 
@@ -69,6 +99,6 @@ Riverpod 管理校曆資料來源與非同步狀態；CampusSession 使用 Chang
 - `mobile/integration_test/`：Android 原生橋接、WebView 與 UI 測試。
 - `calendar-data/`：校曆原始 JSON、Schema 與離線驗證。
 
-Flutter 所帶 AGP 9 模板與目前 InAppWebView 的舊 ProGuard 設定不相容，故固定 AGP 8.11.1／Gradle 8.14.3／Kotlin 2.2.20。升級時需一起驗證原生套件；建置仍會出現 Flutter 未來支援提醒。
+建置工具是 AGP 9.1.1／Gradle 9.3.1／Kotlin 2.4.0（以 `toolchain.json` 為準）。InAppWebView 的 Android 套件仍用舊的 `proguard-android.txt`，所以 `gradle.properties` 設了 `android.r8.proguardAndroidTxt.disallowed=false`，套件更新後拿掉。Flutter 支援的 AGP 最高到 9.2。
 
 實際校方登入、門禁、點名、報名與文件儲存需要帳號及裝置驗收；fixture 通過不代表已完成端到端驗證。
