@@ -311,7 +311,16 @@ class _TodayCard extends StatelessWidget {
         children: [
           for (final (i, course) in courses.indexed) ...[
             if (i > 0) const Divider(indent: 84),
-            _CourseRow(course: course, onOpen: onOpenCourse),
+            _CourseRow(
+              course: course,
+              // Only the first class not yet started is 下一堂.
+              label: course.current
+                  ? '上課中'
+                  : courses.take(i).every((c) => c.current)
+                  ? '下一堂'
+                  : '稍後',
+              onOpen: onOpenCourse,
+            ),
           ],
         ],
       ),
@@ -320,8 +329,9 @@ class _TodayCard extends StatelessWidget {
 }
 
 class _CourseRow extends StatelessWidget {
-  const _CourseRow({required this.course, this.onOpen});
+  const _CourseRow({required this.course, required this.label, this.onOpen});
   final HomeCourse course;
+  final String label;
   final void Function(String course)? onOpen;
   @override
   Widget build(BuildContext context) {
@@ -375,7 +385,7 @@ class _CourseRow extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     NiuBadge(
-                      label: course.current ? '上課中' : '下一堂',
+                      label: label,
                       tone: course.current ? NiuTone.accent : NiuTone.neutral,
                       solid: course.current,
                     ),
