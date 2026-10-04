@@ -64,6 +64,7 @@ const leaveApplicationRuntime = r'''
    const label=Array.from(main.querySelectorAll('[ml]')).find(e=>clean(e.textContent)==='本次請假日期與節次明細');
    const table=label?.closest('tr')?.querySelector('table')||Array.from(main.querySelectorAll('table')).find(t=>t.rows[0]?.textContent.includes('請假節次'));
    const periods=table?Array.from(table.rows).slice(1).filter(r=>r.cells.length>1&&!/查無|無資料/.test(r.textContent)).map(r=>Array.from(r.cells,c=>clean(c.innerText))):[];
+   const periodHeaders=table?.rows[0]?Array.from(table.rows[0].cells,c=>clean(c.innerText)):[];
    const countLabel=Array.from(main.querySelectorAll('[ml]')).find(e=>clean(e.textContent)==='本次請假總節數');
    const total=clean(countLabel?.closest('td')?.nextElementSibling?.innerText)||null;
    const upload=uploadDoc();
@@ -72,7 +73,7 @@ const leaveApplicationRuntime = r'''
    const later=main.getElementById('CheckBox1');
    return {revision:revision(main),choices:Array.from(type.options).filter(o=>!o.disabled).map(o=>({value:o.value,label:o.text})),type:type.value,
      start:value(main,'M_HOLIDAY_DATE_S'),end:value(main,'M_HOLIDAY_DATE_E'),reason:reason.value,reasonLimit:reason.maxLength,
-     later:!!later?.checked,canDeferAttachment:!!later&&!later.disabled,periods,total,attachments,extensions};
+     later:!!later?.checked,canDeferAttachment:!!later&&!later.disabled,periods,periodHeaders,total,attachments,extensions};
  }
  if(op==='read')return JSON.stringify(snapshot());
  if(op==='settled'){
@@ -88,7 +89,9 @@ const leaveApplicationRuntime = r'''
    const periods=[];
    for(const row of Array.from(table.rows).slice(1)){
      for(let i=1;i<row.cells.length;i++)for(const input of row.cells[i].querySelectorAll('input[type="checkbox"][name="chkBox"]')){
-       if(!input.disabled)periods.push({value:input.value,date:dates[i]||'',period:clean(row.cells[0].innerText),course:clean(row.cells[i].innerText),selected:input.checked});
+       // The cell lists teacher, course and room on separate lines, as iOS reads it.
+       const lines=String(row.cells[i].innerText||'').split('\n').map(clean).filter(Boolean);
+       if(!input.disabled)periods.push({value:input.value,date:dates[i]||'',period:clean(row.cells[0].innerText),course:lines.length>1?lines[1]:clean(row.cells[i].innerText),teacher:lines.length>1?lines[0]:'',room:lines[2]||'',selected:input.checked});
      }
    }
    return JSON.stringify({periods,revision:revision(picker)});

@@ -4,6 +4,7 @@ import '../../core/demo/demo_data.dart';
 import '../../core/session/campus_session.dart';
 import '../academic_portal/academic_portal_screen.dart';
 import '../../shared/shared.dart';
+import 'leave_application_data.dart';
 import 'leave_repository.dart';
 import 'leave_widgets.dart';
 import 'leave_application_screen.dart';
@@ -211,6 +212,15 @@ class _LeaveScreenState extends State<LeaveScreen> {
         ? null
         : LeaveApprovalStep.returnReason(workflow);
     final workflowName = data is Map ? '${data['workflowName'] ?? ''}' : '';
+    final periodEntries = data is Map && data['periods'] is List
+        ? [
+            for (final table in data['periods'] as List)
+              ...leavePeriodEntries([
+                for (final row in table as List)
+                  [for (final cell in row as List) '$cell'],
+              ]),
+          ]
+        : <LeavePeriodEntry>[];
     Future<void> update() async {
       await open(record: record);
       if (mounted && detailContext.mounted) updateDetail(() {});
@@ -261,8 +271,13 @@ class _LeaveScreenState extends State<LeaveScreen> {
               ),
               const SizedBox(height: NiuSpacing.xs),
               Text(
-                '${record['請假起日'] ?? '-'} – ${record['請假訖日'] ?? '-'} · ${record['請假總節數'] ?? '-'} 節',
-                style: theme.textTheme.bodySmall,
+                [
+                  leaveRecordPeriodSummary(record),
+                  '共 ${record['請假總節數'] ?? '-'} 節',
+                ].where((v) => v.isNotEmpty).join('・'),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontFeatures: tabularFigures,
+                ),
               ),
             ],
           ),
@@ -273,31 +288,26 @@ class _LeaveScreenState extends State<LeaveScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                for (final key in [
-                  '申請日期',
-                  '請假起日',
-                  '請假訖日',
-                  '起始節次',
-                  '迄止節次',
-                  '請假總節數',
-                ])
-                  fact(key, record[key]),
+                fact('申請日期', record['申請日期']),
+                fact('假單序號', record['假單序號']),
+                // The header card already shows type, dates and the count.
                 for (final entry in fields.entries)
-                  fact(entry.key, entry.value),
-                if (data is Map && data['periods'] is List)
-                  for (final table in data['periods'] as List)
-                    for (final row in table as List)
-                      Padding(
-                        padding: const EdgeInsets.only(top: NiuSpacing.xs),
-                        child: Text(
-                          (row as List).join(' · '),
-                          style: theme.textTheme.bodySmall,
-                        ),
-                      ),
+                  if (!const {
+                    '申請日期',
+                    '請假類別',
+                    '請假日期',
+                    '本次請假總節數',
+                  }.contains(entry.key))
+                    fact(entry.key, entry.value),
               ],
             ),
           ),
         ),
+        if (periodEntries.isNotEmpty)
+          NiuSection(
+            title: '請假節次',
+            child: NiuCard(child: LeavePeriodSchedule(entries: periodEntries)),
+          ),
         NiuSection(
           title: '簽核流程',
           action: data is Map && data['workflowUpdatedAt'] != null

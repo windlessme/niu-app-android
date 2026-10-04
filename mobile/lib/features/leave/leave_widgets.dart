@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../shared/shared.dart';
+import 'leave_application_data.dart';
 
 /// The school's type name without its parenthesised sub-types, e.g.
 /// 「產假（產前假／陪產假／流產假／哺乳假）」 reads 「產假」.
@@ -54,9 +55,9 @@ class LeaveTypeStatistics extends StatelessWidget {
       LayoutBuilder(
         builder: (context, constraints) {
           final text = Theme.of(context).textTheme;
-          // The widest column count whose tiles still fit 「身心調適假」.
+          // The widest column count whose tiles still fit 「心理健康假」.
           final measure = TextPainter(
-            text: TextSpan(text: '身心調適假', style: text.labelMedium),
+            text: TextSpan(text: '心理健康假', style: text.labelMedium),
             textDirection: Directionality.of(context),
             textScaler: MediaQuery.textScalerOf(context),
           )..layout();
@@ -181,7 +182,12 @@ class LeaveRecordContent extends StatelessWidget {
               ),
               const SizedBox(height: NiuSpacing.xs),
               Text(
-                '${start == end ? start : '$start – $end'} · ${record['請假總節數'] ?? '-'} 節',
+                [
+                  leaveRecordPeriodSummary(record).isEmpty
+                      ? (start == end ? start : '$start – $end')
+                      : leaveRecordPeriodSummary(record),
+                  '共 ${record['請假總節數'] ?? '-'} 節',
+                ].join('・'),
                 style: text.bodySmall?.copyWith(fontFeatures: tabularFigures),
               ),
               if ('${record['請假事由'] ?? ''}'.trim().isNotEmpty) ...[
@@ -383,4 +389,150 @@ class LeaveWorkflow extends StatelessWidget {
       ],
     );
   }
+}
+
+/// A leave's periods grouped by day: each block is one course over its
+/// consecutive periods, e.g. 「第 3–4 節　資料結構　王大明」.
+class LeavePeriodSchedule extends StatelessWidget {
+  const LeavePeriodSchedule({super.key, required this.entries});
+  final List<LeavePeriodEntry> entries;
+
+  /// Runs of the same course on consecutive periods of one day.
+  static List<List<LeavePeriodEntry>> blocks(List<LeavePeriodEntry> day) {
+    final result = <List<LeavePeriodEntry>>[];
+    for (final e in day) {
+      final last = result.lastOrNull?.last;
+      final joins =
+          last != null &&
+          last.course == e.course &&
+          last.teacher == e.teacher &&
+          last.number != null &&
+          e.number == last.number! + 1;
+      joins ? result.last.add(e) : result.add([e]);
+    }
+    return result;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final colors = NiuColors.of(context);
+    final days = <String, List<LeavePeriodEntry>>{};
+    for (final e in entries) {
+      days.putIfAbsent(e.date, () => []).add(e);
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final (i, day) in days.entries.indexed) ...[
+          if (i > 0) const SizedBox(height: NiuSpacing.md),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  leaveDayLabel(day.key),
+                  style: text.titleSmall?.copyWith(
+                    fontFeatures: tabularFigures,
+                  ),
+                ),
+              ),
+              Text(
+                '${day.value.length} 節',
+                style: text.labelMedium?.copyWith(fontFeatures: tabularFigures),
+              ),
+            ],
+          ),
+          for (final block in blocks(day.value))
+            Semantics(
+              label: [
+                leavePeriodLabel(block.map((e) => e.period)),
+                if (block.first.course.isNotEmpty) block.first.course,
+                if (block.first.teacher.isNotEmpty) block.first.teacher,
+              ].join('，'),
+              excludeSemantics: true,
+              child: Padding(
+                padding: const EdgeInsets.only(top: NiuSpacing.sm),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      constraints: const BoxConstraints(minWidth: 76),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: NiuSpacing.sm,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: colors.accentSoft,
+                        borderRadius: BorderRadius.circular(NiuRadius.sm),
+                      ),
+                      child: Text(
+                        leavePeriodLabel(block.map((e) => e.period)),
+                        textAlign: TextAlign.center,
+                        style: text.labelMedium?.copyWith(
+                          color: colors.accent,
+                          fontWeight: FontWeight.w700,
+                          fontFeatures: tabularFigures,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: NiuSpacing.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            block.first.course.isEmpty
+                                ? '未列出課程'
+                                : block.first.course,
+                            style: text.bodyMedium?.copyWith(
+                              color: block.first.course.isEmpty
+                                  ? colors.inkTertiary
+                                  : colors.ink,
+                            ),
+                          ),
+                          if ([
+                            block.first.teacher,
+                            block.first.time,
+                          ].any((v) => v.isNotEmpty))
+                            Text(
+                              [
+                                block.first.teacher,
+                                if (block.first.time.isNotEmpty &&
+                                    block.last.time.isNotEmpty)
+                                  '${block.first.time.split('–').first}–${block.last.time.split('–').last}',
+                              ].where((v) => v.isNotEmpty).join(' · '),
+                              style: text.bodySmall?.copyWith(
+                                fontFeatures: tabularFigures,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ],
+    );
+  }
+}
+
+/// 「10/8（三）・第 3–4 節」 or, across days, 「10/8（三）第 3 節 – 10/9（四）第 4 節」.
+String leaveRecordPeriodSummary(Map record) {
+  final start = '${record['請假起日'] ?? ''}'.trim();
+  final end = '${record['請假訖日'] ?? ''}'.trim();
+  final from = '${record['起始節次'] ?? ''}'.trim();
+  final to = '${record['迄止節次'] ?? ''}'.trim();
+  String period(String p) => p.isEmpty ? '' : leavePeriodLabel([p]);
+  if (start.isEmpty) return '';
+  if (end.isEmpty || end == start) {
+    final periods = [from, to].where((p) => p.isNotEmpty).toSet();
+    final label = periods.isEmpty ? '' : leavePeriodLabel(periods);
+    return [leaveDayLabel(start), if (label.isNotEmpty) label].join('・');
+  }
+  return [
+    '${leaveDayLabel(start)}${period(from)}',
+    '${leaveDayLabel(end)}${period(to)}',
+  ].join(' – ');
 }

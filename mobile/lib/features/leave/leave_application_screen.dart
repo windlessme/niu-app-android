@@ -15,6 +15,7 @@ import 'leave_application_service.dart';
 import 'leave_notice.dart';
 import 'leave_demo.dart';
 import 'leave_application_sheets.dart';
+import 'leave_widgets.dart';
 
 /// The school form stays mounted behind the native UI, including its upload and
 /// period-picker frames. No saved Cookie fixture or school credentials are used.
@@ -725,11 +726,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen>
       ];
     } else if (form != null) {
       final dated = form.start.isNotEmpty && form.end.isNotEmpty;
-      final byDate = <String, List<String>>{};
-      for (final row in form.periods) {
-        if (row.isEmpty) continue;
-        byDate.putIfAbsent(row.first, () => []).addAll(row.skip(1));
-      }
+      final periodEntries = form.periodEntries;
       content = [
         Text('送出後由學校審核，核准前可在請假紀錄查看進度。', style: theme.textTheme.bodySmall),
         NiuSection(
@@ -769,36 +766,9 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen>
             ],
           ),
         ),
-        if (byDate.isNotEmpty) ...[
+        if (periodEntries.isNotEmpty) ...[
           const SizedBox(height: NiuSpacing.md),
-          NiuWell(
-            padding: const EdgeInsets.all(NiuSpacing.lg),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (final (i, entry) in byDate.entries.indexed) ...[
-                  if (i > 0) const SizedBox(height: NiuSpacing.md),
-                  Text(
-                    displayLeaveDate(entry.key),
-                    style: theme.textTheme.labelMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: NiuSpacing.xs),
-                  Wrap(
-                    spacing: NiuSpacing.sm,
-                    runSpacing: NiuSpacing.sm,
-                    children: [
-                      for (final label in entry.value.where(
-                        (v) => v.trim().isNotEmpty,
-                      ))
-                        NiuTag(label: label),
-                    ],
-                  ),
-                ],
-              ],
-            ),
-          ),
+          NiuCard(child: LeavePeriodSchedule(entries: periodEntries)),
         ],
         NiuSection(
           title: '請假事由',
