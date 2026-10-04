@@ -38,7 +38,7 @@ import '../shared/niu_theme.dart';
 import 'auth_gate.dart';
 import 'campus_shell.dart';
 import 'deep_links.dart';
-import 'providers.dart';
+import '../features/academic_calendar/calendar_providers.dart';
 
 class NiuApp extends StatefulWidget {
   const NiuApp({super.key});

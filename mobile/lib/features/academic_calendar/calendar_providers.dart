@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 
-import '../features/academic_calendar/calendar_repository.dart';
+import 'calendar_repository.dart';
 
 class AppCalendarRepository implements CalendarRepository {
   Future<CalendarRepository>? _repository;

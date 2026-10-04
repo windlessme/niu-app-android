@@ -3,6 +3,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 python3 tool/sync_calendar.py --check
 python3 tool/check_toolchain.py
+python3 tool/check_architecture.py
 node tool/check_academic_dom.js
 node tool/check_schedule_lifecycle.js
 cmp assets/LICENSE ../LICENSE
