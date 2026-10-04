@@ -154,11 +154,19 @@ for(const page of ['SEC2010_01','SEC2010_04']){
       '''
 const assert=require('node:assert/strict');
 global.location={hostname:'acade.niu.edu.tw',pathname:'/NIU/Application/FLO/FLO30/FLO3040_01.aspx'};
-const rows=[['簽核狀況','簽核日期','關卡說明','簽核單位'],['結案','2026/09/30','第一關','單位甲'],['待簽核','','第二關','單位乙']].map(r=>({cells:r.map(textContent=>({textContent}))}));
-global.document={getElementById:()=>({rows})};
+const grid=r=>r.map(row=>({cells:row.map(textContent=>({textContent}))}));
+let rows=grid([['簽核狀況','簽核日期','關卡說明','簽核單位'],['結案','2026/09/30','第一關','單位甲'],['待簽核','','第二關','單位乙']]);
+let tds=[];
+global.document={getElementById:()=>({rows}),querySelectorAll:()=>tds};
 const result=JSON.parse(eval(${jsonEncode(leaveWorkflowExtract)}));
 assert.equal(result.workflow.length,2);assert.equal(result.workflow[0]['簽核狀況'],'結案');assert.equal(result.workflow[1]['簽核日期'],'');
-location.pathname='/NIU/Application/FLO/FLO30/FLO3020_01.aspx';assert.equal(JSON.parse(eval(${jsonEncode(leaveWorkflowExtract)})).workflow.length,2);
+assert.equal('簽核人' in result.workflow[0],false);assert.equal(result.workflowName,'');
+// Pages that list the signer and comment, plus the flow name, keep them.
+rows=grid([['簽核狀況','簽核日期','關卡說明','簽核單位','簽核人','簽核意見'],['退回','2026/10/01','導師','資工系','王大明','請補  證明']]);
+tds=[{textContent:'簽核流程：'},{textContent:'12- 學生請假'}];
+const full=JSON.parse(eval(${jsonEncode(leaveWorkflowExtract)}));
+assert.equal(full.workflow[0]['簽核人'],'王大明');assert.equal(full.workflow[0]['簽核意見'],'請補 證明');assert.equal(full.workflowName,'學生請假');
+location.pathname='/NIU/Application/FLO/FLO30/FLO3020_01.aspx';assert.equal(JSON.parse(eval(${jsonEncode(leaveWorkflowExtract)})).workflow.length,1);
 location.pathname='/NIU/Application/FLO/FLO00/FLO0030_01.aspx';assert.equal(eval(${jsonEncode(leaveWorkflowExtract)}),null);
 ''',
     ]);
@@ -181,41 +189,44 @@ assert.equal(eval(script),null);eval(script);assert.equal(clicks,1);
     expect(result.exitCode, 0, reason: result.stderr.toString());
   });
   for (final dark in [false, true]) {
-    testWidgets('long leave categories wrap with semantic counts dark=$dark', (
-      tester,
-    ) async {
-      tester.view.physicalSize = const Size(320, 700);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      final semantics = tester.ensureSemantics();
-      await tester.pumpWidget(
-        MaterialApp(
-          theme: dark ? NiuTheme.dark : NiuTheme.light,
-          builder: (context, child) => MediaQuery(
-            data: MediaQuery.of(
-              context,
-            ).copyWith(textScaler: const TextScaler.linear(2)),
-            child: child!,
-          ),
-          home: const Scaffold(
-            body: SingleChildScrollView(
-              child: Padding(
-                padding: EdgeInsets.all(NiuSpacing.xl),
-                child: LeaveTypeStatistics(
-                  periods: {'公假': '1', '產假（產前假／陪產假／流產假／哺乳假）': '0', '病假': '0'},
+    testWidgets(
+      'long leave categories shorten with semantic counts dark=$dark',
+      (tester) async {
+        tester.view.physicalSize = const Size(320, 700);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final semantics = tester.ensureSemantics();
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: dark ? NiuTheme.dark : NiuTheme.light,
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(
+                context,
+              ).copyWith(textScaler: const TextScaler.linear(2)),
+              child: child!,
+            ),
+            home: const Scaffold(
+              body: SingleChildScrollView(
+                child: Padding(
+                  padding: EdgeInsets.all(NiuSpacing.xl),
+                  child: LeaveTypeStatistics(
+                    periods: {'公假': '1', '產假（產前假／陪產假／流產假／哺乳假）': '0', '病假': '0'},
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      );
-      expect(find.bySemanticsLabel('公假 1 節'), findsOneWidget);
-      expect(find.text('0'), findsNWidgets(2));
-      expect(tester.takeException(), isNull);
-      semantics.dispose();
-      await tester.pumpWidget(const SizedBox());
-    });
+        );
+        expect(find.bySemanticsLabel('公假 1 節'), findsOneWidget);
+        // Zero types share one quiet line, named without their sub-types.
+        expect(find.text('產假、病假：0 節'), findsOneWidget);
+        expect(find.textContaining('產前假'), findsNothing);
+        expect(tester.takeException(), isNull);
+        semantics.dispose();
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
   }
   final snapshots = <String, dynamic>{
     'statistics': {
@@ -380,6 +391,90 @@ assert.equal(eval(script),null);eval(script);assert.equal(clicks,1);
     await tester.tap(find.byTooltip('更新請假資料'));
     await tester.pumpAndSettle();
     expect(reads, 4);
+  });
+  test('type names drop their parenthesised sub-types', () {
+    expect(leaveTypeShortName('產假（產前假／陪產假／流產假／哺乳假）'), '產假');
+    expect(leaveTypeShortName('產假(產前假/陪產假/流產假)'), '產假');
+    expect(leaveTypeShortName('事假'), '事假');
+    expect(leaveTypeShortName('（其他）'), '（其他）');
+  });
+  testWidgets('used types fill every row with equal, aligned tiles', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: NiuTheme.light,
+        home: const Scaffold(
+          body: Padding(
+            padding: EdgeInsets.all(NiuSpacing.xl),
+            child: LeaveTypeStatistics(
+              periods: {
+                '事假': '2',
+                '病假': '12',
+                '公假': '1',
+                '產假（產前假／陪產假／流產假／哺乳假）': '4',
+                '喪假': '3',
+                '婚假': '0',
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+    final tiles = find.byType(NiuWell);
+    expect(tiles, findsNWidgets(5));
+    final rects = [for (var i = 0; i < 5; i++) tester.getRect(tiles.at(i))];
+    // Three on the first row, two stretched across the second.
+    expect(rects[0].top, rects[2].top);
+    expect(rects[3].top, rects[4].top);
+    expect(rects[3].top, greaterThan(rects[0].bottom));
+    expect(rects[3].left, rects[0].left);
+    expect(rects[4].right, closeTo(rects[2].right, 0.5));
+    for (final r in rects.skip(1).take(2)) {
+      expect(r.height, rects[0].height);
+    }
+    expect(rects[4].height, rects[3].height);
+    expect(find.text('產假'), findsOneWidget);
+    expect(find.text('婚假：0 節'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+  testWidgets('workflow names the signer and shows why it was returned', (
+    tester,
+  ) async {
+    final steps = [
+      {
+        '簽核狀況': '已簽核',
+        '簽核日期': '115/10/01',
+        '關卡說明': '申請人',
+        '簽核單位': '資工系',
+        '簽核人': '陳宜安',
+        '簽核意見': '(申請送出)',
+      },
+      {
+        '簽核狀況': '退回',
+        '簽核日期': '115/10/02',
+        '關卡說明': '導師',
+        '簽核單位': '資工系',
+        '簽核人': '王大明',
+        '簽核意見': '請補證明',
+      },
+    ];
+    expect(LeaveApprovalStep.returnReason(steps), '請補證明');
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: NiuTheme.light,
+        home: Scaffold(body: LeaveWorkflow(steps: steps)),
+      ),
+    );
+    expect(find.text('資工系 王大明'), findsOneWidget);
+    expect(find.text('退回'), findsOneWidget);
+    expect(find.text('請補證明'), findsOneWidget);
+    // Automatic school notes add nothing and stay hidden.
+    expect(find.text('(申請送出)'), findsNothing);
   });
 }
 

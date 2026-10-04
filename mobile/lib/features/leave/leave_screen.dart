@@ -21,6 +21,10 @@ class _LeaveScreenState extends State<LeaveScreen> {
   Map<String, dynamic> snapshots = {};
   bool loading = true, busy = false;
   String? error;
+
+  /// Details already loaded by themselves since the page was opened, so a
+  /// failed or cancelled read is not retried in a loop.
+  final _autoLoaded = <String>{};
   @override
   void initState() {
     super.initState();
@@ -199,9 +203,35 @@ class _LeaveScreenState extends State<LeaveScreen> {
         ? Map<String, dynamic>.from(data['fields'] as Map)
         : <String, dynamic>{};
     final status = '${record['審核結果'] ?? '-'}';
+    final id = '${record['假單序號']}';
+    final workflow = data is Map && data['workflow'] is List
+        ? data['workflow'] as List
+        : null;
+    final returnReason = workflow == null
+        ? null
+        : LeaveApprovalStep.returnReason(workflow);
+    final workflowName = data is Map ? '${data['workflowName'] ?? ''}' : '';
     Future<void> update() async {
       await open(record: record);
       if (mounted && detailContext.mounted) updateDetail(() {});
+    }
+
+    // Like iOS, opening a record reads its 簽核流程 without asking: when it
+    // was never read, or the records list has been refreshed since.
+    final list = snapshots['list'];
+    final listAt = list is Map
+        ? DateTime.tryParse('${list['updatedAt']}')
+        : null;
+    final detailAt = cached is Map
+        ? DateTime.tryParse('${cached['updatedAt']}')
+        : null;
+    final stale =
+        workflow == null ||
+        (listAt != null && detailAt != null && detailAt.isBefore(listAt));
+    if (stale && !busy && _autoLoaded.add(id)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && detailContext.mounted) update();
+      });
     }
 
     return NiuScrollPage(
@@ -214,6 +244,10 @@ class _LeaveScreenState extends State<LeaveScreen> {
         ),
       ],
       children: [
+        if (returnReason != null) ...[
+          NiuBanner(tone: NiuTone.error, message: '退回原因：$returnReason'),
+          const SizedBox(height: NiuSpacing.lg),
+        ],
         NiuCard(
           padding: const EdgeInsets.all(NiuSpacing.xl),
           child: Column(
@@ -283,22 +317,24 @@ class _LeaveScreenState extends State<LeaveScreen> {
                     message: '這次沒有讀到最新流程，顯示上次的紀錄。',
                   ),
                 ),
-              if (data is! Map || data['workflow'] is! List)
+              if (workflow == null && busy)
+                const NiuCard(child: NiuLoading(message: '正在讀取簽核流程'))
+              else if (workflow == null)
                 NiuCard(
                   child: NiuEmpty(
                     padding: const EdgeInsets.symmetric(
                       vertical: NiuSpacing.lg,
                     ),
                     icon: NiuIcons.pending,
-                    title: '還沒有讀取簽核流程',
-                    message: '更新明細後就會顯示。',
+                    title: '沒有讀到簽核流程',
+                    message: '可以再試一次，或到校務系統的假單查看。',
                     action: FilledButton.tonal(
                       onPressed: busy ? null : update,
-                      child: const Text('更新明細'),
+                      child: const Text('重新讀取'),
                     ),
                   ),
                 )
-              else if ((data['workflow'] as List).isEmpty)
+              else if (workflow.isEmpty)
                 const NiuCard(
                   child: NiuEmpty(
                     padding: EdgeInsets.symmetric(vertical: NiuSpacing.lg),
@@ -308,7 +344,18 @@ class _LeaveScreenState extends State<LeaveScreen> {
                   ),
                 )
               else
-                LeaveWorkflow(steps: data['workflow'] as List),
+                LeaveWorkflow(steps: workflow),
+              if (workflow != null && workflowName.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(
+                    top: NiuSpacing.sm,
+                    left: NiuSpacing.xs,
+                  ),
+                  child: Text(
+                    '流程：$workflowName',
+                    style: theme.textTheme.labelMedium,
+                  ),
+                ),
             ],
           ),
         ),
@@ -439,6 +486,7 @@ class _LeaveScreenState extends State<LeaveScreen> {
                     onTap: () {
                       final record = Map<String, dynamic>.from(raw as Map);
                       record['_page'] = list['data']['page'];
+                      _autoLoaded.remove('${record['假單序號']}');
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => ListenableBuilder(

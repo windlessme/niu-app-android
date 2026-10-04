@@ -102,13 +102,19 @@ void main() {
       isTrue,
     );
     expect(DemoData.leaveList['records'], isNotEmpty);
-    expect(DemoData.leaveDetail('D1150915')['workflow'], hasLength(2));
+    expect(DemoData.leaveDetail('D1150915')['workflow'], hasLength(3));
+    // The returned sample explains why, as the detail page shows it.
+    expect(
+      DemoData.leaveDetail('D1150921')['workflow'].last['簽核意見'],
+      contains('證明'),
+    );
     // The leave screen caches every snapshot through the real validator.
     LeaveRepository.validate({
       for (final (key, data) in [
         ('statistics', DemoData.leaveStatistics),
         ('list', DemoData.leaveList),
         ('detail:D1150915', DemoData.leaveDetail('D1150915')),
+        ('detail:D1150921', DemoData.leaveDetail('D1150921')),
         ('detail:D1150928', DemoData.leaveDetail('D1150928')),
       ])
         key: jsonDecode(
