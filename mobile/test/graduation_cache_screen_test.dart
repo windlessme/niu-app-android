@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:niu_mobile/core/session/cached_graduation.dart';
-import 'package:niu_mobile/core/web/academic_portal_screen.dart';
+import 'package:niu_mobile/features/academic_portal/academic_portal_screen.dart';
 import 'package:niu_mobile/features/graduation/graduation_screen.dart';
 import 'package:niu_mobile/features/graduation/graduation_dashboard.dart';
 import 'package:niu_mobile/shared/shared.dart';

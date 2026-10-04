@@ -2,11 +2,11 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:niu_mobile/core/web/academic_portal_screen.dart';
-import 'package:niu_mobile/features/schedule/schedule_screen.dart';
+import 'package:niu_mobile/features/academic_portal/academic_portal_screen.dart';
 import 'package:niu_mobile/features/schedule/schedule_export.dart';
 import 'package:niu_mobile/features/grades/grades_screen.dart';
 import 'package:niu_mobile/features/graduation/graduation_screen.dart';
+import 'package:niu_mobile/features/schedule/schedule_models.dart';
 
 void main() {
   test(

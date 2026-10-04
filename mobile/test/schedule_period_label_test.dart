@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:niu_mobile/features/schedule/schedule_presentation.dart';
-import 'package:niu_mobile/features/schedule/schedule_screen.dart';
+import 'package:niu_mobile/features/schedule/schedule_models.dart';
 
 void main() {
   ScheduleLesson lesson(List<String> periods) => ScheduleLesson(

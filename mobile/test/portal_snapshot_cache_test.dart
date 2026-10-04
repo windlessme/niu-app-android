@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:niu_mobile/core/session/portal_snapshot_cache.dart';
-import 'package:niu_mobile/core/web/academic_portal_screen.dart';
+import 'package:niu_mobile/features/academic_portal/academic_portal_screen.dart';
 import 'package:niu_mobile/shared/shared.dart';
 
 import 'features/authentication_session_test.dart' show MemoryVault;

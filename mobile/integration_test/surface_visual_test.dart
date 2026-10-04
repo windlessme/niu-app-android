@@ -5,6 +5,7 @@ import 'package:integration_test/integration_test.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:niu_mobile/shared/shared.dart';
 import 'package:niu_mobile/features/schedule/schedule_screen.dart';
+import 'package:niu_mobile/features/schedule/schedule_models.dart';
 
 void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();

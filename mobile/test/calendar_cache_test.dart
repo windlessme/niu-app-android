@@ -5,6 +5,7 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:niu_mobile/features/academic_calendar/calendar_repository.dart';
+import 'package:niu_mobile/core/network/public_content.dart';
 
 class FileBundle extends CachingAssetBundle {
   @override
@@ -34,7 +35,7 @@ void main() {
     await directory.delete(recursive: true);
   });
 
-  CalendarFetch feed(Map<String, dynamic> value) {
+  PublicContentFetch feed(Map<String, dynamic> value) {
     final bytes = utf8.encode(jsonEncode(value));
     final index = utf8.encode(
       jsonEncode({

@@ -8,7 +8,7 @@ import '../academic_calendar/calendar_repository.dart';
 import '../moodle/course_presentation.dart';
 import '../moodle/moodle_repository.dart';
 import '../schedule/schedule_export.dart';
-import '../schedule/schedule_screen.dart';
+import '../schedule/schedule_models.dart';
 
 /// Local notifications, matching the iOS app: assignment deadlines a day
 /// ahead, important calendar dates the morning before, and weekly class

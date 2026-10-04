@@ -4,7 +4,7 @@ import '../../shared/shared.dart';
 import '../../core/platform/schedule_gateway.dart';
 import '../../core/platform/schedule_ics.dart';
 import '../../core/session/campus_session.dart';
-import 'schedule_screen.dart';
+import 'schedule_models.dart';
 
 List<ScheduleBlock> scheduleBlocks(ClassSchedule schedule) {
   const days = ['星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日'];

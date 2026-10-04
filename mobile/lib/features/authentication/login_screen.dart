@@ -13,10 +13,10 @@ import '../events/event_login_service.dart';
 import '../library/library_space_session.dart';
 import '../mail/mail_session.dart';
 import '../moodle/moodle_login_service.dart';
-import '../settings/settings_screen.dart';
 import 'remember_school_login.dart';
 import 'school_login_capture.dart';
 import 'school_login_engine.dart';
+import '../settings/privacy_screen.dart';
 
 /// Native 學號／密碼 form, signing in on the school SSO page like iOS:
 /// the page is filled and submitted out of sight, and shown only when the

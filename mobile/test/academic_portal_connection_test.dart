@@ -7,7 +7,7 @@ import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:niu_mobile/core/session/campus_session.dart';
 import 'package:niu_mobile/core/session/session_coordinator.dart';
-import 'package:niu_mobile/core/web/academic_portal_screen.dart';
+import 'package:niu_mobile/features/academic_portal/academic_portal_screen.dart';
 import 'package:niu_mobile/shared/shared.dart';
 
 import 'features/authentication_session_test.dart' show MemoryVault;

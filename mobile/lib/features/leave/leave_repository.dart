@@ -122,13 +122,6 @@ class LeaveRepository {
   }
 }
 
-final leaveApplication = Uri.parse(
-  'https://acade.niu.edu.tw/NIU/Application/SEC/SEC20/SEC2010_.aspx?progcd=SEC2010',
-);
-final leaveQuery = Uri.parse(
-  'https://acade.niu.edu.tw/NIU/Application/SEC/SEC40/SEC4030_01.aspx',
-);
-
 String leaveMenuNavigation(
   bool application, {
   bool agreeForStatistics = false,

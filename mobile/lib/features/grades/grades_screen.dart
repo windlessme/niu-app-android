@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/demo/demo_data.dart';
-import '../../core/web/academic_portal_screen.dart';
+import '../academic_portal/academic_portal_screen.dart';
 import 'grade_statistics.dart';
 import '../../shared/shared.dart';
 

@@ -75,7 +75,7 @@ void main() {
                       onSelected: (_) {},
                     ),
                     const NiuFilterChip(label: '停用條件', selected: false),
-                    const NiuTag(label: '營運業者與站牌資訊', icon: NiuIcons.bus),
+                    const NiuTag(label: '開放時間與地點資訊', icon: NiuIcons.library),
                     NiuBanner(
                       tone: NiuTone.warning,
                       title: '校務系統需要重新登入',
