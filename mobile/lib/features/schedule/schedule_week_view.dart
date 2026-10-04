@@ -23,22 +23,38 @@ NiuHue lessonHue(String name) {
   return _lessonHues[hash % _lessonHues.length];
 }
 
-/// The whole week as a grid: weekdays across, periods down, each course one
-/// block over its consecutive periods. Weekends appear only when used, and
-/// only the periods from the first to the last class of the week are shown.
+int? _clock(String v) {
+  final m = RegExp(r'(\d{1,2}):(\d{2})').firstMatch(v);
+  return m == null ? null : int.parse(m[1]!) * 60 + int.parse(m[2]!);
+}
+
+/// Start and end minutes of a school period, when its time text has both.
+(int, int)? _span(SchedulePeriod period) {
+  final times = RegExp(r'\d{1,2}:\d{2}').allMatches(period.time).toList();
+  if (times.length < 2) return null;
+  return (_clock(times.first[0]!)!, _clock(times.last[0]!)!);
+}
+
+/// The whole week on one screen: weekdays across with their dates, periods
+/// down, each course one block over its consecutive periods. Saturday and
+/// Sunday appear only when they have classes; every day always fits the
+/// width, so nothing scrolls sideways. Today is highlighted and a line marks
+/// the current time.
 class ScheduleWeekView extends StatelessWidget {
   const ScheduleWeekView({
     super.key,
     required this.schedule,
-    this.today,
-    this.minute,
+    this.now,
+    this.height,
     this.onOpenCourse,
   });
   final ClassSchedule schedule;
 
-  /// Index into [scheduleWeekdays] and minutes since midnight in Taipei,
-  /// to mark today and the class in progress.
-  final int? today, minute;
+  /// Wall-clock time in Taipei; null leaves today and the time line out.
+  final DateTime? now;
+
+  /// Height the grid may fill; rows grow to use it, within readable limits.
+  final double? height;
   final void Function(String course)? onOpenCourse;
 
   @override
@@ -69,19 +85,26 @@ class ScheduleWeekView extends StatelessWidget {
     }
     final first = used.reduce((a, b) => a < b ? a : b);
     final last = used.reduce((a, b) => a > b ? a : b);
+    final rows = last - first + 1;
+    final today = now == null ? null : now!.weekday - 1;
+    final monday = now == null
+        ? null
+        : DateTime(now!.year, now!.month, now!.day - (now!.weekday - 1));
+
     final scale = MediaQuery.textScalerOf(context);
-    final rowHeight = scale.scale(64).clamp(64, 120).toDouble();
-    final labelWidth = scale.scale(40).clamp(40, 64).toDouble();
-    final text = Theme.of(context).textTheme;
+    final minRow = scale.scale(58).clamp(58, 110).toDouble();
+    final available = (height ?? 0) - scale.scale(52);
+    final rowHeight = (available / rows).clamp(minRow, minRow * 1.6).toDouble();
+    final labelWidth = scale.scale(34).clamp(34, 52).toDouble();
     final colors = NiuColors.of(context);
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final minColumn = scale.scale(58).toDouble();
-        final fit = (constraints.maxWidth - labelWidth) / days.length;
-        final column = fit < minColumn ? minColumn : fit;
-        final grid = Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        final column = (constraints.maxWidth - labelWidth) / days.length;
+        final compact = column < 56;
+        final gridHeight = rowHeight * rows;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
               children: [
@@ -89,96 +112,119 @@ class ScheduleWeekView extends StatelessWidget {
                 for (final d in days)
                   SizedBox(
                     width: column,
-                    child: Center(
-                      child: _DayHeader(day: d, today: today),
+                    child: _DayHeader(
+                      day: d,
+                      date: monday?.add(Duration(days: d)),
+                      today: d == today,
                     ),
                   ),
               ],
             ),
             const SizedBox(height: NiuSpacing.sm),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: labelWidth,
-                  child: Column(
-                    children: [
-                      for (var p = first; p <= last; p++)
-                        SizedBox(
-                          height: rowHeight,
-                          child: _PeriodLabel(period: schedule.periods[p]),
-                        ),
-                    ],
-                  ),
-                ),
-                for (final d in days)
+            SizedBox(
+              height: gridHeight,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   SizedBox(
-                    width: column,
-                    height: rowHeight * (last - first + 1),
-                    child: Stack(
+                    width: labelWidth,
+                    child: Column(
                       children: [
-                        // Hairlines between periods keep the rows readable.
                         for (var p = first; p <= last; p++)
-                          Positioned(
-                            top: rowHeight * (p - first),
-                            left: 0,
-                            right: 0,
+                          SizedBox(
                             height: rowHeight,
+                            child: _PeriodLabel(period: schedule.periods[p]),
+                          ),
+                      ],
+                    ),
+                  ),
+                  for (final d in days)
+                    SizedBox(
+                      width: column,
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Positioned.fill(
                             child: DecoratedBox(
                               decoration: BoxDecoration(
-                                color: d == today
-                                    ? colors.accentSoft.withValues(alpha: .35)
-                                    : null,
-                                border: Border(
-                                  top: BorderSide(color: colors.hairline),
+                                color: d == today ? colors.accentSoft : null,
+                                borderRadius: BorderRadius.circular(
+                                  NiuRadius.sm,
                                 ),
                               ),
                             ),
                           ),
-                        for (final lesson in lessons[scheduleWeekdays[d]]!)
-                          if (index[lesson.periods.first] case final start?)
+                          for (var p = first + 1; p <= last; p++)
                             Positioned(
-                              top: rowHeight * (start - first) + 2,
-                              left: 2,
-                              right: 2,
-                              height: rowHeight * lesson.periods.length - 4,
-                              child: _LessonBlock(
-                                lesson: lesson,
-                                current:
-                                    d == today &&
-                                    minute != null &&
-                                    _within(lesson, minute!),
-                                onTap: () => _showLesson(context, lesson),
+                              top: rowHeight * (p - first),
+                              left: 0,
+                              right: 0,
+                              child: Divider(
+                                height: 1,
+                                thickness: 1,
+                                color: colors.hairline,
                               ),
                             ),
-                      ],
+                          for (final lesson in lessons[scheduleWeekdays[d]]!)
+                            if (index[lesson.periods.first] case final start?)
+                              Positioned(
+                                top: rowHeight * (start - first) + 2,
+                                left: 2,
+                                right: 2,
+                                height: rowHeight * lesson.periods.length - 4,
+                                child: _LessonBlock(
+                                  lesson: lesson,
+                                  compact: compact,
+                                  current:
+                                      d == today &&
+                                      _within(
+                                        lesson,
+                                        now!.hour * 60 + now!.minute,
+                                      ),
+                                  onTap: () => _showLesson(context, lesson),
+                                ),
+                              ),
+                          if (d == today)
+                            if (_nowOffset(first, last, rowHeight)
+                                case final y?)
+                              Positioned(
+                                top: y - 5,
+                                left: -5,
+                                right: 0,
+                                child: const _NowLine(),
+                              ),
+                        ],
+                      ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ],
-        );
-        final width = labelWidth + column * days.length;
-        return DefaultTextStyle.merge(
-          style: text.bodySmall,
-          child: width <= constraints.maxWidth + 0.5
-              ? grid
-              : SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: SizedBox(width: width, child: grid),
-                ),
         );
       },
     );
   }
 
-  static bool _within(ScheduleLesson lesson, int minute) {
-    int? clock(String v) {
-      final m = RegExp(r'^(\d{1,2}):(\d{2})$').firstMatch(v);
-      return m == null ? null : int.parse(m[1]!) * 60 + int.parse(m[2]!);
+  /// Where the current time falls in the grid, or null outside the shown
+  /// periods. Between two periods the line rests on the boundary.
+  double? _nowOffset(int first, int last, double rowHeight) {
+    if (now == null) return null;
+    final minute = now!.hour * 60 + now!.minute;
+    for (var p = first; p <= last; p++) {
+      final span = _span(schedule.periods[p]);
+      if (span == null) continue;
+      final (start, end) = span;
+      final top = rowHeight * (p - first);
+      if (minute < start) return p == first ? null : top;
+      if (minute < end) {
+        return top + rowHeight * (minute - start) / (end - start);
+      }
     }
+    return null;
+  }
 
-    final start = clock(lesson.start), end = clock(lesson.end);
+  static bool _within(ScheduleLesson lesson, int minute) {
+    final start = _clock(lesson.start), end = _clock(lesson.end);
     return start != null && end != null && start <= minute && minute < end;
   }
 
@@ -187,6 +233,7 @@ class ScheduleWeekView extends StatelessWidget {
       context: context,
       builder: (sheet) {
         final text = Theme.of(sheet).textTheme;
+        final hue = lessonHue(lesson.name);
         return SafeArea(
           top: false,
           child: Padding(
@@ -200,7 +247,20 @@ class ScheduleWeekView extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(lesson.name, style: text.titleLarge),
+                Row(
+                  children: [
+                    Container(
+                      width: 4,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: hue.foreground(sheet),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(width: NiuSpacing.md),
+                    Expanded(child: Text(lesson.name, style: text.titleLarge)),
+                  ],
+                ),
                 const SizedBox(height: NiuSpacing.md),
                 NiuKeyValue(
                   label: '時間',
@@ -232,28 +292,49 @@ class ScheduleWeekView extends StatelessWidget {
 }
 
 class _DayHeader extends StatelessWidget {
-  const _DayHeader({required this.day, required this.today});
+  const _DayHeader({required this.day, this.date, required this.today});
   final int day;
-  final int? today;
+  final DateTime? date;
+  final bool today;
   @override
   Widget build(BuildContext context) {
     final colors = NiuColors.of(context);
-    final isToday = day == today;
-    final label = scheduleWeekdays[day].substring(2);
+    final text = Theme.of(context).textTheme;
+    final fg = today ? colors.onAccent : colors.ink;
     return Semantics(
-      label: isToday ? '今天，${scheduleWeekdays[day]}' : scheduleWeekdays[day],
+      label: [
+        if (today) '今天',
+        scheduleWeekdays[day],
+        if (date != null) '${date!.month} 月 ${date!.day} 日',
+      ].join('，'),
       excludeSemantics: true,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: isToday ? colors.accent : null,
-          borderRadius: BorderRadius.circular(NiuRadius.pill),
-        ),
-        child: Text(
-          label,
-          style: Theme.of(context).textTheme.labelLarge?.copyWith(
-            fontWeight: FontWeight.w700,
-            color: isToday ? colors.onAccent : colors.inkSecondary,
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: today ? colors.accent : null,
+            borderRadius: BorderRadius.circular(NiuRadius.md),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                scheduleWeekdays[day].substring(2),
+                style: text.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: fg,
+                ),
+              ),
+              if (date != null)
+                Text(
+                  '${date!.month}/${date!.day}',
+                  maxLines: 1,
+                  style: text.labelSmall?.copyWith(
+                    fontFeatures: tabularFigures,
+                    color: today ? colors.onAccent : colors.inkTertiary,
+                  ),
+                ),
+            ],
           ),
         ),
       ),
@@ -268,24 +349,28 @@ class _PeriodLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
     final colors = NiuColors.of(context);
-    final start = RegExp(r'\d{1,2}:\d{2}').firstMatch(period.time)?.group(0);
+    final span = _span(period);
+    String clock(int m) => '${m ~/ 60}:${(m % 60).toString().padLeft(2, '0')}';
     return Padding(
-      padding: const EdgeInsets.only(top: 4),
+      padding: const EdgeInsets.only(top: 4, right: 4),
       child: Column(
         children: [
           Text(
             schedulePeriodNumber(period.label),
-            style: text.labelLarge?.copyWith(
+            style: text.titleSmall?.copyWith(
               fontWeight: FontWeight.w700,
               color: colors.inkSecondary,
             ),
           ),
-          if (start != null)
-            Text(
-              start,
-              style: text.labelSmall?.copyWith(
-                fontFeatures: tabularFigures,
-                color: colors.inkTertiary,
+          if (span != null)
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                clock(span.$1),
+                style: text.labelSmall?.copyWith(
+                  fontFeatures: tabularFigures,
+                  color: colors.inkTertiary,
+                ),
               ),
             ),
         ],
@@ -294,20 +379,48 @@ class _PeriodLabel extends StatelessWidget {
   }
 }
 
+/// Red line with a dot at the left edge, as calendar apps mark "now".
+class _NowLine extends StatelessWidget {
+  const _NowLine();
+  @override
+  Widget build(BuildContext context) {
+    final color = NiuColors.of(context).error;
+    return Semantics(
+      label: '現在時間',
+      child: SizedBox(
+        height: 10,
+        child: Row(
+          children: [
+            Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+            ),
+            Expanded(child: Container(height: 2, color: color)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _LessonBlock extends StatelessWidget {
   const _LessonBlock({
     required this.lesson,
+    required this.compact,
     required this.current,
     required this.onTap,
   });
   final ScheduleLesson lesson;
-  final bool current;
+  final bool compact, current;
   final VoidCallback onTap;
   @override
   Widget build(BuildContext context) {
     final hue = lessonHue(lesson.name);
     final text = Theme.of(context).textTheme;
     final colors = NiuColors.of(context);
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final accent = hue.foreground(context);
     return Semantics(
       button: true,
       label: [
@@ -320,41 +433,47 @@ class _LessonBlock extends StatelessWidget {
       ].join('，'),
       excludeSemantics: true,
       child: Material(
-        color: hue.background(context),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(NiuRadius.sm),
-          side: current
-              ? BorderSide(color: colors.accent, width: 2)
-              : BorderSide.none,
+        color: Color.alphaBlend(
+          accent.withValues(alpha: dark ? .30 : .16),
+          colors.surface,
         ),
+        borderRadius: BorderRadius.circular(NiuRadius.sm),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(6, 5, 4, 4),
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border(left: BorderSide(color: accent, width: 3)),
+            ),
+            padding: EdgeInsets.fromLTRB(compact ? 4 : 6, 4, 3, 4),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Flexible(
                   child: Text(
                     lesson.name,
-                    overflow: TextOverflow.fade,
-                    style: text.labelMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: hue.foreground(context),
-                      height: 1.2,
-                    ),
+                    maxLines: lesson.periods.length * 2 + 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: (compact ? text.labelSmall : text.labelMedium)
+                        ?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: colors.ink,
+                          height: 1.2,
+                        ),
                   ),
                 ),
-                if (lesson.room.isNotEmpty)
+                if (lesson.room.isNotEmpty) ...[
+                  const SizedBox(height: 2),
                   Text(
                     lesson.room,
-                    maxLines: 1,
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: text.labelSmall?.copyWith(
                       color: colors.inkSecondary,
+                      height: 1.15,
                     ),
                   ),
+                ],
               ],
             ),
           ),
