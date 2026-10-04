@@ -20,9 +20,10 @@
 3. commit 到 `main`，**push 到 origin main**。
 4. `flutter build apk --debug`
 5. `python3 tool/check_apk.py build/app/outputs/flutter-apk/app-debug.apk`
-6. `python3 tool/publish_preview.py --apk build/app/outputs/flutter-apk/app-debug.apk --version X.Y.Z`
-7. 給使用者下載連結（`publish_preview.py` 會自動只保留最新 3 版，可以用 `--keep` 調整）：`http://<preview-server>:8080/NIU-Life-X.Y.Z-preview.apk`
-8. `flutter build appbundle --release`，上傳到 Play internal 軌道（步驟見下節）。**每個新版本都要推。**
+6. 有開模擬器時跑 `NIU_DEMO_PASSWORD=… python3 tool/smoke_android.py`：全新安裝、登入示範帳號，逐一打開三個分頁、首頁九個服務與通知設定，頁面沒出現或 Flutter 報錯就失敗，截圖在暫存資料夾。密碼在 auto-memory 的示範帳號說明裡（`test/app/demo_mode_test.dart` 本來就有明文，使用者 2026-10-02 決定不處理）；腳本只從環境變數讀，不另外存。腳本會先確認帳號欄是 `niulifedemo` 才按登入，避免把打錯的帳號送到學校。
+7. `python3 tool/publish_preview.py --apk build/app/outputs/flutter-apk/app-debug.apk --version X.Y.Z`
+8. 給使用者下載連結（`publish_preview.py` 會自動只保留最新 3 版，可以用 `--keep` 調整）：`http://<preview-server>:8080/NIU-Life-X.Y.Z-preview.apk`
+9. `flutter build appbundle --release`，上傳到 Play internal 軌道（步驟見下節）。**每個新版本都要推。**
 
 ## Release 簽章與 Play 上傳
 
@@ -283,7 +284,6 @@
   - 請假申請的節次與送出確認頁在 `leave_application_sheets.dart`；信件列表項目與分頁在 `mail_list_widgets.dart`。
 - 還沒處理、可以接著做的：
   - `moodle` 和 `attendance` 互相引用（課程頁開點名、點名用 M 園區 repository）；`authentication/login_screen.dart` 登入後直接建立 M 園區、活動、信箱、圖書館的 session。目前可運作，要拆的話可以改成在 app 層註冊。
-  - `tool/smoke_android.sh` 還在找已經不存在的「校園」分頁，而且需要先登入，要重寫才能用。
 
 ## 重要決策
 
@@ -294,11 +294,15 @@
 
 ## 不做的功能
 
+- **分享 App 的 QR Code**：使用者 2026-10-04 決定不做。
+
 - **代點名**（掃描點名後幫其他同學點名）：使用者問過，Claude 拒絕，沒有後端的版本也不做，使用者已同意不做。不要再提或規劃。
 - 公車到站資訊：已放棄（見 1.0.1）。
 - UX 檢視第 3、4、5 項：維持現狀（見「導覽與 UX」）。
 
 ## 尚未驗證／已知事項
+
+- **郵件包裹偶爾沒有自動查詢**（2026-10-04 觀察到）：在模擬器上全新安裝、登入示範帳號後，有一次打開郵件包裹沒有自動查詢，有顯示「帶入我的姓名」，代表姓名有讀到。同一個 App 程序裡再開一次也一樣。之後重裝重跑 3 次完整流程、同一程序開關 12 次，都正常，找不到原因。`_searchOwnMail` 只在第一個 frame 後和 session 通知時執行；如果再發生，先在它開頭加 log 看是哪個條件提早 return。`smoke_android.py` 會檢查這一步。
 
 - 通知、In-App Updates 都**沒在實機上測過**。In-App Updates 要用 Play 內部測試軌道，而且需要兩個不同的 versionCode 才測得出來。
 - `NiuSection` 改成基線對齊、`NiuRow` 的值改成填滿空間，都會影響全 App。只用測試環境渲染確認過幾個畫面。
@@ -307,12 +311,12 @@
 
 ## 可以接著做的事
 
-1. 等使用者在手機上確認 1.0.7 沒問題，請他把 1.0.7 推上正式版。
-2. 在實機上驗證三種通知和點通知後的跳轉，必要時調整文案或時間。
-3. 等使用者把測試人員加進 internal 名單，再推版本號更大的 build，在實機上測 In-App Updates。
-4. 用 release 版上 Play 內部測試軌道，驗證 In-App Updates。
-5. 在實機上測試校園信箱：登入時驗證碼的辨識率、寄信（先寄給自己）、附件上傳和下載、搬移和刪除。
-6. 在實機上用真實帳密測試圖書館登入，包含登入學校時順便建立 session，以及在畫面上手動輸入密碼。
-7. 遠端彈窗公告，使用者問過，還沒做：建議做法是 `app-content/announcements.json` 加 revision，同一個 revision 只跳一次。
+1. **下一個要做：遠端彈窗公告**（使用者 2026-10-04 指定）。建議做法：`app-content/announcements.json` 加 revision，App 從 GitHub raw 讀（沿用 `core/network/public_content.dart`），同一個 revision 只跳一次，內建離線版本。
+2. 等使用者在手機上確認 1.0.7 沒問題，請他把 1.0.7 推上正式版。
+3. 在實機上驗證三種通知和點通知後的跳轉，必要時調整文案或時間。
+4. 等使用者把測試人員加進 internal 名單，再推版本號更大的 build，在實機上測 In-App Updates。
+5. 用 release 版上 Play 內部測試軌道，驗證 In-App Updates。
+6. 在實機上測試校園信箱：登入時驗證碼的辨識率、寄信（先寄給自己）、附件上傳和下載、搬移和刪除。
+7. 在實機上用真實帳密測試圖書館登入，包含登入學校時順便建立 session，以及在畫面上手動輸入密碼。
 8. 決定行事曆資料來源要不要改成本 repo。
 9. 視需要調整 Switch 關閉時的樣式。
