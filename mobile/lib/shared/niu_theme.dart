@@ -229,8 +229,30 @@ abstract final class NiuTheme {
       checkboxTheme: CheckboxThemeData(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
       ),
+      // Off must read as a switch, not a stray dot: a filled track with a
+      // visible outline and grey thumb, as in Android's own settings.
       switchTheme: SwitchThemeData(
-        trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
+        thumbColor: WidgetStateProperty.resolveWith((states) {
+          final on = states.contains(WidgetState.selected);
+          final color = on ? c.onAccent : c.inkTertiary;
+          return states.contains(WidgetState.disabled)
+              ? color.withValues(alpha: on ? 1 : 0.38)
+              : color;
+        }),
+        trackColor: WidgetStateProperty.resolveWith((states) {
+          final on = states.contains(WidgetState.selected);
+          final color = on ? c.accent : c.fillStrong;
+          return states.contains(WidgetState.disabled) && on
+              ? color.withValues(alpha: 0.38)
+              : color;
+        }),
+        trackOutlineColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) return Colors.transparent;
+          return states.contains(WidgetState.disabled)
+              ? c.inkTertiary.withValues(alpha: 0.38)
+              : c.inkTertiary;
+        }),
+        trackOutlineWidth: WidgetStateProperty.all(2),
       ),
       progressIndicatorTheme: ProgressIndicatorThemeData(
         color: c.accent,

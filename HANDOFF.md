@@ -1,6 +1,6 @@
 # HANDOFF
 
-給接手的 Claude Code session。最後更新：2026-10-04。目前版本：**1.0.7+88**。
+給接手的 Claude Code session。最後更新：2026-10-04。目前版本：**1.0.8+89**。
 
 ## 專案概況
 
@@ -15,7 +15,7 @@
 
 在 `mobile/` 底下執行：
 
-1. `set -o pipefail; tool/verify.sh`，包含 calendar/toolchain/分層/DOM 檢查、`dart format`、`flutter analyze`、`flutter test`，目前 342 項測試。
+1. `set -o pipefail; tool/verify.sh`，包含 calendar/toolchain/分層/DOM 檢查、`dart format`、`flutter analyze`、`flutter test`，目前 344 項測試。
 2. 把 `pubspec.yaml` 的 patch 版號和 build number 各加一。
 3. commit 到 `main`，**push 到 origin main**。
 4. `flutter build apk --debug`
@@ -34,10 +34,10 @@
 - Play 各軌道現況（2026-10-03 用 MCP 查過）：
   - **正式版：1.0.0 (81)**，已發布。
   - 公開測試（beta）：1.0.0 (81)。
-  - internal：**1.0.7 (88)**。
+  - internal：**1.0.8 (89)**。
 - 正式版由使用者在 Play Console 升級（Claude 推 production 會被權限擋下，屬正常）。
 - **正式版不用每版都推**，只要 versionCode 比上一個正式版大就行。建議 internal 每版都推；等使用者在手機上測過、累積一批改動或有重要修正時，再挑一版推正式版。版本說明要寫成「從上一個正式版到現在的所有改變」，例如 internal 1.0.4 的說明。
-- 下一個正式版預計是 1.0.7（含 1.0.4、1.0.5 的改動），等使用者在手機上確認點名、小工具、上課中通知都正常。1.0.4 換了 AGP 9，只在模擬器上測過。
+- 下一個正式版預計是 1.0.8（含 1.0.4、1.0.5、1.0.8 的改動），等使用者在手機上確認點名、小工具、上課中通知都正常。1.0.4 換了 AGP 9，只在模擬器上測過。
 - 公開測試的使用者會自動拿到 versionCode 較大的正式版，公開測試軌道不用特別處理。release 名稱用 `X.Y.Z (versionCode)`，附一句 zh-TW 版本說明。
 - 上傳流程（每個新版本都要做）：`flutter build appbundle --release`，然後用 MCP 依序 `edits_insert` → `bundles_upload` → `tracks_update`（internal，status `completed`）→ `edits_commit`。
 
@@ -78,6 +78,7 @@
 | 1.0.5 | `e5f70ad` | 郵件包裹打開時自動用登入姓名查詢自己的郵件，和 iOS 一樣 |
 | 1.0.6 | `6398bc2`–`bfdee44` | 整理程式架構，使用者看不到差異（見「程式架構整理」） |
 | 1.0.7 | `8a840d5` | 拆開超過 1000 行的畫面檔，使用者看不到差異 |
+| 1.0.8 | （本次） | 開關關閉時改成灰底加外框，看得出是關著的開關（淺色、深色都是） |
 
 另外：
 
@@ -306,17 +307,15 @@
 
 - 通知、In-App Updates 都**沒在實機上測過**。In-App Updates 要用 Play 內部測試軌道，而且需要兩個不同的 versionCode 才測得出來。
 - `NiuSection` 改成基線對齊、`NiuRow` 的值改成填滿空間，都會影響全 App。只用測試環境渲染確認過幾個畫面。
-- 開關（Switch）在關閉狀態時看不到軌道外框，只剩灰色圓點。這是主題原本的樣式，還沒處理。（通知設定和統計開關都已改成整列可點。）
 - 行事曆資料的網址指向 `qian403/NIU-app`，不是本 repo（`calendar_repository.dart` 的 `baseUrl`）。要不要改成自己維護，還沒決定。
 
 ## 可以接著做的事
 
 1. **下一個要做：遠端彈窗公告**（使用者 2026-10-04 指定）。建議做法：`app-content/announcements.json` 加 revision，App 從 GitHub raw 讀（沿用 `core/network/public_content.dart`），同一個 revision 只跳一次，內建離線版本。
-2. 等使用者在手機上確認 1.0.7 沒問題，請他把 1.0.7 推上正式版。
+2. 等使用者在手機上確認 1.0.8 沒問題，請他把 1.0.8 推上正式版。
 3. 在實機上驗證三種通知和點通知後的跳轉，必要時調整文案或時間。
 4. 等使用者把測試人員加進 internal 名單，再推版本號更大的 build，在實機上測 In-App Updates。
 5. 用 release 版上 Play 內部測試軌道，驗證 In-App Updates。
 6. 在實機上測試校園信箱：登入時驗證碼的辨識率、寄信（先寄給自己）、附件上傳和下載、搬移和刪除。
 7. 在實機上用真實帳密測試圖書館登入，包含登入學校時順便建立 session，以及在畫面上手動輸入密碼。
 8. 決定行事曆資料來源要不要改成本 repo。
-9. 視需要調整 Switch 關閉時的樣式。
