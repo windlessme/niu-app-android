@@ -332,7 +332,7 @@
 - App 內建的公告清單永遠是空的（內建的公告在不更新的舊版上會一直留著）。測試只檢查 `announcements.json` 格式；CI 已加上 `app-content/**` 觸發，推錯格式 CI 會失敗，App 則繼續用上一份有效內容。
 - 商店截圖建置（`NIU_STORE_SCREENSHOTS`）不顯示公告。
 - `smoke_android.py` 會自動按掉公告彈窗。
-- 2026-10-05 發了第一則測試公告（id `2026-10-05-test`，revision 2，彈窗，10/6 後自動消失）。之後要清掉就刪除那筆並把 revision 加一。
+- 2026-10-05 發過一則測試公告（id `2026-10-05-test`，revision 2），同一天已刪除（revision 3，清單是空的）。下一則公告的 revision 從 4 開始。
 
 ## 重要決策
 
