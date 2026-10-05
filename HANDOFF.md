@@ -344,8 +344,9 @@
 ## 官網（2026-10-05）
 
 - 獨立 repo：**windlessme/niu-life-site**（本機 `/root/niu-life-site`），純靜態 HTML/CSS，推到 `main` 由 GitHub Actions 部署到 GitHub Pages。
-- 正式網址預計是 **https://niu-life.app/**（網域在 Squarespace 註冊）。使用者還沒把 DNS 指到 GitHub 前，暫時網址是 http://windless.me/niu-life-site/（windless.me 經 Cloudflare 代理，HTTPS 會 526，要用 http 開）。
-- DNS 改好之後要做：`gh api -X PUT repos/windlessme/niu-life-site/pages -f cname=niu-life.app`，等憑證簽好再開 `https_enforced`；然後請使用者把 Play Console 的隱私權政策網址改成 `https://niu-life.app/privacy.html`。
+- 正式網址：**https://niu-life.app/**（2026-10-05 上線，強制 HTTPS，Let's Encrypt 憑證涵蓋 www；`www` 轉到主網域）。DNS 在 Cloudflare，紀錄必須維持「僅 DNS」（灰色雲朵），否則 GitHub 無法續約憑證。
+- 首頁是捲動敘事（參考 nycu.life 的架構，插畫與文案自製）：開場貼紙飛進手機、功能區 01～06 固定切換、許願池連回報表單；「減少動態效果」時是靜態版面。功能區截圖用商店截圖模式在模擬器拍（見網站 README）。
+- **待使用者處理**：Play Console 的隱私權政策網址改成 `https://niu-life.app/privacy.html`、商店資訊的網站欄位填 `https://niu-life.app/`。正式版 1.0.0 審核中時先不要改商店資訊，以免重新審查。
 - 隱私權頁在每次部署時從本 repo 的 `docs/android-privacy-policy.md` 產生，每天也會自動部署一次，**改政策只要改本 repo 的檔案**。
 - 首頁的功能介紹是手寫的；App 加了使用者看得到的大功能時，順手更新網站的 `index.html`。
 
