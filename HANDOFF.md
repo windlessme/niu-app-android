@@ -341,6 +341,14 @@
 - 在 210 密度（約 820×1830dp，接近 10 吋平板）和橫向下看過：功能正常，但內容整排拉滿寬度；橫向時首頁很矮、校園服務要捲動；仍是底部導覽列；Play 沒有平板截圖。整週課表在平板上表現最好。
 - 使用者 2026-10-05 決定**列為待處理事項，先不做**（見「可以接著做的事」）。
 
+## 官網（2026-10-05）
+
+- 獨立 repo：**windlessme/niu-life-site**（本機 `/root/niu-life-site`），純靜態 HTML/CSS，推到 `main` 由 GitHub Actions 部署到 GitHub Pages。
+- 正式網址預計是 **https://niu-life.app/**（網域在 Squarespace 註冊）。使用者還沒把 DNS 指到 GitHub 前，暫時網址是 http://windless.me/niu-life-site/（windless.me 經 Cloudflare 代理，HTTPS 會 526，要用 http 開）。
+- DNS 改好之後要做：`gh api -X PUT repos/windlessme/niu-life-site/pages -f cname=niu-life.app`，等憑證簽好再開 `https_enforced`；然後請使用者把 Play Console 的隱私權政策網址改成 `https://niu-life.app/privacy.html`。
+- 隱私權頁在每次部署時從本 repo 的 `docs/android-privacy-policy.md` 產生，每天也會自動部署一次，**改政策只要改本 repo 的檔案**。
+- 首頁的功能介紹是手寫的；App 加了使用者看得到的大功能時，順手更新網站的 `index.html`。
+
 ## 重要決策
 
 - **不架後端。** 需要遠端內容時沿用 credits 的做法：GitHub 上的靜態 JSON，加上 App 內建的離線版本和 revision 號碼。
