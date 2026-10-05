@@ -25,7 +25,7 @@ class PrivacyScreen extends StatelessWidget {
     (
       NiuIcons.calendar,
       '公開內容',
-      '行事曆與致謝名單會從 GitHub 公開資料更新，並在手機上保留離線副本。這些請求不需要學校帳密。',
+      '行事曆、致謝名單與 App 公告會從 GitHub 公開資料更新，並在手機上保留離線副本。這些請求不需要學校帳密；關掉的公告只在手機上記住編號。',
     ),
     (
       Icons.query_stats_rounded,
