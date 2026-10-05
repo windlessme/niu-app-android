@@ -1,6 +1,6 @@
 # HANDOFF
 
-給接手的 Claude Code session。最後更新：2026-10-04。目前版本：**1.0.16+97**。
+給接手的 Claude Code session。最後更新：2026-10-04。目前版本：**1.0.17+98**。
 
 ## 專案概況
 
@@ -15,7 +15,7 @@
 
 在 `mobile/` 底下執行：
 
-1. `set -o pipefail; tool/verify.sh`，包含 calendar/toolchain/分層/DOM 檢查、`dart format`、`flutter analyze`、`flutter test`，目前 364 項測試。
+1. `set -o pipefail; tool/verify.sh`，包含 calendar/toolchain/分層/DOM 檢查、`dart format`、`flutter analyze`、`flutter test`，目前 366 項測試。
 2. 把 `pubspec.yaml` 的 patch 版號和 build number 各加一。
 3. commit 到 `main`，**push 到 origin main**。
 4. `flutter build apk --debug`
@@ -62,7 +62,12 @@
 其他慣例：
 
 - 回覆一律用**繁體中文**。
-- 聯絡信箱是 `hi@windless.me`（App 內和隱私權政策都已改好）；開源專案連結指向本 repo。
+- **對外窗口一律一致（使用者 2026-10-05 決定）**：
+  - 聯絡信箱：**hi@niu-life.app**（iOS 版與 Android 版共用，Cloudflare Email Routing）。不要再用 hi@windless.me。
+  - 隱私權政策：**https://niu-life.app/privacy**，iOS 版、Android 版與網站共用一份，唯一來源是 niu-life-site 的 `src/content/privacy.md`。本 repo 不再有政策檔。App 內「設定 → 隱私權」是摘要（`privacy_screen.dart`），政策有實質變動時一起改，底部有「完整隱私權政策」按鈕連到網站。
+  - 網站：https://niu-life.app/，下載連結 https://niu-life.app/download。
+  - 問題回報表單：https://forms.gle/2ok6fydShrfe6PHr5。
+  - 開源專案連結指向本 repo；本 repo 的 GitHub 首頁欄位是 https://niu-life.app。
 - 查詢類畫面不要加「以學校為準」「資料來源」這類免責文字。
 - commit 結尾要加 `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`。
 - 這台機器上的 auto-memory（`~/.claude/projects/-tmp-opencode-niu-app-android/memory/`）也記了這些規則，還有 Play 審查用示範帳號的說明。**示範帳號的密碼不要寫進 repo**，repo 裡只存它的 SHA-256。
@@ -105,6 +110,7 @@
 | 1.0.14 | `1624389` | 整週課表重新設計：填滿畫面高度、星期下加日期、今天欄位底色、現在時間紅線、課程格左側色條與較深底色；週六日有課時也不用左右滑 |
 | 1.0.15 | `71037c8` | 隱私權說明（App 內與 `docs/android-privacy-policy.md`，更新日期 2026-10-05）加上公告：從 GitHub 讀取、只在手機記住關掉的公告編號 |
 | 1.0.16 | `56cb4e6` | App Links：`https://niu-life.app/download` 開 App、`/open/<功能>` 開對應功能（manifest `autoVerify` + `campusDeepLink`） |
+| 1.0.17 | （本次） | 隱私權畫面：聯絡信箱改 hi@niu-life.app、加「完整隱私權政策」按鈕連到 niu-life.app/privacy（兩平台共用政策）；刪除本 repo 的 Android 專用政策檔 |
 
 另外：
 
@@ -352,8 +358,9 @@
 - **App Links（1.0.16）**：網站 `/.well-known/assetlinks.json`（Play Console 產生，憑證是 Google 保管的簽署金鑰，只有從 Play 安裝的 App 會驗證通過；debug／預覽版不會，屬正常）。Manifest 宣告 `https://niu-life.app/download` 與 `/open/` 前綴並 `autoVerify`；`lib/app/deep_links.dart` 的 `campusDeepLink` 把 `/download` 導到首頁、`/open/schedule|attendance|library|mail|moodle|calendar` 導到對應頁（完整網址或只有路徑都接受）。網站對應的說明頁在 niu-life-site 的 `src/pages/open/[feature].astro`，新增功能時兩邊一起改。在模擬器上用 `adb shell am start -a android.intent.action.VIEW -d <網址> me.windless.niulife` 驗證過路由。
 - **下載連結 https://niu-life.app/download**：手機自動前往 App Store／Google Play，電腦顯示按鈕與 QR Code；可加 `utm_*` 參數，Android 會帶進 Play 的安裝來源。海報、社群貼文用這個。
 - 網站 GA：`G-TQSN4NFDVD`（與 App 同一個 Firebase GA4 資源的網站串流 16044768167），記頁面瀏覽與 `store_click`；隱私權頁最後一節說明網站本身的統計。
-- **待使用者處理**：Play Console 的隱私權政策網址改成 `https://niu-life.app/privacy`、商店資訊的網站欄位填 `https://niu-life.app/`。正式版 1.0.0 審核中時先不要改商店資訊，以免重新審查。
-- 隱私權頁在每次建置時由 `scripts/sync-policy.mjs` 從本 repo 的 `docs/android-privacy-policy.md` 產生，每天也會自動部署一次，**改政策只要改本 repo 的檔案**；政策檔的第一行 `# 標題` 與 `更新日期：` 那行必須保留，同步腳本靠它們。
+- **待使用者處理（等正式版 1.0.0 審核結束）**：Play Console 的隱私權政策網址改成 `https://niu-life.app/privacy`；商店資訊的聯絡電子郵件改成 `hi@niu-life.app`、網站填 `https://niu-life.app/`（後兩項可用 MCP `details_patch` 代改，使用者同意後再做）。
+- **iOS 版要配合的（qian403 維護，不在本 repo）**：App Store Connect 的隱私權政策網址改 `https://niu-life.app/privacy`、支援網址改 `https://niu-life.app/`；iOS App 與 iOS repo 的 `docs/privacy-policy.md`、`docs/support.md` 的信箱 hi@chien.dev 改成 hi@niu-life.app。共用政策的 iOS 段落依 iOS repo 2026-10-05 版政策改寫，iOS 做法有變動時要同步更新網站上的政策。正式版 1.0.0 審核中時先不要改商店資訊，以免重新審查。
+- 隱私權政策（iOS、Android、網站共用）直接寫在網站 repo 的 `src/content/privacy.md`，改完推到 niu-life-site 的 `main` 就會部署。
 - 首頁的功能介紹是手寫的；App 加了使用者看得到的大功能時，順手更新網站的 `index.html`。
 
 ## 重要決策

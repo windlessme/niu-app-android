@@ -49,7 +49,7 @@ Riverpod 只管理校曆資料來源（`features/academic_calendar/calendar_prov
 - [Session 契約](../mobile/lib/core/session/README.md)
 - [課表平台橋接契約](../mobile/lib/core/platform/README.md)
 - [登入頁公開來源與 DOM fixture](sso-login-capture-findings.md)
-- [Android 隱私政策](android-privacy-policy.md)
+- [隱私權政策](https://niu-life.app/privacy)（iOS 版、Android 版與網站共用；來源是 niu-life-site 的 `src/content/privacy.md`）
 
 帳密使用裝置安全儲存；不得加入版本庫、測試日誌或公開下載目錄。點名、作業提交與活動報名不自動重送。校方網頁解析失敗時提供明確狀態與校方頁面入口。
 

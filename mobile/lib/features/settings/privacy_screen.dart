@@ -4,7 +4,10 @@ import '../../shared/shared.dart';
 class PrivacyScreen extends StatelessWidget {
   const PrivacyScreen({super.key});
 
-  static const updated = '2026-10-02';
+  static const updated = '2026-10-05';
+
+  /// The full policy, shared by the iOS app, this app and the website.
+  static final policy = Uri.parse('https://niu-life.app/privacy');
 
   static const sections = [
     (
@@ -50,7 +53,7 @@ class PrivacyScreen extends StatelessWidget {
     (
       Icons.mail_outline_rounded,
       '資料異動與聯絡',
-      '校務資料以學校公告與系統紀錄為準。App 的問題可以透過設定中的「回報問題」告訴我們，或寄信到 hi@windless.me。',
+      '校務資料以學校公告與系統紀錄為準。App 的問題可以透過設定中的「回報問題」告訴我們，或寄信到 hi@niu-life.app（iOS 版與 Android 版共用）。',
     ),
   ];
 
@@ -90,6 +93,12 @@ class PrivacyScreen extends StatelessWidget {
             ),
           ),
         const SizedBox(height: NiuSpacing.sm),
+        OutlinedButton.icon(
+          onPressed: () => openPublicUrl(context, policy),
+          icon: const Icon(NiuIcons.external),
+          label: const Text('完整隱私權政策'),
+        ),
+        const SizedBox(height: NiuSpacing.md),
         Text(
           '更新日期：$updated',
           textAlign: TextAlign.center,
