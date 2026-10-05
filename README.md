@@ -7,7 +7,8 @@
 ## 維護文件
 
 - [架構與維護](docs/android-flutter-architecture.md)
-- [Android 隱私政策](docs/android-privacy-policy.md)
+- [隱私權政策](https://niu-life.app/privacy)（iOS 版、Android 版與網站共用，來源在 [niu-life-site](https://github.com/windlessme/niu-life-site/blob/main/src/content/privacy.md)）
+- 聯絡信箱：hi@niu-life.app
 - [校務登入頁來源與測試](docs/sso-login-capture-findings.md)
 - [在學證明裝置驗收](docs/registration-device-checks.md)
 - [交接紀錄](HANDOFF.md)
