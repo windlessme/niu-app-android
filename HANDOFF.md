@@ -345,7 +345,7 @@
 
 - 獨立 repo：**windlessme/niu-life-site**（本機 `/root/niu-life-site`），**Astro + TypeScript + GSAP ScrollTrigger**（2026-10-05 從手寫 HTML 改寫，使用者要求換開發技術），輸出純靜態網站，推到 `main` 由 GitHub Actions 建置並部署到 GitHub Pages。結構與開發方式見該 repo 的 README。
 - 正式網址：**https://niu-life.app/**（2026-10-05 上線，強制 HTTPS，Let's Encrypt 憑證涵蓋 www；`www` 轉到主網域）。DNS 在 Cloudflare，紀錄必須維持「僅 DNS」（灰色雲朵），否則 GitHub 無法續約憑證。
-- 首頁是捲動敘事（參考 nycu.life 的架構，插畫與文案自製）：開場貼紙飛進手機、功能區 01～06 固定切換、許願池連回報表單。系統開「減少動態效果」時故事照樣跟著捲動，只是只淡入淡出（使用者的手機有開，第一版直接給靜態頁，被說「缺少網頁動畫」）。功能區截圖用商店截圖模式在模擬器拍（見網站 README）。
+- 首頁是捲動敘事（參考 nycu.life 的架構，插畫與文案自製）：開場貼紙飛進手機、功能區 01～06 固定切換、許願池連回報表單。**一律播放完整動畫，不參考系統的「減少動態效果」**（使用者 2026-10-05 決定：他的手機和電腦都有開，看不到動畫）。功能區截圖用商店截圖模式在模擬器拍（見網站 README）。
 - **待使用者處理**：Play Console 的隱私權政策網址改成 `https://niu-life.app/privacy.html`、商店資訊的網站欄位填 `https://niu-life.app/`。正式版 1.0.0 審核中時先不要改商店資訊，以免重新審查。
 - 隱私權頁在每次建置時由 `scripts/sync-policy.mjs` 從本 repo 的 `docs/android-privacy-policy.md` 產生，每天也會自動部署一次，**改政策只要改本 repo 的檔案**；政策檔的第一行 `# 標題` 與 `更新日期：` 那行必須保留，同步腳本靠它們。
 - 首頁的功能介紹是手寫的；App 加了使用者看得到的大功能時，順手更新網站的 `index.html`。
