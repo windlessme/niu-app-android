@@ -104,7 +104,7 @@
 | 1.0.13 | `1c007bb` | 設定的「版本」移到「關於」最下面（開源授權下方） |
 | 1.0.14 | `1624389` | 整週課表重新設計：填滿畫面高度、星期下加日期、今天欄位底色、現在時間紅線、課程格左側色條與較深底色；週六日有課時也不用左右滑 |
 | 1.0.15 | `71037c8` | 隱私權說明（App 內與 `docs/android-privacy-policy.md`，更新日期 2026-10-05）加上公告：從 GitHub 讀取、只在手機記住關掉的公告編號 |
-| 1.0.16 | （本次） | App Links：`https://niu-life.app/download` 開 App、`/open/<功能>` 開對應功能（manifest `autoVerify` + `campusDeepLink`） |
+| 1.0.16 | `56cb4e6` | App Links：`https://niu-life.app/download` 開 App、`/open/<功能>` 開對應功能（manifest `autoVerify` + `campusDeepLink`） |
 
 另外：
 
