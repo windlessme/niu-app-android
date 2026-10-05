@@ -56,6 +56,14 @@
                 <data android:scheme="niulife" android:host="attendance" />
                 <data android:scheme="niulife" android:host="library" />
             </intent-filter>
+            <!-- App Links: niu-life.app/.well-known/assetlinks.json vouches for this app. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="niu-life.app" android:path="/download" />
+                <data android:scheme="https" android:host="niu-life.app" android:pathPrefix="/open/" />
+            </intent-filter>
         </activity>
         <provider android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.calendar" android:exported="false"
