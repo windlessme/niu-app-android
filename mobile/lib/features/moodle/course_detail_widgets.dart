@@ -14,7 +14,7 @@ class CourseDetailTabs extends StatefulWidget {
 class _CourseDetailTabsState extends State<CourseDetailTabs> {
   int selected = 0;
   final pages = PageController();
-  static const labels = ['公告', '教材', '作業', '討論', '成績', '出席'];
+  static const labels = ['公告', '教材', '作業', '問答', '討論', '成績', '出席'];
 
   @override
   void dispose() {

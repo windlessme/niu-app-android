@@ -11,6 +11,8 @@ import 'moodle_assignment_screen.dart';
 import 'moodle_forum_screen.dart';
 import 'moodle_module_open.dart';
 import 'moodle_links.dart';
+import 'moodle_question_screen.dart';
+import 'moodle_questions.dart';
 
 class MoodleCourseScreen extends StatelessWidget {
   const MoodleCourseScreen({
@@ -229,6 +231,64 @@ class MoodleCourseScreen extends StatelessWidget {
           emptyMessage: '老師指派的作業會依截止時間排在這裡。',
           load: loadAssignments,
           item: (a) => assignment(context, a),
+        ),
+        (context) => CourseDetailList(
+          emptyIcon: Icons.quiz_outlined,
+          emptyTitle: '目前沒有問答活動',
+          emptyMessage: '老師開放的測驗、即時問答、選擇與問卷會出現在這裡。',
+          header: Padding(
+            padding: const EdgeInsets.only(bottom: NiuSpacing.md),
+            child: Text(
+              '選擇活動後，可以在 App 內查看題目與作答。開放時間、提交與結果以 M 園區為準。',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
+          load: () async => [
+            for (final s in moodleQuestionSections(
+              await repository.contents(id),
+            ))
+              {'name': s.name, 'modules': s.modules},
+          ],
+          item: (s) => Padding(
+            padding: const EdgeInsets.only(bottom: NiuSpacing.xl),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(
+                    left: NiuSpacing.xs,
+                    bottom: NiuSpacing.sm,
+                  ),
+                  child: Text(
+                    courseDateRange(plain(s['name'])),
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                ),
+                NiuGroup(
+                  children: [
+                    for (final m in objects(s['modules']))
+                      NiuRow(
+                        icon: Icons.quiz_outlined,
+                        hue: NiuHue.pink,
+                        title: plain(m['name']),
+                        subtitle: MoodleQuestionKind.entry(m) == null
+                            ? '尚未開放或未符合存取條件'
+                            : MoodleQuestionKind.of(m)!.title,
+                        onTap: MoodleQuestionKind.entry(m) == null
+                            ? null
+                            : () => pushMoodle(
+                                context,
+                                MoodleQuestionScreen(
+                                  repository: repository,
+                                  module: m,
+                                ),
+                              ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ),
         (context) => CourseDetailList(
           emptyIcon: NiuIcons.forum,

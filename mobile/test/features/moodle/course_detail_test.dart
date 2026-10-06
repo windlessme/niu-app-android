@@ -74,46 +74,47 @@ const course = {
 };
 
 void main() {
-  testWidgets('all six tabs including attendance load once until refresh', (
-    tester,
-  ) async {
-    final loads = List.filled(6, 0);
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: CourseDetailTabs(
-            builders: [
-              for (var i = 0; i < 6; i++)
-                (_) => CourseDetailList(
-                  load: () async {
-                    loads[i]++;
-                    return [];
-                  },
-                  item: (_) => const SizedBox(),
-                  emptyTitle: 'empty $i',
-                  emptyMessage: 'message $i',
-                ),
-            ],
+  testWidgets(
+    'all seven tabs including questions and attendance load once until refresh',
+    (tester) async {
+      final loads = List.filled(7, 0);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: CourseDetailTabs(
+              builders: [
+                for (var i = 0; i < 7; i++)
+                  (_) => CourseDetailList(
+                    load: () async {
+                      loads[i]++;
+                      return [];
+                    },
+                    item: (_) => const SizedBox(),
+                    emptyTitle: 'empty $i',
+                    emptyMessage: 'message $i',
+                  ),
+              ],
+            ),
           ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(loads, [1, 0, 0, 0, 0, 0]);
-    for (final label in ['出席', '教材', '出席', '成績', '出席', '公告']) {
-      await tester.tap(find.text(label));
+      );
       await tester.pumpAndSettle();
-    }
-    expect(loads, [1, 1, 0, 0, 1, 1]);
-    await tester.drag(find.byType(ListView), const Offset(0, 350));
-    await tester.pumpAndSettle();
-    expect(loads, [2, 1, 0, 0, 1, 1]);
-    // A swipe moves to the next tab; the visited one does not reload.
-    await tester.fling(find.byType(PageView), const Offset(-300, 0), 1000);
-    await tester.pumpAndSettle();
-    expect(find.text('empty 1'), findsOneWidget);
-    expect(loads, [2, 1, 0, 0, 1, 1]);
-  });
+      expect(loads, [1, 0, 0, 0, 0, 0, 0]);
+      for (final label in ['出席', '教材', '問答', '成績', '出席', '公告']) {
+        await tester.tap(find.text(label));
+        await tester.pumpAndSettle();
+      }
+      expect(loads, [1, 1, 0, 1, 0, 1, 1]);
+      await tester.drag(find.byType(ListView), const Offset(0, 350));
+      await tester.pumpAndSettle();
+      expect(loads, [2, 1, 0, 1, 0, 1, 1]);
+      // A swipe moves to the next tab; the visited one does not reload.
+      await tester.fling(find.byType(PageView), const Offset(-300, 0), 1000);
+      await tester.pumpAndSettle();
+      expect(find.text('empty 1'), findsOneWidget);
+      expect(loads, [2, 1, 0, 1, 0, 1, 1]);
+    },
+  );
   test('conservative sections keep unknown text and explicit percentages', () {
     final sections = courseDetailSections(CoursePresentation(course));
     expect(sections.map((s) => s.title), ['教學目標', '評分方式']);
