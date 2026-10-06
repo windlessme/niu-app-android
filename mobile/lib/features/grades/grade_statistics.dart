@@ -1,4 +1,4 @@
-import 'grades_screen.dart';
+import 'grades_models.dart';
 
 /// Local 4.3-scale estimate, matching the iOS numeric-score conversion.
 /// Textual pass/exempt/withdrawn grades never enter the GPA denominator.
@@ -22,6 +22,9 @@ class GradeStatistics {
   double credits = 0, passedCredits = 0, _weighted = 0, _score = 0;
   double? get gpa => credits == 0 ? null : _weighted / credits;
   double? get average => credits == 0 ? null : _score / credits;
+
+  /// Share of graded credits passed; textual grades are left out as above.
+  double? get passRate => credits == 0 ? null : passedCredits / credits;
   static double points(double score) {
     if (score > 100 || score < 60) return 0;
     for (final boundary in [

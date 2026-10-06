@@ -1,6 +1,6 @@
 # HANDOFF
 
-給接手的 Claude Code session。最後更新：2026-10-06。目前版本：**1.0.22+103**。
+給接手的 Claude Code session。最後更新：2026-10-06。目前版本：**1.0.23+104**。
 
 ## 專案概況
 
@@ -15,7 +15,7 @@
 
 在 `mobile/` 底下執行：
 
-1. `set -o pipefail; tool/verify.sh`，包含 calendar/toolchain/分層/DOM 檢查、`dart format`、`flutter analyze`、`flutter test`，目前 377 項測試。
+1. `set -o pipefail; tool/verify.sh`，包含 calendar/toolchain/分層/DOM 檢查、`dart format`、`flutter analyze`、`flutter test`，目前 383 項測試。
 2. 把 `pubspec.yaml` 的 patch 版號和 build number 各加一。
 3. commit 到 `main`，**push 到 origin main**。
 4. `flutter build apk --debug`
@@ -34,7 +34,7 @@
 - Play 各軌道現況（2026-10-03 用 MCP 查過）：
   - **正式版：1.0.0 (81)**，已審核通過並發布。**1.0.17 (98) 已送審**（使用者 2026-10-06 告知）。
   - 公開測試（beta）：1.0.0 (81)。
-  - internal：**1.0.22 (103)**（2026-10-06 推送）。
+  - internal：**1.0.23 (104)**（2026-10-06 推送）。
 - 正式版由使用者在 Play Console 升級（Claude 推 production 會被權限擋下，屬正常）。
 - **正式版不用每版都推**，只要 versionCode 比上一個正式版大就行。建議 internal 每版都推；等使用者在手機上測過、累積一批改動或有重要修正時，再挑一版推正式版。**版本說明的寫法（使用者 2026-10-05 要求）**：
   - internal：只寫**這一版**改了什麼，讓使用者知道要測哪裡。沒有使用者看得到的改動時寫「內部調整，功能沒有變化」。不要再沿用累計說明，否則每版看起來都一樣。
@@ -67,6 +67,8 @@
   ・首頁可以隱藏姓名，只顯示「○同學」
   ・行事曆不用切換月份，往下就能看到之後各月的事項
   ・作業死線與重要日期通知更準時
+  ・歷年成績加上 GPA 走勢圖、學期篩選與通過率，各學期可以收合，班級排名直接顯示在學期上
+  ・期中、學期成績顯示班級排名與課程數，每門課標出必修、選修等類別
   ```
 - 公開測試的使用者會自動拿到 versionCode 較大的正式版，公開測試軌道不用特別處理。release 名稱用 `X.Y.Z (versionCode)`，附一句 zh-TW 版本說明。
 - 上傳流程（每個新版本都要做）：`flutter build appbundle --release`，然後用 MCP 依序 `edits_insert` → `bundles_upload` → `tracks_update`（internal，status `completed`）→ `edits_commit`。
@@ -128,6 +130,7 @@
 | 1.0.20 | `dc15c63` | M 園區教材下載後加「開啟」按鈕，用手機上的 App 開啟（使用者選擇不做 App 內預覽）：檔案寫在 `cache/attachments/`，原生 `DownloadedFiles.kt` 經 `niulife/files` 以 FileProvider 開 ACTION_VIEW，沒有對應 App 時提示改用分享 |
 | 1.0.21 | `0ea5ffb` | 依 iOS（qian403/niu-app `Features/Moodle/Upcoming`、`CourseDetail/MoodleCourseResourcesView.swift`）：M 園區頁面上方加可收合的「即將截止」（目前學期、逾期 7 天到未來 14 天、只列未繳交，`moodle_upcoming*.dart`）；教材依類型開啟（`moodle_module_open.dart`）：頁面讀 `mod_page_get_pages_by_courses` 在 App 內顯示 HTML、討論區直接列討論、作業直接開作業、單一檔案直接下載、.html 檔在 App 內顯示 |
 | 1.0.22 | `6a6931a` | 依 iOS `HomeView.swift`：首頁問候語旁的眼睛按鈕隱藏姓名，顯示「姓＋同學」（含複姓），切換時亂碼動畫、尊重減少動態效果，設定存在 `home.isNameMasked`；`main()` 先讀，讀到前一律遮蔽（`features/home/name_mask.dart`）。行事曆月曆模式在當天事項下方加「接下來」，依月份列出選定日期之後到學年結束的事項（使用者需求，iOS 沒有）。修好 M 園區頁面在深色模式文字變黑（CSS `*{color:inherit}` 連 body 也繼承成預設黑色） |
+| 1.0.23 | `COMMIT` | 依 iOS `Features/GradeHistory/`（`GradeHistoryView.swift`）補齊成績：歷年加 GPA 走勢圖（兩學期以上）、學期篩選 chip（篩選後總覽改為該學期）、通過率與每學期通過率進度條（文字成績照舊不計入，iOS 把文字成績當 0 分，Android 刻意不同）、學期卡片可收合（預設只展開最新學期）、班級排名放進學期卡片（拿掉獨立的「各學期排名」）；每門課顯示學校給的類別標籤；期中／學期卡片固定顯示平均、班級排名、課程數；排名統一整理成「7/52」。學期平均優先用學校給的值。Model 移到 `grades_models.dart`，元件在 `grades_widgets.dart`，`GradesScreen` 可注入 `session` |
 
 另外：
 
