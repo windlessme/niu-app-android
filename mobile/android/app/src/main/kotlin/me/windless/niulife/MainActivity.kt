@@ -21,6 +21,13 @@ class MainActivity : FlutterActivity() {
             .setMethodCallHandler { call, result ->
                 registrationDocuments.handle(call.method, call.argument<ByteArray>("bytes"), result)
             }
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "niulife/files")
+            .setMethodCallHandler { call, result ->
+                if (call.method != "open") return@setMethodCallHandler result.notImplemented()
+                try {
+                    result.success(DownloadedFiles.open(this, call.argument<String>("path")!!))
+                } catch (_: Exception) { result.error("file_error", "無法開啟檔案", null) }
+            }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "niulife/app")
             .setMethodCallHandler { call, result ->
                 if (call.method != "version") return@setMethodCallHandler result.notImplemented()

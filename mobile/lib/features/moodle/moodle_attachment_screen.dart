@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../core/platform/downloaded_files.dart';
 import '../../core/session/campus_session.dart';
 import '../../shared/shared.dart';
 import 'moodle_repository.dart';
@@ -25,7 +25,7 @@ class _MoodleAttachmentScreenState extends State<MoodleAttachmentScreen> {
   late final Future<Uint8List> bytes = widget.repository.download(widget.url);
   Directory? directory;
   Future<void>? writing;
-  bool cleared = false, sharing = false;
+  bool cleared = false, busy = false;
   @override
   void initState() {
     super.initState();
@@ -41,34 +41,54 @@ class _MoodleAttachmentScreenState extends State<MoodleAttachmentScreen> {
     if (dir != null && await dir.exists()) await dir.delete(recursive: true);
   }
 
-  Future<void> share(Uint8List data) async {
-    if (sharing || cleared) return;
-    setState(() => sharing = true);
+  /// Writes the download once; opening and sharing reuse the same file.
+  Future<File?> _file(Uint8List data) async {
+    File? file;
+    writing = () async {
+      if (cleared) return;
+      directory ??= await DownloadedFiles.folder('moodle-');
+      final rawName =
+          Uri.tryParse(widget.url)?.pathSegments.lastOrNull ?? widget.name;
+      final name = rawName.replaceAll(RegExp(r'[^\w.\-\u4e00-\u9fff]'), '_');
+      file = File('${directory!.path}/${name.isEmpty ? 'attachment' : name}');
+      if (!await file!.exists()) await file!.writeAsBytes(data, flush: true);
+    }();
+    await writing;
+    widget.repository.requireCurrent();
+    return cleared || !mounted ? null : file;
+  }
+
+  Future<void> open(Uint8List data) async {
+    if (busy || cleared) return;
+    setState(() => busy = true);
     try {
-      widget.repository.requireCurrent();
-      File? file;
-      writing = () async {
-        final root = await getTemporaryDirectory();
-        if (cleared) return;
-        directory ??= await root.createTemp('moodle-');
-        final rawName =
-            Uri.tryParse(widget.url)?.pathSegments.lastOrNull ?? widget.name;
-        final name = rawName.replaceAll(RegExp(r'[^\w.\-\u4e00-\u9fff]'), '_');
-        file = File('${directory!.path}/${name.isEmpty ? 'attachment' : name}');
-        await file!.writeAsBytes(data, flush: true);
-      }();
-      await writing;
-      widget.repository.requireCurrent();
-      if (cleared || file == null || !mounted) return;
+      final file = await _file(data);
+      if (file == null) return;
+      if (!await DownloadedFiles.open(file) && mounted) {
+        showNiuMessage(context, '手機上沒有可以開啟這種檔案的 App，可以用「分享或儲存」');
+      }
+    } catch (_) {
+      if (mounted) showNiuMessage(context, '無法開啟檔案，請重新下載後再試');
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> share(Uint8List data) async {
+    if (busy || cleared) return;
+    setState(() => busy = true);
+    try {
+      final file = await _file(data);
+      if (file == null) return;
       await SharePlus.instance.share(
-        ShareParams(files: [XFile(file!.path)], title: widget.name),
+        ShareParams(files: [XFile(file.path)], title: widget.name),
       );
     } catch (_) {
       if (mounted) {
         showNiuMessage(context, '無法分享，請重新下載後再試');
       }
     } finally {
-      if (mounted) setState(() => sharing = false);
+      if (mounted) setState(() => busy = false);
     }
   }
 
@@ -139,19 +159,40 @@ class _MoodleAttachmentScreenState extends State<MoodleAttachmentScreen> {
                             tone: NiuTone.accent,
                             title: widget.name,
                             message:
-                                '$extension · ${(data.length / 1024).toStringAsFixed(1)} KB\n已下載完成，可以用其他 App 開啟。',
+                                '$extension · ${(data.length / 1024).toStringAsFixed(1)} KB\n已下載完成，按「開啟」用手機上的 App 查看。',
                           ),
                         ),
                       ),
               ),
               NiuBottomBar(
-                child: FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size.fromHeight(NiuSize.buttonHeight),
-                  ),
-                  onPressed: sharing ? null : () => share(data),
-                  icon: const Icon(NiuIcons.share),
-                  label: const Text('分享或儲存'),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(
+                            NiuSize.buttonHeight,
+                          ),
+                        ),
+                        onPressed: busy ? null : () => share(data),
+                        icon: const Icon(NiuIcons.share),
+                        label: const Text('分享或儲存'),
+                      ),
+                    ),
+                    const SizedBox(width: NiuSpacing.sm),
+                    Expanded(
+                      child: FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size.fromHeight(
+                            NiuSize.buttonHeight,
+                          ),
+                        ),
+                        onPressed: busy ? null : () => open(data),
+                        icon: const Icon(Icons.open_in_new_rounded),
+                        label: const Text('開啟'),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
