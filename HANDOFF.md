@@ -20,7 +20,7 @@
 3. commit 到 `main`，**push 到 origin main**。
 4. `flutter build appbundle --release`，上傳到 Play internal 軌道（步驟見下節）。**每個新版本都要推。**
 
-**不要在本地建 debug APK**（使用者 2026-10-06 決定）：不跑 `flutter build apk --debug`、`check_apk.py`、`smoke_android.py`、`publish_preview.py`，也不給預覽下載連結。工具還留在 `tool/`，使用者要求時才用。
+**不要在本地建 debug APK**（使用者 2026-10-06 決定）：不跑 `flutter build apk --debug`、`check_apk.py`、`smoke_android.py`、`publish_preview.py`，也不給預覽下載連結。工具還留在 `tool/`，使用者要求時才用。預覽 APK 的下載服務（systemd `niu-downloads`、`niu-downloads-router`）2026-10-07 已停用並取消開機啟動，`publish_preview.py` 要先重新啟用服務才有用；不要把主機位址寫進 repo。
 
 ## Release 簽章與 Play 上傳
 
