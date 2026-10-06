@@ -1,6 +1,6 @@
 # HANDOFF
 
-給接手的 Claude Code session。最後更新：2026-10-06。目前版本：**1.0.23+104**。
+給接手的 Claude Code session。最後更新：2026-10-06。目前版本：**1.0.24+105**。
 
 ## 專案概況
 
@@ -31,7 +31,7 @@
 - Play 各軌道現況（2026-10-03 用 MCP 查過）：
   - **正式版：1.0.0 (81)**，已審核通過並發布。**1.0.17 (98) 已送審**（使用者 2026-10-06 告知）。
   - 公開測試（beta）：1.0.0 (81)。
-  - internal：**1.0.23 (104)**（2026-10-06 推送）。
+  - internal：**1.0.24 (105)**（2026-10-06 推送）。
 - 正式版由使用者在 Play Console 升級（Claude 推 production 會被權限擋下，屬正常）。
 - **正式版不用每版都推**，只要 versionCode 比上一個正式版大就行。建議 internal 每版都推；等使用者在手機上測過、累積一批改動或有重要修正時，再挑一版推正式版。**版本說明的寫法（使用者 2026-10-05 要求）**：
   - internal：只寫**這一版**改了什麼，讓使用者知道要測哪裡。沒有使用者看得到的改動時寫「內部調整，功能沒有變化」。不要再沿用累計說明，否則每版看起來都一樣。
@@ -128,6 +128,7 @@
 | 1.0.21 | `0ea5ffb` | 依 iOS（qian403/niu-app `Features/Moodle/Upcoming`、`CourseDetail/MoodleCourseResourcesView.swift`）：M 園區頁面上方加可收合的「即將截止」（目前學期、逾期 7 天到未來 14 天、只列未繳交，`moodle_upcoming*.dart`）；教材依類型開啟（`moodle_module_open.dart`）：頁面讀 `mod_page_get_pages_by_courses` 在 App 內顯示 HTML、討論區直接列討論、作業直接開作業、單一檔案直接下載、.html 檔在 App 內顯示 |
 | 1.0.22 | `6a6931a` | 依 iOS `HomeView.swift`：首頁問候語旁的眼睛按鈕隱藏姓名，顯示「姓＋同學」（含複姓），切換時亂碼動畫、尊重減少動態效果，設定存在 `home.isNameMasked`；`main()` 先讀，讀到前一律遮蔽（`features/home/name_mask.dart`）。行事曆月曆模式在當天事項下方加「接下來」，依月份列出選定日期之後到學年結束的事項（使用者需求，iOS 沒有）。修好 M 園區頁面在深色模式文字變黑（CSS `*{color:inherit}` 連 body 也繼承成預設黑色） |
 | 1.0.23 | `b435b74` | 依 iOS `Features/GradeHistory/`（`GradeHistoryView.swift`）補齊成績：歷年加 GPA 走勢圖（兩學期以上）、學期篩選 chip（篩選後總覽改為該學期）、通過率與每學期通過率進度條（文字成績照舊不計入，iOS 把文字成績當 0 分，Android 刻意不同）、學期卡片可收合（預設只展開最新學期）、班級排名放進學期卡片（拿掉獨立的「各學期排名」）；每門課顯示學校給的類別標籤；期中／學期卡片固定顯示平均、班級排名、課程數；排名統一整理成「7/52」。學期平均優先用學校給的值。Model 移到 `grades_models.dart`，元件在 `grades_widgets.dart`，`GradesScreen` 可注入 `session` |
+| 1.0.24 | `COMMIT` | 只升版推 internal，功能和 1.0.23 相同（使用者要求） |
 
 另外：
 
