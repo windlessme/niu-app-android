@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:html/parser.dart' as html;
 import 'dart:typed_data';
 import 'package:dio/dio.dart';
@@ -64,6 +65,9 @@ class MoodleRepository {
     _owner?.unregisterCleanup(invalidate);
   }
 
+  /// The signed-in campus session this repository belongs to, if bound.
+  CampusSession? get owner => _owner;
+
   void requireCurrent() => _guard();
   Future<Uint8List> download(String raw) async {
     final uri = fileUri(raw);
@@ -80,11 +84,34 @@ class MoodleRepository {
     if (response.statusCode != 200 ||
         bytes == null ||
         bytes.isEmpty ||
-        type.contains('text/html') ||
-        type.contains('application/json')) {
+        (type.contains('text/html') && !_htmlFile(uri, bytes)) ||
+        (type.contains('application/json') && _errorJson(bytes))) {
       throw const FormatException('校方未提供有效附件，請重新登入');
     }
     return Uint8List.fromList(bytes);
+  }
+
+  /// An .html material is served as text/html too; only a login page is not
+  /// the file the student asked for.
+  static bool _htmlFile(Uri uri, List<int> bytes) {
+    if (!RegExp(r'\.x?html?$').hasMatch(uri.path.toLowerCase())) return false;
+    final page = html.parse(utf8.decode(bytes, allowMalformed: true));
+    return page.querySelector(
+          'input[name="password"], #page-login-index, form[action*="/login/"]',
+        ) ==
+        null;
+  }
+
+  /// Web service failures come back as a JSON object naming the error; any
+  /// other JSON is a .json material.
+  static bool _errorJson(List<int> bytes) {
+    try {
+      final value = jsonDecode(utf8.decode(bytes));
+      return value is Map &&
+          (value.containsKey('errorcode') || value.containsKey('exception'));
+    } catch (_) {
+      return false;
+    }
   }
 
   void _guard() {

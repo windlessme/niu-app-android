@@ -7,8 +7,8 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /// One-shot reminders computed by Flutter (assignment deadlines, important
-/// calendar dates). Each kind is replaced as a whole; a single inexact alarm
-/// waits for the earliest pending one.
+/// calendar dates). Each kind is replaced as a whole; one alarm steps toward
+/// the earliest pending one.
 internal object CampusNotifications {
     private const val requestCode = 101
     private const val lateLimit = 6 * 60 * 60 * 1000L
@@ -53,9 +53,10 @@ internal object CampusNotifications {
         val alarms = c.getSystemService(AlarmManager::class.java)
         alarms.cancel(pending(c))
         val next = all(c).minOfOrNull { it.second.getLong("at") } ?: return
-        // Deliberately inexact: Doze and OEM battery policies can delay delivery.
-        alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP,
-            maxOf(next, System.currentTimeMillis()), pending(c))
+        // Inexact, stepping closer on each wake (an early wake delivers
+        // nothing and lands here again); Doze can still delay delivery.
+        val now = System.currentTimeMillis()
+        alarms.wakeBy(maxOf(next, now), pending(c), now)
     }
 
     fun deliver(c: Context) {

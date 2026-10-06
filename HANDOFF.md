@@ -1,6 +1,6 @@
 # HANDOFF
 
-給接手的 Claude Code session。最後更新：2026-10-06。目前版本：**1.0.17+98**。
+給接手的 Claude Code session。最後更新：2026-10-06。目前版本：**1.0.18+99**。
 
 ## 專案概況
 
@@ -15,7 +15,7 @@
 
 在 `mobile/` 底下執行：
 
-1. `set -o pipefail; tool/verify.sh`，包含 calendar/toolchain/分層/DOM 檢查、`dart format`、`flutter analyze`、`flutter test`，目前 366 項測試。
+1. `set -o pipefail; tool/verify.sh`，包含 calendar/toolchain/分層/DOM 檢查、`dart format`、`flutter analyze`、`flutter test`，目前 373 項測試。
 2. 把 `pubspec.yaml` 的 patch 版號和 build number 各加一。
 3. commit 到 `main`，**push 到 origin main**。
 4. `flutter build apk --debug`
@@ -57,7 +57,13 @@
   ・隱私權說明加上完整政策的連結，聯絡信箱改為 hi@niu-life.app
   ・效能最佳化，較舊的 Android 版本也支援無邊框畫面
   ```
-- **下一個正式版的說明草稿**（1.0.17 之後的累計改動）：目前還沒有使用者看得到的改動。
+- **下一個正式版的說明草稿**（1.0.17 之後的累計改動）：
+  ```
+  ・M 園區網頁（教材、作業、出席紀錄、點名）會自動完成登入，不用再手動登入一次
+  ・修好教材與信件附件無法分享或儲存
+  ・.html 等網頁格式的教材可以下載
+  ・作業死線與重要日期通知更準時
+  ```
 - 公開測試的使用者會自動拿到 versionCode 較大的正式版，公開測試軌道不用特別處理。release 名稱用 `X.Y.Z (versionCode)`，附一句 zh-TW 版本說明。
 - 上傳流程（每個新版本都要做）：`flutter build appbundle --release`，然後用 MCP 依序 `edits_insert` → `bundles_upload` → `tracks_update`（internal，status `completed`）→ `edits_commit`。
 
@@ -113,6 +119,7 @@
 | 1.0.15 | `71037c8` | 隱私權說明（App 內與 `docs/android-privacy-policy.md`，更新日期 2026-10-05）加上公告：從 GitHub 讀取、只在手機記住關掉的公告編號 |
 | 1.0.16 | `56cb4e6` | App Links：`https://niu-life.app/download` 開 App、`/open/<功能>` 開對應功能（manifest `autoVerify` + `campusDeepLink`） |
 | 1.0.17 | `cb8320a` | 隱私權畫面：聯絡信箱改 hi@niu-life.app、加「完整隱私權政策」按鈕連到 niu-life.app/privacy（兩平台共用政策）；刪除本 repo 的 Android 專用政策檔 |
+| 1.0.18 | （見 git log） | M 園區網頁自動登入改寫（見「M 園區網頁登入」）；修好教材／信件附件分享（暫存資料夾建立失敗）；.html／.json 教材可下載；作業與重要日期通知改用 `wakeBy` 逐步逼近 |
 
 另外：
 
@@ -380,7 +387,20 @@
 - 公車到站資訊：已放棄（見 1.0.1）。
 - UX 檢視第 3、4、5 項：維持現狀（見「導覽與 UX」）。
 
+## M 園區網頁登入（1.0.18）
+
+- REST token 不會登入 M 園區網站，網頁（教材／作業的「在 M 園區開啟」、出席紀錄 HTML、QR 點名）要另外的網站 Cookie。邏輯在 `lib/features/moodle/moodle_web_session.dart`：
+  - `ensureSignedIn`：隱藏 WebView 開 `/my/`。順序：現有 Cookie → `tool_mobile_get_autologin_key` 自動登入金鑰 → 用已記住的學校帳密填 M 園區自己的登入表單（`#login`，帳號與 M 園區相同）。成功後 10 分鐘內不再檢查。
+  - `load`：同一套流程開指定頁面並回傳 HTML（出席紀錄用）。所有隱藏登入排隊執行，避免同時登入互相覆蓋 Cookie。
+  - 每一步的判斷是純函式 `moodleWebStep`，有單元測試。
+- **以前失敗的原因**：自動登入金鑰同一使用者 6 分鐘只能取一次（Moodle `autologinmintimebetweenreq`），以前每次開網頁都取新金鑰，第二次起就落到登入頁；「再試一次」也在 6 分鐘內，所以一直失敗。
+- `MoodleWebScreen` 與點名結果頁開啟前先 `ensureSignedIn`；頁面仍出現登入表單時強制再登入一次並重新載入。掃描器打開時就先在背景登入，掃到 QR Code 時通常已經登好。
+- 密碼只在 `euni.niu.edu.tw/login/index.php` 的表單送出一次；失敗就停，不重試，避免鎖帳號。沒有記住帳密時只能讓使用者在校方頁面手動登入。
+- 2026-10-06 在模擬器用假 token 打真實登入頁驗證過「偵測登入頁 → 金鑰失敗 → 沒帳密就停止」；**帳密送出這一步只能在實機用真實帳號驗證**。
+
 ## 尚未驗證／已知事項
+
+- **M 園區網頁自動登入（1.0.18）的帳密送出還沒用真實帳號測過**：清除 App 資料、登入後直接開出席紀錄、教材「在 M 園區開啟」、QR 點名，三個都不應出現 M 園區登入頁。
 
 - **郵件包裹偶爾沒有自動查詢**（2026-10-04 觀察到）：在模擬器上全新安裝、登入示範帳號後，有一次打開郵件包裹沒有自動查詢，有顯示「帶入我的姓名」，代表姓名有讀到。同一個 App 程序裡再開一次也一樣。之後重裝重跑 3 次完整流程、同一程序開關 12 次，都正常，找不到原因。`_searchOwnMail` 只在第一個 frame 後和 session 通知時執行；如果再發生，先在它開頭加 log 看是哪個條件提早 return。`smoke_android.py` 會檢查這一步。
 
