@@ -11,6 +11,7 @@ import '../../support/fakes.dart';
 
 class AttachmentAdapter implements HttpClientAdapter {
   String contentType = 'application/pdf';
+  List<int> body = [37, 80, 68, 70];
   RequestOptions? request;
   Completer<void>? gate;
   @override
@@ -22,7 +23,7 @@ class AttachmentAdapter implements HttpClientAdapter {
     request = options;
     if (gate != null) await gate!.future;
     return ResponseBody.fromBytes(
-      [37, 80, 68, 70],
+      body,
       200,
       headers: {
         'content-type': [contentType],
@@ -64,6 +65,36 @@ void main() {
       );
     },
   );
+  test('html and json materials download; login pages and errors do not', () async {
+    final adapter = AttachmentAdapter();
+    final repo = MoodleRepository(
+      MoodleApiClient(
+        schoolClient('https://euni.niu.edu.tw')..httpClientAdapter = adapter,
+      ),
+      const MoodleSession(account: 'b123', token: 'secret', userId: 7),
+    );
+    const page =
+        'https://euni.niu.edu.tw/pluginfile.php/1/mod_resource/content/1/week1.html';
+    adapter
+      ..contentType = 'text/html; charset=utf-8'
+      ..body = utf8.encode('<html><body><h1>第一週</h1></body></html>');
+    expect(utf8.decode(await repo.download(page)), contains('第一週'));
+    adapter.body = utf8.encode(
+      '<form action="/login/index.php"><input name="password"></form>',
+    );
+    await expectLater(repo.download(page), throwsFormatException);
+
+    const data =
+        'https://euni.niu.edu.tw/pluginfile.php/1/mod_resource/content/1/data.json';
+    adapter
+      ..contentType = 'application/json'
+      ..body = utf8.encode('{"rows":[1,2]}');
+    expect(await repo.download(data), utf8.encode('{"rows":[1,2]}'));
+    adapter.body = utf8.encode(
+      '{"error":"Invalid token","errorcode":"invalidtoken"}',
+    );
+    await expectLater(repo.download(data), throwsFormatException);
+  });
   test('logout during attachment download discards the response', () async {
     final adapter = AttachmentAdapter()..gate = Completer<void>();
     final repo = MoodleRepository(

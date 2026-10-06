@@ -5,6 +5,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../shared/shared.dart';
 import '../moodle/moodle_repository.dart';
 import '../moodle/moodle_web_screen.dart';
+import '../moodle/moodle_web_session.dart';
 import 'attendance_repository.dart';
 import 'attendance_open_flow.dart';
 import 'attendance_result_screen.dart';
@@ -40,6 +41,14 @@ class _AttendanceScannerScreenState extends State<AttendanceScannerScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) => camera(true));
+    // Sign the website in while the student aims, so the code opens at once.
+    if (widget.repository is! DemoMoodleRepository) {
+      unawaited(
+        MoodleWebSession.ensureSignedIn(
+          widget.repository,
+        ).catchError((Object _) {}),
+      );
+    }
   }
 
   Future<void> camera(bool start) {

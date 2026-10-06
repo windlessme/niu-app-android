@@ -160,7 +160,7 @@ class _MailDetailScreenState extends State<MailDetailScreen> {
     try {
       final bytes = await widget.service.attachment(s.box, s.uid, file);
       final root = await getTemporaryDirectory();
-      temp ??= await Directory('${root.path}/numail-').createTemp();
+      temp ??= await root.createTemp('numail-');
       final name = file.filename.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
       final path = '${temp!.path}/$name';
       await File(path).writeAsBytes(bytes, flush: true);

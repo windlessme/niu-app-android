@@ -50,7 +50,7 @@ class _MoodleAttachmentScreenState extends State<MoodleAttachmentScreen> {
       writing = () async {
         final root = await getTemporaryDirectory();
         if (cleared) return;
-        directory ??= await Directory('${root.path}/moodle-').createTemp();
+        directory ??= await root.createTemp('moodle-');
         final rawName =
             Uri.tryParse(widget.url)?.pathSegments.lastOrNull ?? widget.name;
         final name = rawName.replaceAll(RegExp(r'[^\w.\-\u4e00-\u9fff]'), '_');
