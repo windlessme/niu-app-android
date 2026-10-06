@@ -121,7 +121,7 @@
 | 1.0.17 | `cb8320a` | 隱私權畫面：聯絡信箱改 hi@niu-life.app、加「完整隱私權政策」按鈕連到 niu-life.app/privacy（兩平台共用政策）；刪除本 repo 的 Android 專用政策檔 |
 | 1.0.18 | `773bc2a` | M 園區網頁自動登入改寫（1.0.19 已還原，見「M 園區網頁登入」）；修好教材／信件附件分享（暫存資料夾建立失敗）；.html／.json 教材可下載；作業與重要日期通知改用 `wakeBy` 逐步逼近 |
 | 1.0.19 | `7e2c1df` | 還原 1.0.18 的 M 園區網頁登入架構（使用者回報課程讀取變慢）；保留附件分享、.html 下載、通知時間的修正 |
-| 1.0.20 | （見 git log） | M 園區教材下載後加「開啟」按鈕，用手機上的 App 開啟（使用者選擇不做 App 內預覽）：檔案寫在 `cache/attachments/`，原生 `DownloadedFiles.kt` 經 `niulife/files` 以 FileProvider 開 ACTION_VIEW，沒有對應 App 時提示改用分享 |
+| 1.0.20 | `dc15c63` | M 園區教材下載後加「開啟」按鈕，用手機上的 App 開啟（使用者選擇不做 App 內預覽）：檔案寫在 `cache/attachments/`，原生 `DownloadedFiles.kt` 經 `niulife/files` 以 FileProvider 開 ACTION_VIEW，沒有對應 App 時提示改用分享 |
 
 另外：
 
