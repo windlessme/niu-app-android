@@ -5,13 +5,19 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:niu_mobile/features/academic_calendar/calendar_providers.dart';
 import 'package:niu_mobile/features/academic_calendar/calendar_repository.dart';
 import 'package:niu_mobile/features/academic_calendar/calendar_screen.dart';
+import 'package:niu_mobile/core/time/campus_date.dart';
 import 'package:niu_mobile/shared/niu_theme.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  late CalendarSnapshot data;
+  setUpAll(() async {
+    data = await BundledCalendarRepository(rootBundle).load(115);
+  });
+
   testWidgets(
     'calendar searches across months and exposes official event source',
     (tester) async {
-      final data = await BundledCalendarRepository(rootBundle).load(115);
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
@@ -44,4 +50,35 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('month view lists later months without paging', (tester) async {
+    // Tall enough that the whole year is laid out without scrolling.
+    tester.view.physicalSize = const Size(1200, 60000);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          calendarYearsProvider.overrideWith((ref) async => [115]),
+          calendarProvider.overrideWith((ref, year) async => data),
+        ],
+        child: MaterialApp(theme: NiuTheme.light, home: const CalendarScreen()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('接下來'), findsOneWidget);
+    final today = CampusDate.at(DateTime.now());
+    final later = data.events
+        .where(
+          (e) =>
+              e.start.compareTo(today) > 0 &&
+              (e.start.year * 12 + e.start.month) >
+                  (today.year * 12 + today.month + 1),
+        )
+        .firstOrNull;
+    if (later == null) return; // The bundled year has ended.
+    expect(find.text(later.title).first, findsOneWidget);
+    expect(find.byTooltip('上個月'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }
