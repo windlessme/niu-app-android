@@ -2,7 +2,7 @@
 
 國立宜蘭大學非官方校園工具，使用 **Flutter / Dart** 開發，主要執行於 Android。
 
-本專案以 [qian403/NIU-app](https://github.com/qian403/NIU-app) 的 iOS 開源實作、功能與 Design System 為參考，採獨立 Android repository 維護。與國立宜蘭大學並無隸屬、合作或授權關係；校務資訊及操作結果以學校系統為準。
+NIU-Life 的 Android 版由 [Windless](https://github.com/windlessme) 維護，iOS 版由 [Qian](https://github.com/qian403) 維護（[qian403/NIU-app](https://github.com/qian403/NIU-app)），兩個版本的功能與設計保持一致。與國立宜蘭大學並無隸屬、合作或授權關係；校務資訊及操作結果以學校系統為準。
 
 ## 維護文件
 
@@ -58,6 +58,6 @@ Google Play 審查使用示範帳號 `niulifedemo`（密碼記錄於 Play 控制
 
 ## 授權與致謝
 
-原始專案為 **MIT License，Copyright (c) 2026 CHIEN**，完整聲明保留於 [LICENSE](LICENSE) 與 App 授權頁。另見 [NOTICE.md](NOTICE.md)。
+原始專案為 **MIT License，Copyright (c) 2026 CHIEN**（iOS 版），完整聲明保留於 [LICENSE](LICENSE) 與 App 授權頁。另見 [NOTICE.md](NOTICE.md)。
 
-感謝 [qian403/NIU-app](https://github.com/qian403/NIU-app) 與 [KennyYang0726/NIU_APP_IOS](https://github.com/KennyYang0726/NIU_APP_IOS) 提供參考。
+感謝 [KennyYang0726/NIU_APP_IOS](https://github.com/KennyYang0726/NIU_APP_IOS) 提供參考。

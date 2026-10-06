@@ -1,8 +1,8 @@
 # Attribution
 
-This Android/Flutter implementation was developed with reference to
-[qian403/NIU-app](https://github.com/qian403/NIU-app), revision
-`96e8cdf3a4738ed31420f3de748fbee862906406`.
+This is the Android version of NIU-Life. The iOS version is maintained by Qian at
+[qian403/NIU-app](https://github.com/qian403/NIU-app); this repository started from
+its revision `96e8cdf3a4738ed31420f3de748fbee862906406`.
 
 The upstream MIT copyright and permission notice are preserved in LICENSE.
 School data, logos and third-party materials remain subject to their respective
