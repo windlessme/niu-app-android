@@ -18,12 +18,9 @@
 1. `set -o pipefail; tool/verify.sh`，包含 calendar/toolchain/分層/DOM 檢查、`dart format`、`flutter analyze`、`flutter test`，目前 383 項測試。
 2. 把 `pubspec.yaml` 的 patch 版號和 build number 各加一。
 3. commit 到 `main`，**push 到 origin main**。
-4. `flutter build apk --debug`
-5. `python3 tool/check_apk.py build/app/outputs/flutter-apk/app-debug.apk`
-6. 有開模擬器時跑 `NIU_DEMO_PASSWORD=… python3 tool/smoke_android.py`：全新安裝、登入示範帳號，逐一打開三個分頁、首頁九個服務與通知設定，頁面沒出現或 Flutter 報錯就失敗，截圖在暫存資料夾。密碼在 auto-memory 的示範帳號說明裡（`test/app/demo_mode_test.dart` 本來就有明文，使用者 2026-10-02 決定不處理）；腳本只從環境變數讀，不另外存。腳本會先確認帳號欄是 `niulifedemo` 才按登入，避免把打錯的帳號送到學校。
-7. `python3 tool/publish_preview.py --apk build/app/outputs/flutter-apk/app-debug.apk --version X.Y.Z`
-8. 給使用者下載連結（`publish_preview.py` 會自動只保留最新 3 版，可以用 `--keep` 調整）：`http://<preview-server>:8080/NIU-Life-X.Y.Z-preview.apk`
-9. `flutter build appbundle --release`，上傳到 Play internal 軌道（步驟見下節）。**每個新版本都要推。**
+4. `flutter build appbundle --release`，上傳到 Play internal 軌道（步驟見下節）。**每個新版本都要推。**
+
+**不要在本地建 debug APK**（使用者 2026-10-06 決定）：不跑 `flutter build apk --debug`、`check_apk.py`、`smoke_android.py`、`publish_preview.py`，也不給預覽下載連結。工具還留在 `tool/`，使用者要求時才用。
 
 ## Release 簽章與 Play 上傳
 
