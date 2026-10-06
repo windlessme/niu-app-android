@@ -466,6 +466,30 @@ abstract final class DemoData {
                 ],
               },
               {
+                'id': cid * 100 + 6,
+                'name': '課程公告',
+                'modname': 'forum',
+                'instance': cid * 10,
+                'url':
+                    'https://euni.niu.edu.tw/mod/forum/view.php?id=${cid * 100 + 6}',
+              },
+              {
+                'id': cid * 100 + 7,
+                'name': '分組名單',
+                'modname': 'page',
+                'instance': cid,
+                'url':
+                    'https://euni.niu.edu.tw/mod/page/view.php?id=${cid * 100 + 7}',
+                'contents': [
+                  {
+                    'type': 'file',
+                    'filename': 'index.html',
+                    'fileurl':
+                        'https://euni.niu.edu.tw/webservice/pluginfile.php/1/mod_page/content/1/index.html',
+                  },
+                ],
+              },
+              {
                 'id': cid * 100 + 2,
                 'name': '出席紀錄',
                 'modname': 'attendance',
@@ -564,33 +588,60 @@ abstract final class DemoData {
             },
           ],
         };
-      case 'mod_assign_get_assignments':
+      case 'mod_page_get_pages_by_courses':
         return {
-          'courses': [
+          'pages': [
             {
               'id': course.$1,
-              'assignments': [
-                {
-                  'id': course.$1 * 10 + 1,
-                  'cmid': course.$1 * 100 + 4,
-                  'name': '作業一',
-                  'intro': '<p>完成第一週練習題，上傳 PDF 檔。</p>',
-                  'duedate': unix(6, hour: 23),
-                },
-                {
-                  'id': course.$1 * 10 + 2,
-                  'cmid': course.$1 * 100 + 5,
-                  'name': '課堂心得',
-                  'intro': '<p>寫下本週課堂心得，300 字以內。</p>',
-                  'duedate': unix(-3),
-                },
-              ],
+              'coursemodule': course.$1 * 100 + 7,
+              'name': '分組名單',
+              'intro': '',
+              'content':
+                  '<p>期末專題分組如下，請各組於第 6 週前確認題目。</p>'
+                  '<table><tr><th>組別</th><th>組員</th><th>題目</th></tr>'
+                  '<tr><td>第 1 組</td><td>$studentName、陳宥廷、林品妤</td><td>校園導覽 App</td></tr>'
+                  '<tr><td>第 2 組</td><td>黃柏翰、許芷涵、蔡承恩</td><td>圖書館座位查詢</td></tr></table>',
             },
+          ],
+        };
+      case 'mod_assign_get_assignments':
+        final ids = [
+          for (final entry in params.entries)
+            if (entry.key.startsWith('courseids['))
+              int.tryParse('${entry.value}'),
+        ].whereType<int>();
+        return {
+          'courses': [
+            for (final id in ids)
+              {
+                'id': id,
+                'assignments': [
+                  {
+                    'id': id * 10 + 1,
+                    'cmid': id * 100 + 4,
+                    'name': '作業一',
+                    'intro': '<p>完成第一週練習題，上傳 PDF 檔。</p>',
+                    // Spread over today, this week and later.
+                    'duedate': unix(
+                      const [0, 1, 3, 6, 9, 12, 16, 20][id % 8],
+                      hour: 6,
+                    ),
+                  },
+                  {
+                    'id': id * 10 + 2,
+                    'cmid': id * 100 + 5,
+                    'name': '課堂心得',
+                    'intro': '<p>寫下本週課堂心得，300 字以內。</p>',
+                    'duedate': unix(-3 - id % 3),
+                  },
+                ],
+              },
           ],
         };
       case 'mod_assign_get_submission_status':
         final assignment = id('assignid') ?? 0;
-        final done = assignment % 10 == 2;
+        // One overdue reflection is still to hand in.
+        final done = assignment % 10 == 2 && assignment != 1042;
         return {
           'lastattempt': {
             'submission': {

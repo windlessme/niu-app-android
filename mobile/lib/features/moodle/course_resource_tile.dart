@@ -22,6 +22,8 @@ class CourseResourceTile extends StatelessWidget {
       'url' => (NiuIcons.link, NiuHue.cyan),
       'assign' => (NiuIcons.assignment, NiuHue.orange),
       'forum' => (NiuIcons.forum, NiuHue.purple),
+      'page' => (Icons.article_outlined, NiuHue.green),
+      'attendance' => (NiuIcons.attendance, NiuHue.cyan),
       'quiz' => (Icons.quiz_outlined, NiuHue.pink),
       _ when mime == 'application/pdf' => (
         Icons.picture_as_pdf_outlined,
@@ -37,7 +39,18 @@ class CourseResourceTile extends StatelessWidget {
         ? (module['contents'] as List).whereType<Map>().toList()
         : <Map>[];
     final metadata = <String>[];
-    if (files.length == 1) {
+    final kind = '${module['modname']}';
+    final label = const {
+      'page': '頁面',
+      'forum': '討論區',
+      'assign': '作業',
+      'url': '連結',
+      'attendance': '出席紀錄',
+      'quiz': '測驗',
+    }[kind];
+    if (label != null) {
+      metadata.add(label);
+    } else if (files.length == 1) {
       final mime = files.first['mimetype'];
       if (mime == 'application/pdf') metadata.add('PDF');
       final size = num.tryParse('${files.first['filesize']}');
