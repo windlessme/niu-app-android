@@ -8,6 +8,8 @@ import 'leave_application_data.dart';
 import 'leave_repository.dart';
 import 'leave_widgets.dart';
 import 'leave_application_screen.dart';
+import 'leave_manage.dart';
+import 'leave_withdraw_screen.dart';
 
 class LeaveScreen extends StatefulWidget {
   const LeaveScreen({super.key, this.session});
@@ -106,24 +108,31 @@ class _LeaveScreenState extends State<LeaveScreen> {
           builder: (context) => AcademicPortalScreen(
             title: application
                 ? '申請請假'
+                : keyName == 'actions'
+                ? '假單操作'
                 : keyName == 'statistics'
                 ? '請假統計'
                 : record != null
                 ? '請假明細'
                 : '請假紀錄',
             session: session,
-            navigationScript: leaveMenuNavigation(
-              application || keyName == 'statistics',
-              agreeForStatistics: keyName == 'statistics',
-            ),
+            navigationScript: keyName == 'actions'
+                ? leaveManageNavigation
+                : leaveMenuNavigation(
+                    application || keyName == 'statistics',
+                    agreeForStatistics: keyName == 'statistics',
+                  ),
             extractScript: application
                 ? null
+                : keyName == 'actions'
+                ? leaveManageExtract
                 : keyName == 'statistics'
                 ? leaveStatisticsExtract
                 : record != null
                 ? leaveDetailWithWorkflowExtract()
                 : leaveInFrames(leaveListExtract),
-            prepareScript: application || keyName == 'statistics'
+            prepareScript:
+                application || keyName == 'statistics' || keyName == 'actions'
                 ? null
                 : record != null
                 ? leaveDetailPrepare(
@@ -131,7 +140,9 @@ class _LeaveScreenState extends State<LeaveScreen> {
                     int.tryParse('${record['_page']}') ?? 1,
                   )
                 : leaveInFrames(leavePagePrepare(page)),
-            demoSnapshot: () => keyName == 'statistics'
+            demoSnapshot: () => keyName == 'actions'
+                ? DemoData.leaveActions
+                : keyName == 'statistics'
                 ? DemoData.leaveStatistics
                 : record != null
                 ? DemoData.leaveDetail('${record['假單序號']}')
@@ -189,7 +200,79 @@ class _LeaveScreenState extends State<LeaveScreen> {
         ? int.tryParse('${list['data']['page']}') ?? 1
         : 1;
     if (!await open(keyName: 'statistics') || !mounted) return;
-    await open(keyName: 'list', page: page);
+    if (!await open(keyName: 'list', page: page) || !mounted) return;
+    // What 學生請假修改 allows now: 撤回、修改、補檔.
+    await open(keyName: 'actions');
+  }
+
+  List<LeaveActions> get actions {
+    final cached = snapshots['actions'];
+    return LeaveActions.fromSnapshot(cached is Map ? cached['data'] : null);
+  }
+
+  LeaveActions? actionsFor(String formNo) =>
+      actions.where((a) => a.formNo == formNo && a.any).firstOrNull;
+
+  /// 修改 or 補檔 in the school form; the records are read again afterwards.
+  Future<void> edit(LeaveEntry entry) async {
+    if (busy) return;
+    setState(() => busy = true);
+    bool? changed;
+    try {
+      changed = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (_) =>
+              LeaveApplicationScreen(session: session, leave: entry),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+    if (changed == true && mounted && session.hasLocalAccount) {
+      await refreshAll();
+    }
+  }
+
+  Future<void> withdraw(String formNo, BuildContext detailContext) async {
+    if (busy) return;
+    final ok =
+        await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('撤回這張假單？'),
+            content: Text('學校會刪除假單 $formNo，無法在 App 內復原。需要時請重新申請。'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('保留假單'),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: NiuColors.of(context).error,
+                ),
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('撤回假單'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!ok || !mounted) return;
+    setState(() => busy = true);
+    bool? sent;
+    try {
+      sent = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (_) => LeaveWithdrawScreen(session: session, formNo: formNo),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+    if (sent == true && mounted && session.hasLocalAccount) {
+      if (detailContext.mounted) Navigator.of(detailContext).pop();
+      await refreshAll();
+    }
   }
 
   Widget detail(
@@ -282,6 +365,39 @@ class _LeaveScreenState extends State<LeaveScreen> {
             ],
           ),
         ),
+        if (actionsFor(id) case final allowed?)
+          NiuSection(
+            title: '操作',
+            subtitle: '修改與補檔會開啟學校的表單；撤回後學校會刪除這張假單。',
+            child: NiuGroup(
+              children: [
+                if (allowed.modify)
+                  NiuRow(
+                    icon: Icons.edit_rounded,
+                    hue: NiuHue.blue,
+                    title: '修改假單',
+                    subtitle: '更改假別、日期、節次或事由',
+                    onTap: busy ? null : () => edit(LeaveEntry.modify(id)),
+                  ),
+                if (allowed.supplement)
+                  NiuRow(
+                    icon: NiuIcons.upload,
+                    hue: NiuHue.cyan,
+                    title: '補交證明文件',
+                    subtitle: '只附加檔案，其他內容不變',
+                    onTap: busy ? null : () => edit(LeaveEntry.supplement(id)),
+                  ),
+                if (allowed.withdraw)
+                  NiuRow(
+                    icon: Icons.undo_rounded,
+                    hue: NiuHue.red,
+                    title: '撤回假單',
+                    subtitle: '學校會刪除這張假單',
+                    onTap: busy ? null : () => withdraw(id, detailContext),
+                  ),
+              ],
+            ),
+          ),
         NiuSection(
           title: '申請內容',
           child: NiuCard(
@@ -494,7 +610,7 @@ class _LeaveScreenState extends State<LeaveScreen> {
                   padding: const EdgeInsets.only(bottom: NiuSpacing.md),
                   child: NiuCard(
                     onTap: () {
-                      final record = Map<String, dynamic>.from(raw as Map);
+                      final record = Map<String, dynamic>.from(raw);
                       record['_page'] = list['data']['page'];
                       _autoLoaded.remove('${record['假單序號']}');
                       Navigator.of(context).push(
@@ -518,7 +634,23 @@ class _LeaveScreenState extends State<LeaveScreen> {
                         ),
                       );
                     },
-                    child: LeaveRecordContent(record: raw),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        LeaveRecordContent(record: raw),
+                        if (actionsFor('${(raw as Map)['假單序號']}')
+                            case final allowed?)
+                          Padding(
+                            padding: const EdgeInsets.only(top: NiuSpacing.sm),
+                            child: Text(
+                              '可${[if (allowed.modify) '修改', if (allowed.supplement) '補檔', if (allowed.withdraw) '撤回'].join('、')}',
+                              style: theme.textTheme.labelMedium?.copyWith(
+                                color: NiuColors.of(context).accent,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               if (list is Map && pages > 1)

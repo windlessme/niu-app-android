@@ -161,8 +161,17 @@ class LeaveApplicationData {
     this.total,
     this.attachments = const [],
     this.extensions = const [],
+    this.formNo = '',
+    this.mode = '',
+    this.editable = true,
   });
   final String revision;
+
+  /// The school's form number and hidden `Mode`; empty on a new application.
+  final String formNo, mode;
+
+  /// False when the school has locked the fields, as on 補檔 (DETAIL).
+  final bool editable;
   final String? notice;
   final List<LeaveChoice> choices;
   final String type, start, end, reason;
@@ -222,6 +231,9 @@ class LeaveApplicationData {
       extensions: List<String>.unmodifiable(
         (data['extensions'] as List).cast<String>(),
       ),
+      formNo: (data['formNo'] as String?) ?? '',
+      mode: (data['mode'] as String?) ?? '',
+      editable: data['editable'] != false,
     );
   }
 
@@ -259,9 +271,17 @@ String displayLeaveDate(String value) {
 }
 
 class LeaveSubmitResult {
-  const LeaveSubmitResult({this.applicationId, required this.message});
+  const LeaveSubmitResult({
+    this.applicationId,
+    required this.message,
+    this.sent = false,
+  });
   final String? applicationId;
   final String message;
+
+  /// The school handled a change to an existing form. Unlike a new
+  /// application there is no new number to prove it was saved.
+  final bool sent;
   bool get confirmed => applicationId != null;
 }
 

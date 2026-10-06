@@ -231,11 +231,24 @@ abstract final class DemoData {
     'total': '${_leaveRecords.length}',
   };
 
+  static Map<String, dynamic> leaveRecord(String id) => _leaveRecords
+      .firstWhere((r) => r['假單序號'] == id, orElse: () => _leaveRecords.first);
+
+  /// 學生請假修改: what the school allows for each demo form.
+  static Map<String, dynamic> get leaveActions => {
+    'actions': [
+      {'formNo': 'D1150928', 'withdraw': true, 'modify': true},
+      {
+        'formNo': 'D1150921',
+        'withdraw': true,
+        'modify': true,
+        'supplement': true,
+      },
+    ],
+  };
+
   static Map<String, dynamic> leaveDetail(String id) {
-    final record = _leaveRecords.firstWhere(
-      (r) => r['假單序號'] == id,
-      orElse: () => _leaveRecords.first,
-    );
+    final record = leaveRecord(id);
     final approved = record['審核結果'] == '核准';
     return {
       'fields': {'請假事由': record['請假事由'], '證明文件': approved ? '診斷證明.pdf' : '無'},

@@ -15,14 +15,23 @@ import 'leave_application_service.dart';
 import 'leave_notice.dart';
 import 'leave_demo.dart';
 import 'leave_application_sheets.dart';
+import 'leave_manage.dart';
 import 'leave_widgets.dart';
 
 /// The school form stays mounted behind the native UI, including its upload and
 /// period-picker frames. No saved Cookie fixture or school credentials are used.
 class LeaveApplicationScreen extends StatefulWidget {
-  const LeaveApplicationScreen({super.key, this.session, this.gateway});
+  const LeaveApplicationScreen({
+    super.key,
+    this.session,
+    this.gateway,
+    this.leave = LeaveEntry.apply,
+  });
   final CampusSession? session;
   final LeaveApplicationGateway? gateway;
+
+  /// A new application, or an existing form to modify or add proof to.
+  final LeaveEntry leave;
   @override
   State<LeaveApplicationScreen> createState() => _LeaveApplicationScreenState();
 }
@@ -32,6 +41,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen>
   late final session = widget.session ?? CampusSession.instance;
   late final owner = session.account;
   late final epoch = session.coordinator.epoch;
+  LeaveEntry get leave => widget.leave;
   final reason = TextEditingController();
   LeaveApplicationGateway? gateway;
   InAppWebViewController? web;
@@ -58,6 +68,16 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen>
       (schoolDialog || (ModalRoute.of(context)?.isCurrent ?? true));
   bool get editable => !busy && !sent && !blocked && current;
 
+  /// Fields can change: not on 補檔, where the school locks them.
+  bool get fieldsEditable => editable && (data?.editable ?? true);
+
+  /// The bottom button, also named where uploads explain what follows.
+  String get actionLabel => leave.isModify
+      ? '確認修改'
+      : leave.isSupplement
+      ? '送出補交'
+      : '確認申請';
+
   @override
   void initState() {
     super.initState();
@@ -67,7 +87,8 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen>
         WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
     session.addListener(sessionChanged);
     session.registerCleanup(clear);
-    gateway = widget.gateway ?? (session.isDemo ? DemoLeaveGateway() : null);
+    gateway =
+        widget.gateway ?? (session.isDemo ? DemoLeaveGateway(leave) : null);
     WidgetsBinding.instance.addPostFrameCallback((_) => start());
   }
 
@@ -222,7 +243,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen>
   }
 
   Future<void> periods() async {
-    if (!editable) return;
+    if (!fieldsEditable) return;
     setState(() {
       busy = true;
       error = null;
@@ -320,6 +341,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen>
 
   Future<void> submit() async {
     if (!editable) return;
+    if (leave.isSupplement) return submitSupplement();
     final invalid = data!.validate(reason.text);
     if (invalid != null) {
       setState(() => error = invalid);
@@ -332,8 +354,11 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen>
           context: context,
           isScrollControlled: true,
           useSafeArea: true,
-          builder: (_) =>
-              LeaveSubmitSheet(data: data!, reason: reason.text.trim()),
+          builder: (_) => LeaveSubmitSheet(
+            data: data!,
+            reason: reason.text.trim(),
+            modify: leave.isModify,
+          ),
         ) ??
         false;
     if (!current || !ok || !editable) return;
@@ -342,15 +367,41 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen>
       busy = true;
       error = null;
     });
+    await send();
+  }
+
+  /// 補檔: the fields are the school's; only the new proof is sent.
+  Future<void> submitSupplement() async {
+    if (data!.attachments.isEmpty) {
+      setState(() => error = '請先附加證明文件');
+      return;
+    }
+    final ok = await confirm('送出補交的證明文件？', '會按下校方表單的「送出」。送出後請到請假紀錄確認附件。');
+    if (!current || !ok || !editable) return;
+    setState(() {
+      sent = true;
+      busy = true;
+      error = null;
+    });
+    await send();
+  }
+
+  String get _event => leave.isModify
+      ? 'leave_modify'
+      : leave.isSupplement
+      ? 'leave_supplement'
+      : 'leave_apply';
+
+  Future<void> send() async {
     mutationConsent = true;
     try {
       final outcome = await gateway!.submit(data!);
-      AppAnalytics.instance.event('leave_apply', {
-        'result': outcome.confirmed ? 'success' : 'unconfirmed',
+      AppAnalytics.instance.event(_event, {
+        'result': outcome.confirmed || outcome.sent ? 'success' : 'unconfirmed',
       });
       if (current) setState(() => result = outcome);
     } catch (_) {
-      AppAnalytics.instance.event('leave_apply', {'result': 'unconfirmed'});
+      AppAnalytics.instance.event(_event, {'result': 'unconfirmed'});
       if (current) {
         setState(
           () => result = const LeaveSubmitResult(
@@ -388,11 +439,11 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen>
       canPop: !dirty || result != null || !current,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
-        final leave = await confirm(
-          '離開申請？',
-          sent ? '可能已送出假單，請先查詢紀錄，不要重複申請。' : '未送出的內容不會儲存在 App；已上傳的附件請至學校確認。',
+        final quit = await confirm(
+          leave.isApply ? '離開申請？' : '離開這張假單？',
+          sent ? '可能已送出，請先查詢紀錄，不要重複送出。' : '未送出的內容不會儲存在 App；已上傳的附件請至學校確認。',
         );
-        if (current && leave) {
+        if (current && quit) {
           setState(() => dirty = false);
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted) Navigator.pop(context, false);
@@ -401,7 +452,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen>
       },
       child: Scaffold(
         appBar: NiuAppBar(
-          title: '申請請假',
+          title: leave.title,
           actions: [
             if (web != null && result == null)
               // Same control as the other school-backed screens.
@@ -496,7 +547,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen>
 
   Future<void> chooseType() async {
     final form = data;
-    if (form == null || !editable) return;
+    if (form == null || !fieldsEditable) return;
     final value = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
@@ -576,7 +627,13 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen>
             ),
             FilledButton(
               onPressed: agreed && !blocked ? acceptNotice : null,
-              child: const Text('同意並開始申請'),
+              child: Text(
+                leave.isModify
+                    ? '同意並開始修改'
+                    : leave.isSupplement
+                    ? '同意並開始補件'
+                    : '同意並開始申請',
+              ),
             ),
           ],
         ),
@@ -584,7 +641,9 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen>
     }
     if (form == null || form.notice != null) return null;
     if (sent) return null;
-    final missing = form.validate(reason.text);
+    final missing = leave.isSupplement
+        ? (form.attachments.isEmpty ? '請先附加證明文件' : null)
+        : form.validate(reason.text);
     return NiuBottomBar(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -592,7 +651,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen>
         children: [
           FilledButton(
             onPressed: editable ? submit : null,
-            child: const Text('確認申請'),
+            child: Text(actionLabel),
           ),
           if (missing != null && editable) ...[
             const SizedBox(height: NiuSpacing.xs),
@@ -615,7 +674,9 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen>
         result == null &&
         error == null &&
         (form == null || form.notice != null)) {
-      return const Center(child: NiuLoading(message: '正在開啟請假表單'));
+      return Center(
+        child: NiuLoading(message: leave.isApply ? '正在開啟請假表單' : '正在開啟假單'),
+      );
     }
     final banners = <Widget>[
       if (error != null)
@@ -642,9 +703,17 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen>
     if (result case final result?) {
       content = [
         NiuEmpty(
-          icon: result.confirmed ? NiuIcons.success : NiuIcons.warning,
-          tone: result.confirmed ? NiuTone.success : NiuTone.warning,
-          title: result.confirmed ? '已送出請假申請' : '請確認送出結果',
+          icon: result.confirmed || result.sent
+              ? NiuIcons.success
+              : NiuIcons.warning,
+          tone: result.confirmed || result.sent
+              ? NiuTone.success
+              : NiuTone.warning,
+          title: result.confirmed
+              ? '已送出請假申請'
+              : result.sent
+              ? (leave.isModify ? '已送出修改' : '已送出證明文件')
+              : '請確認送出結果',
           message: result.message,
           padding: const EdgeInsets.fromLTRB(
             0,
@@ -665,7 +734,11 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen>
         Text(
           result.confirmed
               ? '送出後由學校審核，不代表已核准，可在請假紀錄查看進度。'
-              : '請先到請假紀錄確認是否已建立假單，不要重複申請。',
+              : result.sent
+              ? '學校審核前，可在請假紀錄查看假單與進度。'
+              : leave.isApply
+              ? '請先到請假紀錄確認是否已建立假單，不要重複申請。'
+              : '請先到請假紀錄確認，不要重複送出。',
           textAlign: TextAlign.center,
           style: theme.textTheme.bodySmall,
         ),
@@ -728,7 +801,14 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen>
       final dated = form.start.isNotEmpty && form.end.isNotEmpty;
       final periodEntries = form.periodEntries;
       content = [
-        Text('送出後由學校審核，核准前可在請假紀錄查看進度。', style: theme.textTheme.bodySmall),
+        Text(
+          leave.isSupplement
+              ? '補檔只能附加證明文件；要改假別、日期、節次或事由，請改用「修改假單」。'
+              : leave.isModify
+              ? '修改後由學校審核，可在請假紀錄查看進度。'
+              : '送出後由學校審核，核准前可在請假紀錄查看進度。',
+          style: theme.textTheme.bodySmall,
+        ),
         NiuSection(
           title: '請假內容',
           child: NiuGroup(
@@ -740,7 +820,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen>
                 value: form.choices.any((c) => c.value == form.type)
                     ? form.typeLabel
                     : '請選擇',
-                onTap: editable ? chooseType : null,
+                onTap: fieldsEditable ? chooseType : null,
                 chevron: true,
               ),
               NiuRow(
@@ -751,7 +831,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen>
                     ? leaveRangeSummary(form.start, form.end)
                     : null,
                 value: dated ? null : '請選擇',
-                onTap: editable ? dates : null,
+                onTap: fieldsEditable ? dates : null,
                 chevron: true,
               ),
               NiuRow(
@@ -760,7 +840,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen>
                 title: '節次',
                 subtitle: dated ? null : '先選擇日期',
                 value: form.hasPeriods ? '${form.total ?? '-'} 節' : '請選擇',
-                onTap: editable && dated ? periods : null,
+                onTap: fieldsEditable && dated ? periods : null,
                 chevron: true,
               ),
             ],
@@ -781,7 +861,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen>
             ),
             child: TextField(
               controller: reason,
-              enabled: editable,
+              enabled: fieldsEditable,
               maxLength: form.reasonLimit,
               minLines: 3,
               maxLines: 8,
@@ -815,10 +895,10 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen>
                 icon: NiuIcons.upload,
                 hue: NiuHue.blue,
                 title: form.attachments.isEmpty ? '上傳證明文件' : '再上傳一份',
-                subtitle: '上傳後仍需按「確認申請」才會送出',
+                subtitle: '上傳後仍需按「$actionLabel」才會送出',
                 onTap: editable && form.extensions.isNotEmpty ? attach : null,
               ),
-              if (form.canDeferAttachment)
+              if (form.canDeferAttachment && form.editable)
                 NiuRow(
                   icon: NiuIcons.history,
                   hue: NiuHue.gray,
