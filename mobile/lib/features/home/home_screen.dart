@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../shared/shared.dart';
+import 'name_mask.dart';
 import 'campus_services.dart';
 import '../../core/demo/demo_account.dart';
 
@@ -97,10 +98,23 @@ class CampusHomeScreen extends StatelessWidget {
               const SizedBox(height: NiuSpacing.xs),
               Semantics(
                 header: true,
-                child: Text(
-                  name == null ? '歡迎使用 NIU-Life' : '${greeting(now)}，$name',
-                  style: theme.textTheme.headlineLarge,
-                ),
+                child: name == null
+                    ? Text(
+                        '歡迎使用 NIU-Life',
+                        style: theme.textTheme.headlineLarge,
+                      )
+                    : Row(
+                        children: [
+                          Flexible(
+                            child: MaskedName(
+                              name: name!,
+                              prefix: '${greeting(now)}，',
+                              style: theme.textTheme.headlineLarge,
+                            ),
+                          ),
+                          const NameMaskButton(),
+                        ],
+                      ),
               ),
               ?announcements,
               // Store screenshots show the app as students see it.
@@ -225,12 +239,14 @@ class _ProfileHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                name ?? 'NIU-Life',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.titleSmall,
-              ),
+              if (name == null)
+                Text('NIU-Life', style: theme.textTheme.titleSmall)
+              else
+                MaskedName(
+                  name: name!,
+                  maxLines: 1,
+                  style: theme.textTheme.titleSmall,
+                ),
               Text(
                 department?.isNotEmpty == true ? department! : '國立宜蘭大學',
                 maxLines: 1,

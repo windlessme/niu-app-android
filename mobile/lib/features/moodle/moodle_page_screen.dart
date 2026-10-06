@@ -130,7 +130,7 @@ table{display:block;overflow-x:auto;border-collapse:collapse;max-width:100%;marg
 td,th{border:1px solid ${hex(colors.hairline)};padding:6px 10px;vertical-align:top;}
 th{background:${hex(colors.fill)};}
 pre{white-space:pre-wrap;}
-${dark ? '*{background-color:transparent !important;color:inherit !important;} a{color:${hex(colors.accent)} !important;} th{background:${hex(colors.fill)} !important;}' : ''}
+${dark ? 'html,body{color:${hex(colors.ink)} !important;} body *{background-color:transparent !important;color:inherit !important;} body a{color:${hex(colors.accent)} !important;} body th{background:${hex(colors.fill)} !important;}' : ''}
 </style></head><body>${moodleHtmlBody(html, base, repository)}</body></html>''';
   }
 

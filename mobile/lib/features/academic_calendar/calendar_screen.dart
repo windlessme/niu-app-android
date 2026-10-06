@@ -538,7 +538,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
                   : '這${agenda ? '個月' : '天'}沒有排定事項',
               message: query.isNotEmpty
                   ? '試試「選課」「期中考」等關鍵字，或換個類別。'
-                  : '點其他日期，或切換月份看看。',
+                  : agenda
+                  ? '切換月份看看。'
+                  : '點其他日期，或往下看接下來的事項。',
               icon: NiuIcons.calendar,
               action: category == null
                   ? null
@@ -569,28 +571,93 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
             ),
           NiuGroup(
             insetDividers: NiuSpacing.lg + 16,
-            children: [
-              for (final e in section.value)
-                NiuRow(
-                  leading: Container(
-                    width: 4,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: categoryColor(context, e.category),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  title: e.title,
-                  subtitle:
-                      '${_range(e)} · ${calendarCategories[e.category] ?? e.category}',
-                  onTap: () => _details(e, data),
-                ),
-            ],
+            children: [for (final e in section.value) _row(e, data)],
           ),
           const SizedBox(height: NiuSpacing.md),
         ],
+        if (query.isEmpty && !agenda) ..._upcoming(data),
       ],
     );
+  }
+
+  Widget _row(CalendarEvent e, CalendarSnapshot data) => NiuRow(
+    leading: Container(
+      width: 4,
+      height: 36,
+      decoration: BoxDecoration(
+        color: categoryColor(context, e.category),
+        borderRadius: BorderRadius.circular(2),
+      ),
+    ),
+    title: e.title,
+    subtitle: '${_range(e)} · ${calendarCategories[e.category] ?? e.category}',
+    onTap: () => _details(e, data),
+  );
+
+  /// Everything after the selected day to the end of the academic year,
+  /// grouped by month, so later months need no paging.
+  List<Widget> _upcoming(CalendarSnapshot data) {
+    final theme = Theme.of(context);
+    final later =
+        data.events
+            .where(
+              (e) =>
+                  (category == null || category == e.category) &&
+                  e.start.compareTo(selected) > 0,
+            )
+            .toList()
+          ..sort((a, b) => a.start.compareTo(b.start));
+    final months = <String, List<CalendarEvent>>{};
+    for (final e in later) {
+      final key = e.start.year == selected.year
+          ? '${e.start.month} 月'
+          : '${e.start.year} 年 ${e.start.month} 月';
+      months.putIfAbsent(key, () => []).add(e);
+    }
+    return [
+      const SizedBox(height: NiuSpacing.lg),
+      Padding(
+        padding: const EdgeInsets.only(left: NiuSpacing.xs),
+        child: Semantics(
+          header: true,
+          child: Text('接下來', style: theme.textTheme.titleLarge),
+        ),
+      ),
+      Padding(
+        padding: const EdgeInsets.only(left: NiuSpacing.xs, top: 2),
+        child: Text(
+          later.isEmpty
+              ? '這個學年沒有更多事項'
+              : '${selected.month} 月 ${selected.day} 日之後，到學年結束',
+          style: theme.textTheme.bodySmall,
+        ),
+      ),
+      const SizedBox(height: NiuSpacing.sm),
+      for (final MapEntry(key: label, value: list) in months.entries) ...[
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            NiuSpacing.xs,
+            NiuSpacing.sm,
+            0,
+            NiuSpacing.sm,
+          ),
+          child: Semantics(
+            header: true,
+            child: Text(
+              label,
+              style: theme.textTheme.labelMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ),
+        NiuGroup(
+          insetDividers: NiuSpacing.lg + 16,
+          children: [for (final e in list) _row(e, data)],
+        ),
+        const SizedBox(height: NiuSpacing.md),
+      ],
+    ];
   }
 
   String _range(CalendarEvent e) => e.start.compareTo(e.end) == 0
