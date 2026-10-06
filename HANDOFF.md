@@ -1,10 +1,10 @@
 # HANDOFF
 
-給接手的 Claude Code session。最後更新：2026-10-04。目前版本：**1.0.17+98**。
+給接手的 Claude Code session。最後更新：2026-10-06。目前版本：**1.0.17+98**。
 
 ## 專案概況
 
-- NIU-Life：國立宜蘭大學的非官方 Android 校園 App，用 Flutter 寫，原生部分用 Kotlin。功能、設計參考 iOS 版 [qian403/NIU-app](https://github.com/qian403/NIU-app)。
+- NIU-Life：國立宜蘭大學的非官方 Android 校園 App，用 Flutter 寫，原生部分用 Kotlin。使用者是 Android 版維護者；iOS 版由 Qian 維護（[qian403/NIU-app](https://github.com/qian403/NIU-app)），兩邊功能與設計保持一致。描述專案時不要說 Android 版「參考」iOS 版。
 - 程式在 `mobile/`，applicationId 是 `me.windless.niulife`，minSdk 26，targetSdk 36。
 - 沒有自己的後端：
   - 直接連學校系統（ccsys/ccsys1、acade、euni＝M 園區、sso）。
@@ -32,15 +32,15 @@
 - Upload key 的 SHA-256 指紋：`95:04:DD:13:D3:38:D6:E5:7C:83:89:42:9F:B0:A0:AB:25:4E:F1:1F:95:CE:AB:DC:5E:4B:B4:04:46:C8:4B:FA`。已經請使用者另外備份。
 - 已啟用 Play 應用程式簽署：發布用的金鑰由 Google 保管，這把只是 upload key。
 - Play 各軌道現況（2026-10-03 用 MCP 查過）：
-  - **正式版：1.0.0 (81)**，已發布。
+  - **正式版：1.0.0 (81)**，已審核通過並發布。**1.0.17 (98) 已送審**（使用者 2026-10-06 告知）。
   - 公開測試（beta）：1.0.0 (81)。
   - internal：**1.0.16 (97)**。
 - 正式版由使用者在 Play Console 升級（Claude 推 production 會被權限擋下，屬正常）。
 - **正式版不用每版都推**，只要 versionCode 比上一個正式版大就行。建議 internal 每版都推；等使用者在手機上測過、累積一批改動或有重要修正時，再挑一版推正式版。**版本說明的寫法（使用者 2026-10-05 要求）**：
   - internal：只寫**這一版**改了什麼，讓使用者知道要測哪裡。沒有使用者看得到的改動時寫「內部調整，功能沒有變化」。不要再沿用累計說明，否則每版看起來都一樣。
   - 正式版：寫「從上一個正式版到現在的所有改變」。推正式版時由使用者貼上，草稿維護在下面的「下一個正式版的說明草稿」，每次 internal 有使用者看得到的改動就一起更新。
-- 下一個正式版預計是 1.0.17（含 1.0.4、1.0.5、1.0.8～1.0.17 的改動），等使用者在手機上確認點名、小工具、上課中通知都正常。1.0.4 換了 AGP 9，只在模擬器上測過。
-- **下一個正式版的說明草稿**（上一個正式版 1.0.0 之後的累計改動）：
+- 1.0.17（含 1.0.4、1.0.5、1.0.8～1.0.17 的改動）已送審為正式版。審核結束前不要再提交新的正式版，否則會重新審查。下一個正式版的說明草稿從 1.0.17 之後重新累計。
+- **1.0.17 正式版的版本說明**（1.0.0 之後的累計改動，已送審）：
   ```
   ・長按 App 圖示可以直接開啟點名、課表、M 園區與圖書館入館碼
   ・新增桌面小工具：快捷列、下一堂課；今日課表加上快速點名與入館碼按鈕
@@ -57,6 +57,7 @@
   ・隱私權說明加上完整政策的連結，聯絡信箱改為 hi@niu-life.app
   ・效能最佳化，較舊的 Android 版本也支援無邊框畫面
   ```
+- **下一個正式版的說明草稿**（1.0.17 之後的累計改動）：目前還沒有使用者看得到的改動。
 - 公開測試的使用者會自動拿到 versionCode 較大的正式版，公開測試軌道不用特別處理。release 名稱用 `X.Y.Z (versionCode)`，附一句 zh-TW 版本說明。
 - 上傳流程（每個新版本都要做）：`flutter build appbundle --release`，然後用 MCP 依序 `edits_insert` → `bundles_upload` → `tracks_update`（internal，status `completed`）→ `edits_commit`。
 
@@ -359,8 +360,8 @@
 - **App Links（1.0.16）**：網站 `/.well-known/assetlinks.json`（Play Console 產生，憑證是 Google 保管的簽署金鑰，只有從 Play 安裝的 App 會驗證通過；debug／預覽版不會，屬正常）。Manifest 宣告 `https://niu-life.app/download` 與 `/open/` 前綴並 `autoVerify`；`lib/app/deep_links.dart` 的 `campusDeepLink` 把 `/download` 導到首頁、`/open/schedule|attendance|library|mail|moodle|calendar` 導到對應頁（完整網址或只有路徑都接受）。網站對應的說明頁在 niu-life-site 的 `src/pages/open/[feature].astro`，新增功能時兩邊一起改。在模擬器上用 `adb shell am start -a android.intent.action.VIEW -d <網址> me.windless.niulife` 驗證過路由。
 - **下載連結 https://niu-life.app/download**：手機自動前往 App Store／Google Play，電腦顯示按鈕與 QR Code；可加 `utm_*` 參數，Android 會帶進 Play 的安裝來源。海報、社群貼文用這個。
 - 網站 GA：`G-TQSN4NFDVD`（與 App 同一個 Firebase GA4 資源的網站串流 16044768167），記頁面瀏覽與 `store_click`；隱私權頁最後一節說明網站本身的統計。
-- **待使用者處理（等正式版 1.0.0 審核結束）**：Play Console 的隱私權政策網址改成 `https://niu-life.app/privacy`；商店資訊的聯絡電子郵件改成 `hi@niu-life.app`、網站填 `https://niu-life.app/`（後兩項可用 MCP `details_patch` 代改，使用者同意後再做）。
-- **iOS 版要配合的（qian403 維護，不在本 repo）**：App Store Connect 的隱私權政策網址改 `https://niu-life.app/privacy`、支援網址改 `https://niu-life.app/`；iOS App 與 iOS repo 的 `docs/privacy-policy.md`、`docs/support.md` 的信箱 hi@chien.dev 改成 hi@niu-life.app。共用政策的 iOS 段落依 iOS repo 2026-10-05 版政策改寫，iOS 做法有變動時要同步更新網站上的政策。正式版 1.0.0 審核中時先不要改商店資訊，以免重新審查。
+- **待使用者處理（1.0.0 已審核通過）**：Play Console 的隱私權政策網址改成 `https://niu-life.app/privacy`；商店資訊的聯絡電子郵件改成 `hi@niu-life.app`、網站填 `https://niu-life.app/`（後兩項可用 MCP `details_patch` 代改，使用者同意後再做）。
+- **iOS 版要配合的（qian403 維護，不在本 repo）**：App Store Connect 的隱私權政策網址改 `https://niu-life.app/privacy`、支援網址改 `https://niu-life.app/`；iOS App 與 iOS repo 的 `docs/privacy-policy.md`、`docs/support.md` 的信箱 hi@chien.dev 改成 hi@niu-life.app。共用政策的 iOS 段落依 iOS repo 2026-10-05 版政策改寫，iOS 做法有變動時要同步更新網站上的政策。Android 這邊 1.0.0 已審核通過。
 - 隱私權政策（iOS、Android、網站共用）直接寫在網站 repo 的 `src/content/privacy.md`，改完推到 niu-life-site 的 `main` 就會部署。
 - 首頁的功能介紹是手寫的；App 加了使用者看得到的大功能時，順手更新網站的 `index.html`。
 
@@ -389,7 +390,7 @@
 
 ## 可以接著做的事
 
-1. **正式版 1.0.0 還在審核中（使用者 2026-10-05 說明），審核結束前不要提交新的正式版，否則會重新審查。**之後等使用者在手機上確認 1.0.16 沒問題，請他把 1.0.17 推上正式版，版本說明用上面的草稿。
+1. **1.0.17 已送審為正式版（2026-10-06）**，等審核結果；審核結束前不要提交新的正式版。
 2. 在實機上驗證三種通知和點通知後的跳轉，必要時調整文案或時間。
 3. 等使用者把測試人員加進 internal 名單，再推版本號更大的 build，在實機上測 In-App Updates。
 4. 用 release 版上 Play 內部測試軌道，驗證 In-App Updates。
