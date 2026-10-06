@@ -88,6 +88,21 @@ class LeaveRepository {
             )) {
           throw const FormatException('Invalid records');
         }
+      } else if (entry.key == 'actions') {
+        // Each action is re-checked against the school before it runs.
+        if (data['actions'] is! List ||
+            (data['actions'] as List).any(
+              (v) =>
+                  v is! Map ||
+                  v['formNo'] is! String ||
+                  [
+                    'withdraw',
+                    'modify',
+                    'supplement',
+                  ].any((k) => v.containsKey(k) && v[k] is! bool),
+            )) {
+          throw const FormatException('Invalid actions');
+        }
       } else if (entry.key.startsWith('detail:')) {
         if (data['fields'] is! Map ||
             data['periods'] is! List ||

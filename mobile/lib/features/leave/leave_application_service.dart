@@ -7,6 +7,7 @@ import '../../core/session/campus_session.dart';
 import '../../core/session/session_coordinator.dart';
 import 'leave_application_data.dart';
 import 'leave_application_scripts.dart';
+import 'leave_manage.dart';
 import 'leave_repository.dart';
 
 abstract class LeaveApplicationGateway {
@@ -50,6 +51,7 @@ class SchoolLeaveApplication implements LeaveApplicationGateway {
     required this.session,
     required this.evaluate,
     required this.isActive,
+    this.entry = LeaveEntry.apply,
     this.timeout = const Duration(seconds: 30),
     this.interval = const Duration(milliseconds: 400),
   }) : epoch = session.coordinator.epoch,
@@ -62,6 +64,9 @@ class SchoolLeaveApplication implements LeaveApplicationGateway {
   final CampusSession session;
   final LeavePageEval evaluate;
   final bool Function() isActive;
+
+  /// The form this screen works on; every script call is bound to it.
+  final LeaveEntry entry;
   final int epoch;
   final String owner, run;
   final Duration timeout, interval;
@@ -95,7 +100,11 @@ class SchoolLeaveApplication implements LeaveApplicationGateway {
   ]) async {
     guard();
     final raw = await evaluate(
-      leaveApplicationScript(run, op, {...args, 'owner': owner}),
+      leaveApplicationScript(run, op, {
+        ...args,
+        'owner': owner,
+        if (!entry.isApply) ...{'formNo': entry.formNo, 'mode': entry.mode},
+      }),
     ).timeout(timeout);
     guard();
     if (raw == null || raw == 'null') return null;
@@ -127,7 +136,59 @@ class SchoolLeaveApplication implements LeaveApplicationGateway {
   };
 
   @override
-  Future<LeaveApplicationData> initialize() => serial(() async {
+  Future<LeaveApplicationData> initialize() =>
+      serial(entry.isApply ? _openApplication : _openExisting);
+
+  /// 修改 or 補檔: 學生請假修改 lists the form, its cell opens it in viewFrame,
+  /// and only that form in the expected mode is accepted.
+  Future<LeaveApplicationData> _openExisting() async {
+    final clock = Stopwatch()..start();
+    var opened = false;
+    // GUID sign-in, the list query and the form each take a postback.
+    while (clock.elapsed < timeout * 2) {
+      guard();
+      if (!opened) {
+        dynamic step;
+        try {
+          step = await evaluate(leaveManageNavigation).timeout(timeout);
+        } on TimeoutException {
+          rethrow;
+        } catch (_) {
+          // The GUID redirect can replace the JavaScript context mid-read.
+          guard();
+          await Future<void>.delayed(interval);
+          continue;
+        }
+        guard();
+        if (step == 'session-expired') {
+          throw const LeaveApplicationException('校務登入已過期，請重新登入');
+        }
+        if (step == 'ready') {
+          final result = await evaluate(
+            leaveManageOpen(entry.formNo!, entry.mode!),
+          ).timeout(timeout);
+          guard();
+          if (result == 'missing') throw const LeaveActionMissing();
+          opened = result == 'opened';
+        }
+      } else {
+        final value = await call('read');
+        if (value != null) {
+          final data = LeaveApplicationData.fromJson(value);
+          if (data.formNo != entry.formNo ||
+              data.mode != entry.mode ||
+              data.editable != entry.isModify) {
+            throw const LeaveApplicationException('校方表單格式已變更');
+          }
+          return data;
+        }
+      }
+      await Future<void>.delayed(interval);
+    }
+    throw const LeaveApplicationException('無法開啟這張假單，請查看學校網頁');
+  }
+
+  Future<LeaveApplicationData> _openApplication() async {
     final clock = Stopwatch()..start();
     while (clock.elapsed < timeout) {
       guard();
@@ -154,7 +215,7 @@ class SchoolLeaveApplication implements LeaveApplicationGateway {
       await Future<void>.delayed(interval);
     }
     throw const LeaveApplicationException('無法開啟請假表單，請查看學校網頁');
-  });
+  }
 
   Future<LeaveApplicationData> mutate(
     LeaveApplicationData data,
@@ -206,24 +267,38 @@ class SchoolLeaveApplication implements LeaveApplicationGateway {
   });
 
   @override
-  Future<List<LeavePeriodChoice>> periods(LeaveApplicationData data) =>
-      serial(() async {
-        await call('openPeriods', args(data));
-        final value = await wait('periods');
-        _pickerRevision = value['revision'] as String;
-        return [
-          for (final row in (value['periods'] as List).cast<Map>())
-            LeavePeriodChoice(
-              value: row['value'] as String,
-              date: row['date'] as String,
-              period: row['period'] as String,
-              course: row['course'] as String,
-              teacher: (row['teacher'] as String?) ?? '',
-              room: (row['room'] as String?) ?? '',
-              selected: row['selected'] == true,
-            ),
-        ];
-      });
+  Future<List<LeavePeriodChoice>> periods(LeaveApplicationData data) => serial(
+    () async {
+      await call('openPeriods', args(data));
+      final value = await wait('periods');
+      _pickerRevision = value['revision'] as String;
+      // The picker's value starts `1151008|3|…`; periods already on the
+      // form (as when modifying) start checked, like iOS.
+      bool saved(String id) {
+        final parts = id.split('|');
+        return parts.length >= 2 &&
+            data.periodEntries.any(
+              (e) =>
+                  e.date.replaceAll('/', '') == parts[0] &&
+                  e.number != null &&
+                  e.number == leavePeriodNumber(parts[1]),
+            );
+      }
+
+      return [
+        for (final row in (value['periods'] as List).cast<Map>())
+          LeavePeriodChoice(
+            value: row['value'] as String,
+            date: row['date'] as String,
+            period: row['period'] as String,
+            course: row['course'] as String,
+            teacher: (row['teacher'] as String?) ?? '',
+            room: (row['room'] as String?) ?? '',
+            selected: row['selected'] == true || saved(row['value'] as String),
+          ),
+      ];
+    },
+  );
 
   @override
   Future<LeaveApplicationData> selectPeriods(
@@ -296,8 +371,14 @@ class SchoolLeaveApplication implements LeaveApplicationGateway {
   Future<LeaveSubmitResult> submit(
     LeaveApplicationData data,
   ) => serial(() async {
-    final invalid = data.validate(data.reason);
-    if (invalid != null) throw LeaveApplicationException(invalid);
+    if (entry.isSupplement) {
+      if (data.attachments.isEmpty) {
+        throw const LeaveApplicationException('請先附加證明文件');
+      }
+    } else {
+      final invalid = data.validate(data.reason);
+      if (invalid != null) throw LeaveApplicationException(invalid);
+    }
     if (_submitted) throw const LeaveApplicationException('已嘗試送出，請先查詢紀錄');
     // Lock before the bridge call: navigation/timeout can swallow the reply even
     // when the server received the request. Never offer automatic resend.
@@ -315,6 +396,14 @@ class SchoolLeaveApplication implements LeaveApplicationGateway {
         },
       });
       final result = await wait('submissionResult');
+      if (!entry.isApply) {
+        return LeaveSubmitResult(
+          sent: result['sent'] == true,
+          message: entry.isModify
+              ? '學校已處理這次修改。請到請假紀錄確認假單內容與審核狀態。'
+              : '學校已處理補交的證明文件。請到請假紀錄確認附件。',
+        );
+      }
       return LeaveSubmitResult(
         applicationId: result['applicationId'] as String,
         message: result['message'] as String,
@@ -322,7 +411,11 @@ class SchoolLeaveApplication implements LeaveApplicationGateway {
     } on SessionChanged {
       rethrow;
     } catch (_) {
-      return const LeaveSubmitResult(message: '尚未確認送出結果。請先查詢請假紀錄，勿重複申請。');
+      return LeaveSubmitResult(
+        message: entry.isApply
+            ? '尚未確認送出結果。請先查詢請假紀錄，勿重複申請。'
+            : '尚未確認校方是否收到。請先到請假紀錄或學校網頁確認，不要重複送出。',
+      );
     }
   });
 
@@ -330,4 +423,10 @@ class SchoolLeaveApplication implements LeaveApplicationGateway {
   void dispose() {
     _disposed = true;
   }
+}
+
+/// 學生請假修改 no longer lists this action for the form: it was withdrawn,
+/// or its approval state changed since the records were read.
+class LeaveActionMissing extends LeaveApplicationException {
+  const LeaveActionMissing() : super('校方目前沒有列出這張假單的這項操作，可能已撤回或審核狀態已變更。請重新整理。');
 }

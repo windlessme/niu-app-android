@@ -1,6 +1,6 @@
 # HANDOFF
 
-給接手的 Claude Code session。最後更新：2026-10-06。目前版本：**1.0.24+105**。
+給接手的 Claude Code session。最後更新：2026-10-07。目前版本：**1.0.25+106**。
 
 ## 專案概況
 
@@ -15,7 +15,7 @@
 
 在 `mobile/` 底下執行：
 
-1. `set -o pipefail; tool/verify.sh`，包含 calendar/toolchain/分層/DOM 檢查、`dart format`、`flutter analyze`、`flutter test`，目前 383 項測試。
+1. `set -o pipefail; tool/verify.sh`，包含 calendar/toolchain/分層/DOM 檢查、`dart format`、`flutter analyze`、`flutter test`，目前 390 項測試。
 2. 把 `pubspec.yaml` 的 patch 版號和 build number 各加一。
 3. commit 到 `main`，**push 到 origin main**。
 4. `flutter build appbundle --release`，上傳到 Play internal 軌道（步驟見下節）。**每個新版本都要推。**
@@ -31,7 +31,7 @@
 - Play 各軌道現況（2026-10-03 用 MCP 查過）：
   - **正式版：1.0.0 (81)**，已審核通過並發布。**1.0.17 (98) 已送審**（使用者 2026-10-06 告知）。
   - 公開測試（beta）：1.0.0 (81)。
-  - internal：**1.0.24 (105)**（2026-10-06 推送）。
+  - internal：**1.0.25 (106)**（2026-10-07 推送）。
 - 正式版由使用者在 Play Console 升級（Claude 推 production 會被權限擋下，屬正常）。
 - **正式版不用每版都推**，只要 versionCode 比上一個正式版大就行。建議 internal 每版都推；等使用者在手機上測過、累積一批改動或有重要修正時，再挑一版推正式版。**版本說明的寫法（使用者 2026-10-05 要求）**：
   - internal：只寫**這一版**改了什麼，讓使用者知道要測哪裡。沒有使用者看得到的改動時寫「內部調整，功能沒有變化」。不要再沿用累計說明，否則每版看起來都一樣。
@@ -66,6 +66,7 @@
   ・作業死線與重要日期通知更準時
   ・歷年成績加上 GPA 走勢圖、學期篩選與通過率，各學期可以收合，班級排名直接顯示在學期上
   ・期中、學期成績顯示班級排名與課程數，每門課標出必修、選修等類別
+  ・請假：已送出的假單可以修改、補交證明文件或撤回
   ```
 - 公開測試的使用者會自動拿到 versionCode 較大的正式版，公開測試軌道不用特別處理。release 名稱用 `X.Y.Z (versionCode)`，附一句 zh-TW 版本說明。
 - 上傳流程（每個新版本都要做）：`flutter build appbundle --release`，然後用 MCP 依序 `edits_insert` → `bundles_upload` → `tracks_update`（internal，status `completed`）→ `edits_commit`。
@@ -129,6 +130,7 @@
 | 1.0.22 | `bc66f5d` | 依 iOS `HomeView.swift`：首頁問候語旁的眼睛按鈕隱藏姓名，顯示「姓＋同學」（含複姓），切換時亂碼動畫、尊重減少動態效果，設定存在 `home.isNameMasked`；`main()` 先讀，讀到前一律遮蔽（`features/home/name_mask.dart`）。行事曆月曆模式在當天事項下方加「接下來」，依月份列出選定日期之後到學年結束的事項（使用者需求，iOS 沒有）。修好 M 園區頁面在深色模式文字變黑（CSS `*{color:inherit}` 連 body 也繼承成預設黑色） |
 | 1.0.23 | `c9e6053` | 依 iOS `Features/GradeHistory/`（`GradeHistoryView.swift`）補齊成績：歷年加 GPA 走勢圖（兩學期以上）、學期篩選 chip（篩選後總覽改為該學期）、通過率與每學期通過率進度條（文字成績照舊不計入，iOS 把文字成績當 0 分，Android 刻意不同）、學期卡片可收合（預設只展開最新學期）、班級排名放進學期卡片（拿掉獨立的「各學期排名」）；每門課顯示學校給的類別標籤；期中／學期卡片固定顯示平均、班級排名、課程數；排名統一整理成「7/52」。學期平均優先用學校給的值。Model 移到 `grades_models.dart`，元件在 `grades_widgets.dart`，`GradesScreen` 可注入 `session` |
 | 1.0.24 | `842758c` | 只升版推 internal，功能和 1.0.23 相同（使用者要求） |
+| 1.0.25 | `COMMIT` | 依 iOS `Features/LeaveApplication/`（`LeaveApplicationScript.swift`）：請假紀錄多讀「學生請假修改」（SEC2015，`leave_manage.dart`，直接把 mainFrame 指到該頁並按一次查詢），每張假單依校方列出的操作顯示「修改假單／補交證明文件／撤回假單」。修改與補檔沿用 `LeaveApplicationScreen`（`LeaveEntry.modify/supplement`）：點列表的 `Mod`／`Detail` 格子在 viewFrame 開啟 SEC2010_01，runtime 只接受該假單號與 Mode（DETAIL 只能附件與送出，送出鍵 MOD 為「修改」、DETAIL 為「送出」），修改時節次選擇會預先勾選原本的節次；送出後只能確認校方處理了（沒有新假單號）。撤回在 `LeaveWithdrawScreen`：只自動接受校方「刪除」確認一次，`doDelete` 與 `__doPostBack` 都從 timer 執行，送出後重開列表確認假單已不在。快取多一個 `actions` 鍵 |
 
 另外：
 

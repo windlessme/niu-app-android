@@ -26,7 +26,8 @@ const leaveApplicationRuntime = r'''
  collect(root);
  const path=d=>new URL(d.location.href).pathname;
  if(docs.some(d=>/\/(?:TimeOutPage|logout|default)\.aspx$/i.test(path(d))))return JSON.stringify({error:'校務登入已過期，請重新登入後重新開啟申請'});
- const find=p=>docs.find(d=>path(d)===p);
+ // An existing form opens in viewFrame; match it by file name as iOS does.
+ const find=p=>docs.find(d=>path(d)===p)||docs.find(d=>path(d).toLowerCase().endsWith(p.slice(p.lastIndexOf('/')).toLowerCase()));
  const main=find('/NIU/Application/SEC/SEC20/SEC2010_01.aspx');
  const notice=find('/NIU/Application/SEC/SEC20/SEC2010_02.aspx');
  const picker=find('/NIU/Application/SEC/SEC20/SEC2010_03.aspx');
@@ -35,6 +36,11 @@ const leaveApplicationRuntime = r'''
  const text=(d,id)=>clean(d.getElementById(id)?.textContent);
  const pending=d=>d.readyState!=='complete'||!!d.defaultView.Sys?.WebForms?.PageRequestManager?.getInstance()?.get_isInAsyncPostBack();
  const error=message=>JSON.stringify({error:message});
+ // A new application has no form number; modify (MOD) and supplement (DETAIL)
+ // work only on the one form they were opened for, in that mode.
+ const formNo=args.formNo||'', mode=String(args.mode||'').toUpperCase();
+ const formMode=d=>value(d,'Mode').toUpperCase();
+ const ours=d=>formNo?value(d,'M_FORM_NO')===formNo&&formMode(d)===mode:!value(d,'M_FORM_NO');
  function track(d){
    if(!d.__niuLeaveRevision){
      d.__niuLeaveRevision={id:Math.random().toString(36).slice(2),count:0};
@@ -56,7 +62,7 @@ const leaveApplicationRuntime = r'''
  function snapshot(){
    if(notice&&!pending(notice))return {revision:revision(notice),notice:notice.body.innerText.trim()};
    if(!main||pending(main))return null;
-   if(value(main,'M_FORM_NO'))return null; // Never edit a pre-existing application.
+   if(!ours(main))return null; // Never edit any other application.
    const student=text(main,'M_STNO').toLowerCase();
    if(!student||student!==args.owner?.toLowerCase())return {error:'校方表單身分無法確認'};
    const type=main.getElementById('M_HOLIDAY_CODE'), reason=main.getElementById('M_APP_ORIGIN');
@@ -73,7 +79,8 @@ const leaveApplicationRuntime = r'''
    const later=main.getElementById('CheckBox1');
    return {revision:revision(main),choices:Array.from(type.options).filter(o=>!o.disabled).map(o=>({value:o.value,label:o.text})),type:type.value,
      start:value(main,'M_HOLIDAY_DATE_S'),end:value(main,'M_HOLIDAY_DATE_E'),reason:reason.value,reasonLimit:reason.maxLength,
-     later:!!later?.checked,canDeferAttachment:!!later&&!later.disabled,periods,periodHeaders,total,attachments,extensions};
+     later:!!later?.checked,canDeferAttachment:!!later&&!later.disabled,periods,periodHeaders,total,attachments,extensions,
+     formNo:value(main,'M_FORM_NO'),mode:formMode(main),submitLabel:value(main,'SEND_BTN1'),editable:!type.disabled};
  }
  if(op==='read')return JSON.stringify(snapshot());
  if(op==='settled'){
@@ -98,6 +105,12 @@ const leaveApplicationRuntime = r'''
  }
  if(op==='submissionResult'){
    if(!state.submitted)return null;
+   if(formNo){
+     // An existing form keeps its number: the school having handled the
+     // click (a postback or a new page) is all that can be observed here.
+     if(main&&(pending(main)||revision(main)===state.submitRevision))return null;
+     return JSON.stringify({sent:true});
+   }
    if(!main||pending(main))return null;
    const id=value(main,'M_FORM_NO');
    const owner=text(main,'M_STNO').toLowerCase();
@@ -115,9 +128,11 @@ const leaveApplicationRuntime = r'''
    const receipt=newReceipt(notice);notice.defaultView.setTimeout(()=>button.click(),0);
    return JSON.stringify(receipt);
  }
- if(!main||pending(main)||value(main,'M_FORM_NO'))return error('校方申請表單無法編輯');
+ if(!main||pending(main)||!ours(main))return error('校方申請表單無法編輯');
  if(text(main,'M_STNO').toLowerCase()!==args.owner?.toLowerCase())return error('校方表單身分無法確認');
  if(state.submitted)return error('已嘗試送出，請先查詢紀錄，勿重複送出');
+ // 補檔: every field is locked; only attachments change, then「送出」.
+ if(mode==='DETAIL'&&!['uploadStart','uploadChunk','uploadSend','uploadResult','submit'].includes(op))return error('補交證明文件只能附加檔案');
  if(op==='cancelPeriods'){
    if(picker)picker.defaultView.parent.jQuery.fancybox.close();return JSON.stringify({ok:true});
  }
@@ -195,9 +210,9 @@ const leaveApplicationRuntime = r'''
  }
  if(op==='submit'){
    const type=main.getElementById('M_HOLIDAY_CODE');
-   if(!type?.value||type.value==='003'||type.selectedOptions[0]?.text.includes('公假'))return error('請選擇一般請假假別');
+   if(mode!=='DETAIL'&&(!type?.value||type.value==='003'||type.selectedOptions[0]?.text.includes('公假')))return error('請選擇一般請假假別');
    const button=main.getElementById('SEND_BTN1');
-   if(!button||button.value!=='送出'||button.disabled)return error('校方未開放送出');
+   if(!button||button.value!==(mode==='MOD'?'修改':'送出')||button.disabled)return error('校方未開放送出');
    const form=button.form, action=form?new URL(form.action,main.location.href):null;
    if(!form||form.method.toLowerCase()!=='post'||action.origin!=='https://acade.niu.edu.tw'||action.pathname!==path(main))return error('校方送出表單已變更');
    const checked=snapshot();

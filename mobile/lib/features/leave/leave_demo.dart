@@ -6,9 +6,36 @@ import '../../core/demo/demo_account.dart';
 import '../../core/demo/demo_data.dart';
 import 'leave_application_data.dart';
 import 'leave_application_service.dart';
+import 'leave_manage.dart';
 
 /// Simulates the school form; nothing is submitted.
 class DemoLeaveGateway implements LeaveApplicationGateway {
+  DemoLeaveGateway([this.entry = LeaveEntry.apply]) {
+    if (entry.isApply) return;
+    // An existing form opens with what the demo record says was filed.
+    final record = DemoData.leaveRecord(entry.formNo!);
+    final first = int.parse('${record['起始節次']}');
+    final last = int.parse('${record['迄止節次']}');
+    _form = {
+      ..._form,
+      'type': record['請假類別'] == '病假' ? '002' : '023',
+      'start': record['請假起日'],
+      'end': record['請假訖日'],
+      'reason': record['請假事由'],
+      'periods': [
+        for (var p = first; p <= last; p++)
+          ['${record['請假起日']}', '第$p節', '計算機組織'],
+      ],
+      'periodHeaders': ['請假日期', '請假節次', '課程名稱'],
+      'total': '${last - first + 1}',
+      'canDeferAttachment': entry.isModify,
+      'formNo': entry.formNo,
+      'mode': entry.mode,
+      'editable': entry.isModify,
+    };
+  }
+
+  final LeaveEntry entry;
   var _revision = 0;
   var _form = <String, dynamic>{
     'choices': [
@@ -41,7 +68,8 @@ class DemoLeaveGateway implements LeaveApplicationGateway {
   }
 
   @override
-  Future<LeaveApplicationData> initialize() async => storeScreenshots
+  Future<LeaveApplicationData> initialize() async =>
+      storeScreenshots || !entry.isApply
       // The first form carries the reason the screen fills in once.
       ? _next()
       : const LeaveApplicationData(revision: 'demo:0', notice: '請假注意事項');
@@ -135,6 +163,12 @@ class DemoLeaveGateway implements LeaveApplicationGateway {
   @override
   Future<LeaveSubmitResult> submit(LeaveApplicationData data) async {
     await Future<void>.delayed(const Duration(milliseconds: 800));
+    if (!entry.isApply) {
+      return const LeaveSubmitResult(
+        sent: true,
+        message: '示範模式：已模擬送出，沒有傳送到學校請假系統。',
+      );
+    }
     return LeaveSubmitResult(
       applicationId: storeScreenshots ? 'D1151002' : 'DEMO-0001',
       message: storeScreenshots

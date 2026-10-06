@@ -365,7 +365,9 @@ assert.equal(eval(script),null);eval(script);assert.equal(clicks,1);
     });
   }
 
-  testWidgets('one refresh reads totals and records together', (tester) async {
+  testWidgets('one refresh reads totals, records and actions together', (
+    tester,
+  ) async {
     final session = CampusSession(vault: MemoryVault(), platformCleanup: []);
     await session.enterDemo();
     addTearDown(session.dispose);
@@ -379,8 +381,8 @@ assert.equal(eval(script),null);eval(script);assert.equal(clicks,1);
       ),
     );
     await tester.pumpAndSettle();
-    // First visit with no cache reads both parts.
-    expect(reads, 2);
+    // First visit with no cache reads all three parts.
+    expect(reads, 3);
     expect(find.text('事假'), findsWidgets);
 
     // A single control, not one per section.
@@ -390,7 +392,7 @@ assert.equal(eval(script),null);eval(script);assert.equal(clicks,1);
 
     await tester.tap(find.byTooltip('更新請假資料'));
     await tester.pumpAndSettle();
-    expect(reads, 4);
+    expect(reads, 6);
   });
   test('type names drop their parenthesised sub-types', () {
     expect(leaveTypeShortName('產假（產前假／陪產假／流產假／哺乳假）'), '產假');

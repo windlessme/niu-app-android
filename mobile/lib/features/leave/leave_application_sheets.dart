@@ -148,9 +148,17 @@ class _LeavePeriodSheetState extends State<LeavePeriodSheet> {
 
 /// Summary shown before the one-time submission.
 class LeaveSubmitSheet extends StatelessWidget {
-  const LeaveSubmitSheet({super.key, required this.data, required this.reason});
+  const LeaveSubmitSheet({
+    super.key,
+    required this.data,
+    required this.reason,
+    this.modify = false,
+  });
   final LeaveApplicationData data;
   final String reason;
+
+  /// Confirms changes to an existing form rather than a new application.
+  final bool modify;
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -167,7 +175,10 @@ class LeaveSubmitSheet extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('確認送出請假', style: theme.textTheme.titleLarge),
+            Text(
+              modify ? '確認修改假單' : '確認送出請假',
+              style: theme.textTheme.titleLarge,
+            ),
             const SizedBox(height: NiuSpacing.lg),
             NiuCard(
               child: Column(
@@ -193,9 +204,11 @@ class LeaveSubmitSheet extends StatelessWidget {
               ),
             ),
             const SizedBox(height: NiuSpacing.md),
-            const NiuBanner(
+            NiuBanner(
               tone: NiuTone.neutral,
-              message: '送出後會進入學校審核，無法在 App 內撤回。',
+              message: modify
+                  ? '送出後會寫入學校的假單並重新審核，無法在 App 內復原。'
+                  : '送出後會進入學校審核，無法在 App 內撤回。',
             ),
             const SizedBox(height: NiuSpacing.lg),
             Row(
@@ -210,7 +223,7 @@ class LeaveSubmitSheet extends StatelessWidget {
                 Expanded(
                   child: FilledButton(
                     onPressed: () => Navigator.pop(context, true),
-                    child: const Text('送出申請'),
+                    child: Text(modify ? '送出修改' : '送出申請'),
                   ),
                 ),
               ],
