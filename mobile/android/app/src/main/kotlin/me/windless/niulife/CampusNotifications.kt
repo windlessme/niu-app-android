@@ -15,8 +15,9 @@ internal object CampusNotifications {
     private val channels = mapOf(
         "assignments" to ("assignments_v1" to "作業死線"),
         "calendar" to ("calendar_v1" to "重要日期"),
+        "events" to ("events_v1" to "活動提醒"),
     )
-    private val links = setOf("niulife://moodle", "niulife://calendar", "niulife://schedule")
+    private val links = setOf("niulife://moodle", "niulife://calendar", "niulife://schedule", "niulife://events")
 
     private fun prefs(c: Context) = c.getSharedPreferences("notifications_v1", Context.MODE_PRIVATE)
     private fun pending(c: Context) = PendingIntent.getBroadcast(c, requestCode,

@@ -9,6 +9,8 @@ import '../academic_portal/academic_portal_screen.dart';
 import '../../shared/shared.dart';
 import 'event_portal.dart';
 import 'event_actions.dart';
+import 'event_batch.dart';
+import 'event_favorites.dart';
 import 'event_widgets.dart';
 import 'event_models.dart';
 import 'events_demo.dart';
@@ -49,7 +51,9 @@ class EventsScreen extends StatefulWidget {
     this.loaderBuilder,
     this.actionBuilder,
     this.actions,
+    this.session,
   });
+  final CampusSession? session;
   final EventLoaderBuilder? loaderBuilder;
 
   /// School-page fallback for register / modify / cancel.
@@ -67,10 +71,55 @@ class _EventsScreenState extends State<EventsScreen> {
   final snapshots = <bool, List<CampusEvent>>{};
   final attempted = <bool>{};
   final notices = <bool, String>{};
+  late final session = widget.session ?? CampusSession.instance;
   late final EventActions actions =
       widget.actions ??
-      (CampusSession.instance.isDemo ? DemoEventActions() : WebEventActions());
+      (session.isDemo ? DemoEventActions() : WebEventActions(session));
+  late final favoriteStore = EventFavorites(session);
   bool refreshingApplied = false;
+
+  /// Starred event numbers, on this device.
+  Set<String> favorites = {};
+  bool favoritesOnly = false;
+
+  /// Selection mode on 可報名活動, for 批次報名 and starring many at once.
+  bool selecting = false;
+  final selected = <String>{};
+
+  Future<void> loadFavorites() async {
+    final value = await favoriteStore.load();
+    if (mounted) setState(() => favorites = value);
+  }
+
+  Future<void> setFavorite(Iterable<String> ids, bool favorite) async {
+    try {
+      final value = await favoriteStore.set(ids, favorite: favorite);
+      if (mounted) setState(() => favorites = value);
+    } catch (_) {
+      if (mounted) showNiuMessage(context, '收藏沒有儲存，請再試一次');
+    }
+  }
+
+  Future<void> batch(List<CampusEvent> events) async {
+    final sent = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => EventBatchScreen(
+          events: events,
+          actions: actions,
+          session: session,
+        ),
+      ),
+    );
+    if (!mounted) return;
+    setState(() {
+      selecting = false;
+      selected.clear();
+    });
+    if (sent == true) {
+      unawaited(refreshApplied());
+      await sync();
+    }
+  }
 
   /// Keeps 「我的報名」 current in the background so 可報名活動 can hide
   /// events the student already joined.
@@ -108,6 +157,7 @@ class _EventsScreenState extends State<EventsScreen> {
   @override
   void initState() {
     super.initState();
+    loadFavorites();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) sync();
     });
@@ -196,23 +246,42 @@ class _EventsScreenState extends State<EventsScreen> {
     final credit = categories.contains(credits[applied])
         ? credits[applied]
         : null;
+    final starredOnly = !applied && favoritesOnly;
     final filtered = visible
         ?.where((event) => event.matches(query))
         .where(
           (event) =>
               credit == null || event.credits.any((c) => c.category == credit),
         )
+        .where((event) => !starredOnly || favorites.contains(event.id))
         .toList();
+    final choosing = selecting && !applied;
+    final chosen = [
+      for (final event in filtered ?? const <CampusEvent>[])
+        if (selected.contains(event.id)) event,
+    ];
     return NiuScrollPage(
       key: PageStorageKey('events-$applied'),
       title: '活動報名',
       actions: [
+        if (!applied && events != null)
+          NiuIconButton(
+            tooltip: choosing ? '取消選取' : '選取活動',
+            icon: choosing ? NiuIcons.close : Icons.checklist_rounded,
+            onPressed: () => setState(() {
+              selecting = !choosing;
+              selected.clear();
+            }),
+          ),
         NiuIconButton(
           tooltip: '同步活動',
           icon: NiuIcons.refresh,
-          onPressed: syncing ? null : sync,
+          onPressed: syncing || choosing ? null : sync,
         ),
       ],
+      bottomBar: choosing
+          ? selectionBar(context, filtered ?? [], chosen)
+          : null,
       children: [
         NiuSegmented<bool>(
           segments: const [(false, '可報名活動'), (true, '我的報名')],
@@ -220,7 +289,11 @@ class _EventsScreenState extends State<EventsScreen> {
           onChanged: syncing
               ? null
               : (value) {
-                  setState(() => applied = value);
+                  setState(() {
+                    applied = value;
+                    selecting = false;
+                    selected.clear();
+                  });
                   if (!attempted.contains(value)) sync();
                 },
         ),
@@ -230,6 +303,17 @@ class _EventsScreenState extends State<EventsScreen> {
           hint: '搜尋活動名稱、編號、主辦單位或地點',
           onChanged: (_) => setState(() {}),
         ),
+        if (!applied) ...[
+          const SizedBox(height: NiuSpacing.md),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: NiuFilterChip(
+              label: '只看收藏',
+              selected: favoritesOnly,
+              onSelected: (value) => setState(() => favoritesOnly = value),
+            ),
+          ),
+        ],
         if (categories.isNotEmpty) ...[
           const SizedBox(height: NiuSpacing.md),
           NiuFilterBar<String?>(
@@ -269,7 +353,16 @@ class _EventsScreenState extends State<EventsScreen> {
                     child: const Text('同步活動'),
                   ),
                 ),
-        if (filtered != null && filtered.isEmpty)
+        if (filtered != null &&
+            filtered.isEmpty &&
+            starredOnly &&
+            query.isEmpty)
+          const NiuEmpty(
+            icon: Icons.star_border_rounded,
+            title: '還沒有收藏的活動',
+            message: '點活動旁的星號即可收藏，或關閉「只看收藏」查看所有活動。',
+          )
+        else if (filtered != null && filtered.isEmpty)
           NiuEmpty(
             icon: query.isNotEmpty || credit != null
                 ? NiuIcons.search
@@ -293,10 +386,80 @@ class _EventsScreenState extends State<EventsScreen> {
               padding: const EdgeInsets.only(bottom: NiuSpacing.md),
               child: EventListCard(
                 event: event,
-                onTap: () => openDetail(event),
+                favorite: applied ? null : favorites.contains(event.id),
+                onFavorite: applied || event.id.isEmpty
+                    ? null
+                    : () => setFavorite([
+                        event.id,
+                      ], !favorites.contains(event.id)),
+                selected: choosing ? selected.contains(event.id) : null,
+                onTap: choosing
+                    ? () => setState(() {
+                        if (!selected.remove(event.id)) selected.add(event.id);
+                      })
+                    : () => openDetail(event),
               ),
             ),
       ],
+    );
+  }
+
+  /// Selection actions: select every listed event, star them, or register
+  /// for them together.
+  Widget selectionBar(
+    BuildContext context,
+    List<CampusEvent> listed,
+    List<CampusEvent> chosen,
+  ) {
+    final allStarred =
+        chosen.isNotEmpty && chosen.every((e) => favorites.contains(e.id));
+    return NiuBottomBar(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '已選 ${chosen.length} 個活動',
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
+              ),
+              TextButton(
+                onPressed: listed.isEmpty
+                    ? null
+                    : () => setState(() {
+                        selected
+                          ..clear()
+                          ..addAll(listed.map((e) => e.id));
+                      }),
+                child: const Text('全選目前篩選'),
+              ),
+            ],
+          ),
+          const SizedBox(height: NiuSpacing.sm),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: chosen.isEmpty
+                      ? null
+                      : () => setFavorite(chosen.map((e) => e.id), !allStarred),
+                  child: Text(allStarred ? '取消收藏' : '加入收藏'),
+                ),
+              ),
+              const SizedBox(width: NiuSpacing.sm),
+              Expanded(
+                child: FilledButton(
+                  onPressed: chosen.isEmpty ? null : () => batch(chosen),
+                  child: const Text('批次報名'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

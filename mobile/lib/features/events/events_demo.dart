@@ -71,4 +71,9 @@ class DemoEventActions implements EventActions {
   Future<List<CampusEvent>> registrations() async => [
     for (final e in DemoEvents.list(applied: true)) CampusEvent.fromJson(e),
   ];
+
+  @override
+  Future<List<CampusEvent>> available() async => [
+    for (final e in DemoEvents.list(applied: false)) CampusEvent.fromJson(e),
+  ];
 }

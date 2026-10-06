@@ -32,21 +32,48 @@ class EventStatusPill extends StatelessWidget {
 }
 
 class EventListCard extends StatelessWidget {
-  const EventListCard({super.key, required this.event, required this.onTap});
+  const EventListCard({
+    super.key,
+    required this.event,
+    required this.onTap,
+    this.favorite,
+    this.onFavorite,
+    this.selected,
+  });
   final CampusEvent event;
   final VoidCallback onTap;
+
+  /// Starred on this device; null hides the star.
+  final bool? favorite;
+  final VoidCallback? onFavorite;
+
+  /// In selection mode, whether the card is chosen; null outside it.
+  final bool? selected;
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = NiuColors.of(context);
     return NiuCard(
       onTap: onTap,
+      semanticLabel: selected == null
+          ? null
+          : '${selected! ? '已選取' : '未選取'}，${event.name}',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (selected != null)
+                Padding(
+                  padding: const EdgeInsets.only(right: NiuSpacing.sm),
+                  child: Icon(
+                    selected!
+                        ? Icons.check_circle_rounded
+                        : Icons.radio_button_unchecked_rounded,
+                    color: selected! ? colors.accent : colors.inkTertiary,
+                  ),
+                ),
               Expanded(
                 child: Text(
                   event.name.isEmpty ? '-' : event.name,
@@ -55,6 +82,22 @@ class EventListCard extends StatelessWidget {
               ),
               const SizedBox(width: NiuSpacing.sm),
               EventStatusPill(status: event.status),
+              if (favorite != null)
+                SizedBox.square(
+                  dimension: 32,
+                  child: IconButton(
+                    padding: EdgeInsets.zero,
+                    iconSize: 22,
+                    tooltip: favorite! ? '取消收藏' : '加入收藏',
+                    onPressed: onFavorite,
+                    icon: Icon(
+                      favorite!
+                          ? Icons.star_rounded
+                          : Icons.star_border_rounded,
+                      color: favorite! ? colors.warning : colors.inkTertiary,
+                    ),
+                  ),
+                ),
             ],
           ),
           if (event.id.isNotEmpty)
