@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../core/platform/downloaded_files.dart';
 import '../../core/session/campus_session.dart';
 import '../../shared/shared.dart';
+import 'moodle_page_screen.dart';
 import 'moodle_repository.dart';
 
 class MoodleAttachmentScreen extends StatefulWidget {
@@ -123,13 +124,21 @@ class _MoodleAttachmentScreenState extends State<MoodleAttachmentScreen> {
           final path = Uri.parse(widget.url).path.toLowerCase();
           final image = RegExp(r'\.(png|jpg|jpeg|gif|webp)$').hasMatch(path);
           final text = RegExp(r'\.(txt|csv|md|log)$').hasMatch(path);
+          final page = RegExp(r'\.x?html?$').hasMatch(path);
           final extension = path.contains('.')
               ? path.split('.').last.toUpperCase()
               : '檔案';
           return Column(
             children: [
               Expanded(
-                child: image
+                child: page
+                    ? MoodleHtmlView(
+                        repository: widget.repository,
+                        html: utf8.decode(data, allowMalformed: true),
+                        base: Uri.parse(widget.url),
+                        title: widget.name,
+                      )
+                    : image
                     ? InteractiveViewer(
                         child: Image.memory(
                           data,

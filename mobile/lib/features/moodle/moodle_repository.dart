@@ -212,6 +212,31 @@ class MoodleRepository {
     return groups.expand((g) => objects(g['assignments'])).toList();
   }
 
+  /// Assignments of several courses in one request, each tagged with its
+  /// course id.
+  Future<List<Json>> assignmentsFor(List<int> courses) async {
+    if (courses.isEmpty) return [];
+    final groups = objects(
+      object(
+        await read('mod_assign_get_assignments', {
+          for (final (i, id) in courses.indexed) 'courseids[$i]': id,
+        }),
+      )['courses'],
+    );
+    return [
+      for (final group in groups)
+        for (final assignment in objects(group['assignments']))
+          {...assignment, 'course': assignment['course'] ?? group['id']},
+    ];
+  }
+
+  /// Page activities of a course, with their HTML content.
+  Future<List<Json>> pages(int course) async => objects(
+    object(
+      await read('mod_page_get_pages_by_courses', {'courseids[0]': course}),
+    )['pages'],
+  );
+
   Future<Json> submission(int assignment) async => object(
     await read('mod_assign_get_submission_status', {'assignid': assignment}),
   );

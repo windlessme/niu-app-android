@@ -9,7 +9,7 @@ import '../attendance/attendance_screen.dart';
 import 'moodle_repository.dart';
 import 'moodle_assignment_screen.dart';
 import 'moodle_forum_screen.dart';
-import 'moodle_module_screen.dart';
+import 'moodle_module_open.dart';
 import 'moodle_links.dart';
 
 class MoodleCourseScreen extends StatelessWidget {
@@ -214,13 +214,8 @@ class MoodleCourseScreen extends StatelessWidget {
                       for (final m in objects(s['modules']))
                         CourseResourceTile(
                           module: m,
-                          onTap: () => pushMoodle(
-                            context,
-                            MoodleModuleScreen(
-                              repository: repository,
-                              module: m,
-                            ),
-                          ),
+                          onTap: () =>
+                              openMoodleModule(context, repository, id, m),
                         ),
                     ],
                   ),

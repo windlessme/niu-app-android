@@ -8,6 +8,7 @@ import '../attendance/attendance_screen.dart';
 import 'moodle_repository.dart';
 import 'moodle_links.dart';
 import 'moodle_course_screen.dart';
+import 'moodle_upcoming_views.dart';
 
 class MoodleCoursesScreen extends StatefulWidget {
   const MoodleCoursesScreen({super.key, required this.repository});
@@ -26,6 +27,7 @@ class _MoodleCoursesScreenState extends State<MoodleCoursesScreen> {
   bool refreshing = false;
   Future<void> reload() async {
     if (refreshing) return;
+    upcoming.reload();
     setState(() {
       refreshing = true;
       future = Future.sync(widget.repository.courses);
@@ -40,9 +42,24 @@ class _MoodleCoursesScreenState extends State<MoodleCoursesScreen> {
     }
   }
 
+  late final upcoming = UpcomingController(widget.repository);
+
+  /// 即將截止 follows the chosen semester, or the newest one, like iOS.
+  void showUpcoming(List<String> terms) {
+    final term = semester ?? (terms.isEmpty ? null : terms.first);
+    final courses = {
+      for (final c in presented)
+        if (term == null || c.semester == term) number(c.source['id']): c.title,
+    };
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) upcoming.show(courses);
+    });
+  }
+
   @override
   void dispose() {
     search.dispose();
+    upcoming.dispose();
     super.dispose();
   }
 
@@ -126,6 +143,7 @@ class _MoodleCoursesScreenState extends State<MoodleCoursesScreen> {
               .toSet()
               .toList()
             ..sort((a, b) => b.compareTo(a));
+      showUpcoming(terms);
       final normalizedQuery = query.trim().toLowerCase();
       final courses = presented
           .where(
@@ -158,6 +176,8 @@ class _MoodleCoursesScreenState extends State<MoodleCoursesScreen> {
               onChanged: (t) => setState(() => semester = t),
             ),
           ],
+          const SizedBox(height: NiuSpacing.lg),
+          MoodleUpcomingSection(controller: upcoming),
           const SizedBox(height: NiuSpacing.lg),
           if (snapshot.connectionState == ConnectionState.waiting)
             const Padding(
