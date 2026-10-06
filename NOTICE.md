@@ -4,7 +4,8 @@ This is the Android version of NIU-Life. The iOS version is maintained by Qian a
 [qian403/NIU-app](https://github.com/qian403/NIU-app); this repository started from
 its revision `96e8cdf3a4738ed31420f3de748fbee862906406`.
 
-The upstream MIT copyright and permission notice are preserved in LICENSE.
+The upstream MIT copyright and permission notice are preserved in LICENSE,
+alongside the copyright line for this repository's own work.
 School data, logos and third-party materials remain subject to their respective
 owners' rights. This repository does not imply affiliation or school approval.
 
