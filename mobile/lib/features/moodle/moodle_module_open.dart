@@ -7,6 +7,8 @@ import 'moodle_forum_screen.dart';
 import 'moodle_links.dart';
 import 'moodle_module_screen.dart';
 import 'moodle_page_screen.dart';
+import 'moodle_question_screen.dart';
+import 'moodle_questions.dart';
 import 'moodle_repository.dart';
 
 /// Opens a course material where its content is, as the iOS app does: page
@@ -24,6 +26,13 @@ void openMoodleModule(
       if (content['fileurl'] is String) content,
   ];
   final instance = int.tryParse('${module['instance']}');
+  // 測驗、即時問答、問卷… answered in the app, as on iOS.
+  if (MoodleQuestionKind.entry(module) != null) {
+    return pushMoodle(
+      context,
+      MoodleQuestionScreen(repository: repository, module: module),
+    );
+  }
   switch ('${module['modname']}') {
     case 'page':
       return pushMoodle(

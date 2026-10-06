@@ -528,6 +528,16 @@ abstract final class DemoData {
                 ],
               },
               {
+                'id': cid * 100 + 5,
+                'name': '隨堂小考',
+                'modname': 'quiz',
+                'instance': cid * 10 + 2,
+                'visible': 1,
+                'uservisible': true,
+                'url':
+                    'https://euni.niu.edu.tw/mod/quiz/view.php?id=${cid * 100 + 5}',
+              },
+              {
                 'id': cid * 100 + 4,
                 'name': '作業一',
                 'modname': 'assign',
