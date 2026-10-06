@@ -8,7 +8,6 @@ import 'package:share_plus/share_plus.dart';
 import '../../core/analytics/app_analytics.dart';
 import '../../shared/shared.dart';
 import '../moodle/moodle_repository.dart';
-import '../moodle/moodle_web_session.dart';
 import 'attendance_repository.dart';
 import '../moodle/moodle_demo.dart';
 import '../../core/demo/demo_account.dart';
@@ -58,14 +57,13 @@ class _AttendanceResultScreenState extends State<AttendanceResultScreen> {
   Timer? timeout;
 
   Future<Uri> _entry() async {
-    if (demo) return widget.target;
     try {
-      // Usually already done while the scanner was open.
-      await MoodleWebSession.ensureSignedIn(widget.repository);
+      return await widget.repository.webUri(widget.target);
     } catch (_) {
-      // The school login page remains usable when automatic sign-in fails.
+      // Token API and website login are separate; the school login page
+      // remains usable when automatic web login keys are unavailable.
+      return widget.target;
     }
-    return widget.target;
   }
 
   /// Review demo: a simulated success, never a request to M 園區.
@@ -139,31 +137,8 @@ class _AttendanceResultScreenState extends State<AttendanceResultScreen> {
     AttendanceOutcome.requiresAction => '請在 M 園區頁面選擇出席狀態後送出。',
   };
 
-  /// The website session can expire on the school's side; sign in once more
-  /// before showing its login form.
-  bool signInRetried = false;
-
-  Future<bool> _signInAgain(InAppWebViewController web, Uri page) async {
-    if (demo || signInRetried || !page.path.startsWith('/login/')) return false;
-    final login = await web.evaluateJavascript(
-      source: "!!document.querySelector('#login input[name=\"password\"]')",
-    );
-    if (login != true || signInRetried) return false;
-    signInRetried = true;
-    try {
-      await MoodleWebSession.ensureSignedIn(widget.repository, force: true);
-    } catch (_) {
-      return false;
-    }
-    if (!mounted) return true;
-    await web.loadUrl(urlRequest: URLRequest(url: WebUri('${widget.target}')));
-    return true;
-  }
-
   Future<void> inspect(InAppWebViewController web, WebUri? url) async {
     if (url == null || Uri.parse('$url').host != 'euni.niu.edu.tw') return;
-    if (await _signInAgain(web, Uri.parse('$url'))) return;
-    if (!mounted) return;
     final raw = await web.evaluateJavascript(source: attendanceInspectScript);
     if (!mounted || raw is! String) return;
     AttendanceOutcome next;

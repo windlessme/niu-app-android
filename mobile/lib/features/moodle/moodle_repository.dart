@@ -65,9 +65,6 @@ class MoodleRepository {
     _owner?.unregisterCleanup(invalidate);
   }
 
-  /// The signed-in campus session this repository belongs to, if bound.
-  CampusSession? get owner => _owner;
-
   void requireCurrent() => _guard();
   Future<Uint8List> download(String raw) async {
     final uri = fileUri(raw);
