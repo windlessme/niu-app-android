@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import '../../shared/shared.dart';
 import 'moodle_repository.dart';
-import 'moodle_web_session.dart';
 
 class MoodleWebScreen extends StatefulWidget {
   const MoodleWebScreen({
@@ -21,46 +20,18 @@ class MoodleWebScreen extends StatefulWidget {
 class _MoodleWebScreenState extends State<MoodleWebScreen> {
   late final Future<Uri> entry = _entry();
   Future<Uri> _entry() async {
-    if (!allowed(widget.target)) {
-      throw const FormatException('無法開啟非 M 園區網址');
-    }
     try {
-      await MoodleWebSession.ensureSignedIn(widget.repository);
+      return await widget.repository.webUri(widget.target);
     } catch (_) {
-      // The school's own login page stays usable when every automatic way
-      // fails; the student can still sign in there.
+      // Token API and website login are separate. Keep the real school login
+      // usable when automatic web-login keys are unavailable.
+      if (allowed(widget.target)) return widget.target;
+      rethrow;
     }
-    return widget.target;
   }
 
   double progress = 0;
   bool failed = false;
-
-  /// One more automatic sign-in when the page still asks to log in, e.g.
-  /// after the website session expired on the school's side.
-  bool retried = false;
-
-  Future<void> signInAgain(InAppWebViewController web, WebUri? url) async {
-    final page = Uri.tryParse('$url');
-    if (retried || page == null || page.host != 'euni.niu.edu.tw') return;
-    final login = await web.evaluateJavascript(
-      source:
-          "!!document.querySelector('#login input[name=\"password\"], #page-login-index')",
-    );
-    if (login != true || retried || !mounted) return;
-    retried = true;
-    try {
-      await MoodleWebSession.ensureSignedIn(widget.repository, force: true);
-    } catch (_) {
-      return;
-    }
-    if (mounted) {
-      await web.loadUrl(
-        urlRequest: URLRequest(url: WebUri('${widget.target}')),
-      );
-    }
-  }
-
   bool allowed(Uri u) =>
       u.scheme == 'https' &&
       u.port == 443 &&
@@ -129,7 +100,6 @@ class _MoodleWebScreenState extends State<MoodleWebScreen> {
                           allowed(Uri.parse('${action.request.url}'))
                       ? NavigationActionPolicy.ALLOW
                       : NavigationActionPolicy.CANCEL,
-                  onLoadStop: signInAgain,
                   onProgressChanged: (_, p) {
                     if (mounted) setState(() => progress = p / 100);
                   },
