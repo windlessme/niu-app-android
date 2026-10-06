@@ -127,7 +127,7 @@
 | 1.0.19 | `7e2c1df` | 還原 1.0.18 的 M 園區網頁登入架構（使用者回報課程讀取變慢）；保留附件分享、.html 下載、通知時間的修正 |
 | 1.0.20 | `dc15c63` | M 園區教材下載後加「開啟」按鈕，用手機上的 App 開啟（使用者選擇不做 App 內預覽）：檔案寫在 `cache/attachments/`，原生 `DownloadedFiles.kt` 經 `niulife/files` 以 FileProvider 開 ACTION_VIEW，沒有對應 App 時提示改用分享 |
 | 1.0.21 | `0ea5ffb` | 依 iOS（qian403/niu-app `Features/Moodle/Upcoming`、`CourseDetail/MoodleCourseResourcesView.swift`）：M 園區頁面上方加可收合的「即將截止」（目前學期、逾期 7 天到未來 14 天、只列未繳交，`moodle_upcoming*.dart`）；教材依類型開啟（`moodle_module_open.dart`）：頁面讀 `mod_page_get_pages_by_courses` 在 App 內顯示 HTML、討論區直接列討論、作業直接開作業、單一檔案直接下載、.html 檔在 App 內顯示 |
-| 1.0.22 | （見 git log） | 依 iOS `HomeView.swift`：首頁問候語旁的眼睛按鈕隱藏姓名，顯示「姓＋同學」（含複姓），切換時亂碼動畫、尊重減少動態效果，設定存在 `home.isNameMasked`；`main()` 先讀，讀到前一律遮蔽（`features/home/name_mask.dart`）。行事曆月曆模式在當天事項下方加「接下來」，依月份列出選定日期之後到學年結束的事項（使用者需求，iOS 沒有）。修好 M 園區頁面在深色模式文字變黑（CSS `*{color:inherit}` 連 body 也繼承成預設黑色） |
+| 1.0.22 | `6a6931a` | 依 iOS `HomeView.swift`：首頁問候語旁的眼睛按鈕隱藏姓名，顯示「姓＋同學」（含複姓），切換時亂碼動畫、尊重減少動態效果，設定存在 `home.isNameMasked`；`main()` 先讀，讀到前一律遮蔽（`features/home/name_mask.dart`）。行事曆月曆模式在當天事項下方加「接下來」，依月份列出選定日期之後到學年結束的事項（使用者需求，iOS 沒有）。修好 M 園區頁面在深色模式文字變黑（CSS `*{color:inherit}` 連 body 也繼承成預設黑色） |
 
 另外：
 
