@@ -14,7 +14,7 @@ import 'package:niu_mobile/features/moodle/moodle_demo.dart';
 import 'package:niu_mobile/features/postal/postal_demo.dart';
 import 'package:niu_mobile/features/leave/leave_demo.dart';
 import 'package:niu_mobile/features/graduation/graduation_screen.dart';
-import 'package:niu_mobile/features/grades/grades_screen.dart';
+import 'package:niu_mobile/features/grades/grades_models.dart';
 import 'package:niu_mobile/features/leave/leave_application_data.dart';
 import 'package:niu_mobile/features/leave/leave_repository.dart';
 import 'package:niu_mobile/features/postal/postal_models.dart';

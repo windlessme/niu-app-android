@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:niu_mobile/core/session/campus_session.dart';
 import 'package:niu_mobile/core/session/cached_schedule.dart';
 import 'package:niu_mobile/features/grades/grade_statistics.dart';
-import 'package:niu_mobile/features/grades/grades_screen.dart';
+import 'package:niu_mobile/features/grades/grades_models.dart';
 import '../../support/fakes.dart';
 
 void main() {

@@ -57,7 +57,7 @@ flutter build apk --debug
 
 ### 示範模式
 
-沒有學校帳號也能用示範模式瀏覽完整介面。以帳號 `niulifedemo` 登入即進入示範模式：資料全部來自 [`mobile/lib/core/demo/demo_data.dart`](mobile/lib/core/demo/demo_data.dart)，請假、活動報名、點名、作業等送出動作皆為模擬。密碼不放在 repo 中，App 只保存其 SHA-256。
+沒有學校帳號也能用示範模式瀏覽完整介面。以帳號 `niulifedemo` 登入即進入示範模式：資料全部來自 [`mobile/lib/core/demo/demo_data.dart`](mobile/lib/core/demo/demo_data.dart)，請假、活動報名、點名、作業等送出動作皆為模擬。密碼記錄於 Play 控制台「應用程式存取權」，App 只保存其 SHA-256。
 
 ## 專案結構
 
