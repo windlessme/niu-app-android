@@ -6,6 +6,7 @@ const _destinations = {
   'mail': '/mail',
   'moodle': '/moodle',
   'calendar': '/calendar',
+  'events': '/events',
 };
 
 /// The site whose links the app handles (verified by its assetlinks.json).

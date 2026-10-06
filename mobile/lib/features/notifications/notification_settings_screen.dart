@@ -20,7 +20,8 @@ class NotificationSettingsScreen extends StatefulWidget {
 class _NotificationSettingsScreenState
     extends State<NotificationSettingsScreen> {
   bool assignments = false, calendar = false, classes = false;
-  bool classNow = false;
+  bool classNow = false, events = false;
+  int eventLead = 1440;
   bool loaded = false, busy = false, refreshing = false;
 
   @override
@@ -37,13 +38,17 @@ class _NotificationSettingsScreenState
         widget.notifications.enabled(CampusNotifications.calendarKey),
         status.then((s) => s.enabled),
         status.then((s) => s.classNow),
+        widget.notifications.enabled(CampusNotifications.eventsKey),
       ]);
+      final lead = await widget.notifications.eventLead();
       if (!mounted) return;
       setState(() {
         assignments = values[0];
         calendar = values[1];
         classes = values[2];
         classNow = values[3];
+        events = values[4];
+        eventLead = lead;
       });
     } catch (_) {
       /* Switches stay off when the device cannot report them. */
@@ -113,6 +118,44 @@ class _NotificationSettingsScreenState
       onTap: enabled ? () => onChanged(!value) : null,
       trailing: Switch(value: value, onChanged: enabled ? onChanged : null),
     );
+  }
+
+  Future<void> _chooseLead() async {
+    final value = await showModalBottomSheet<int>(
+      context: context,
+      useSafeArea: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const ListTile(title: Text('活動開始前多久提醒')),
+            for (final entry in CampusNotifications.eventLeads.entries)
+              ListTile(
+                title: Text(entry.value),
+                trailing: entry.key == eventLead
+                    ? Icon(
+                        Icons.check_rounded,
+                        color: NiuColors.of(context).accent,
+                      )
+                    : null,
+                onTap: () => Navigator.pop(context, entry.key),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (value == null || value == eventLead || !mounted) return;
+    setState(() {
+      eventLead = value;
+      busy = true;
+    });
+    try {
+      await widget.notifications.setEventLead(value);
+    } catch (_) {
+      if (mounted) showNiuMessage(context, '已儲存設定，但暫時無法讀取我的報名');
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
   }
 
   @override
@@ -189,11 +232,52 @@ class _NotificationSettingsScreenState
       const SizedBox(height: NiuSpacing.lg),
       NiuGroup(
         children: [
+          _switchRow(
+            icon: Icons.event_available_rounded,
+            hue: NiuHue.purple,
+            title: '已報名活動提醒',
+            subtitle: '活動開始前 ${CampusNotifications.eventLeads[eventLead]}提醒',
+            value: events,
+            onChanged: (value) => _toggle(
+              value,
+              (v) => events = v,
+              (v) => widget.notifications.setEnabled(
+                CampusNotifications.eventsKey,
+                v,
+              ),
+              '已儲存設定，但暫時無法讀取我的報名',
+            ),
+          ),
+          if (events)
+            NiuRow(
+              icon: NiuIcons.time,
+              hue: NiuHue.gray,
+              title: '提醒時間',
+              value: '開始前 ${CampusNotifications.eventLeads[eventLead]}',
+              onTap: loaded && !busy ? _chooseLead : null,
+            ),
+        ],
+      ),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(
+          NiuSpacing.xs,
+          NiuSpacing.sm,
+          NiuSpacing.xs,
+          0,
+        ),
+        child: Text(
+          '只提醒已確認報名的活動；候補、審核中與狀態不明的不提醒。依學校的活動時間在手機上提醒，開啟 App 或更新通知時重新核對。',
+          style: Theme.of(context).textTheme.labelMedium,
+        ),
+      ),
+      const SizedBox(height: NiuSpacing.lg),
+      NiuGroup(
+        children: [
           NiuRow(
             icon: Icons.sync_rounded,
             hue: NiuHue.gray,
             title: '立即更新通知',
-            subtitle: refreshing ? '更新中…' : '重新同步作業、行事曆與課表提醒',
+            subtitle: refreshing ? '更新中…' : '重新同步作業、行事曆、活動與課表提醒',
             chevron: false,
             onTap: refreshing ? null : _refresh,
             trailing: refreshing

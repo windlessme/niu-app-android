@@ -34,6 +34,10 @@ class FakeEventActions implements EventActions {
   @override
   Future<List<CampusEvent>> registrations() async => mine;
 
+  List<CampusEvent> open = const [];
+  @override
+  Future<List<CampusEvent>> available() async => open;
+
   Map<String, Object?> saved = {};
   @override
   Future<EventActionResult> register(CampusEvent event) async {

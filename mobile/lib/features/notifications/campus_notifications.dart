@@ -5,6 +5,7 @@ import '../../core/platform/schedule_gateway.dart';
 import '../../core/session/campus_session.dart';
 import '../../core/time/campus_date.dart';
 import '../academic_calendar/calendar_repository.dart';
+import '../events/event_models.dart';
 import '../moodle/course_presentation.dart';
 import '../moodle/moodle_repository.dart';
 import '../schedule/schedule_export.dart';
@@ -19,10 +20,14 @@ class CampusNotifications {
     required this.session,
     required this.moodle,
     required this.calendar,
+    this.events,
     this.gateway = const ScheduleGateway(),
     DateTime Function()? clock,
   }) : clock = clock ?? DateTime.now;
   final CampusSession session;
+
+  /// The student's 「我的報名」, read from the school for event reminders.
+  final Future<List<CampusEvent>> Function()? events;
   final Future<MoodleRepository?> Function() moodle;
   final CalendarRepository calendar;
   final ScheduleGateway gateway;
@@ -30,6 +35,22 @@ class CampusNotifications {
 
   static const assignmentsKey = 'notify.assignments';
   static const calendarKey = 'notify.calendar';
+  static const eventsKey = 'notify.events';
+
+  /// Minutes before a registered event starts: 1 day, 1 hour or 30 minutes.
+  static const eventLeadKey = 'notify.events.lead';
+  static const eventLeads = {1440: '1 天', 60: '1 小時', 30: '30 分鐘'};
+
+  Future<int> eventLead() async {
+    final value = (await SharedPreferences.getInstance()).getInt(eventLeadKey);
+    return eventLeads.containsKey(value) ? value! : 1440;
+  }
+
+  Future<void> setEventLead(int minutes) async {
+    if (!eventLeads.containsKey(minutes)) return;
+    await (await SharedPreferences.getInstance()).setInt(eventLeadKey, minutes);
+    await refresh();
+  }
 
   Future<void> _queue = Future.value();
 
@@ -39,7 +60,11 @@ class CampusNotifications {
   Future<void> setEnabled(String key, bool value) async {
     await (await SharedPreferences.getInstance()).setBool(key, value);
     AppAnalytics.instance.event('notification_setting', {
-      'kind': key == assignmentsKey ? 'assignments' : 'calendar',
+      'kind': switch (key) {
+        assignmentsKey => 'assignments',
+        eventsKey => 'events',
+        _ => 'calendar',
+      },
       'enabled': value ? 'on' : 'off',
     });
     await refresh();
@@ -100,7 +125,9 @@ class CampusNotifications {
     for (final (kind, key, build) in [
       ('assignments', assignmentsKey, _assignments),
       ('calendar', calendarKey, _calendarDates),
+      ('events', eventsKey, _events),
     ]) {
+      // A failed read leaves that kind's scheduled reminders as they were.
       try {
         final items = await enabled(key) ? await build() : <CampusNotice>[];
         current();
@@ -156,6 +183,62 @@ class CampusNotifications {
             link: 'niulife://moodle',
           ),
     ];
+  }
+
+  /// Like iOS: only confirmed registrations with a full start date and clock
+  /// time; waitlisted, pending or unknown states are left out.
+  Future<List<CampusNotice>> _events() async {
+    final read = events;
+    if (read == null) return const [];
+    final lead = Duration(minutes: await eventLead());
+    final now = clock();
+    final found = <CampusNotice>[];
+    for (final event in await read()) {
+      if (!isConfirmedRegistration(event.status) || event.id.isEmpty) continue;
+      final start = eventStart(event.time);
+      if (start == null) continue;
+      final at = start.subtract(lead);
+      if (!at.isAfter(now)) continue;
+      found.add(
+        CampusNotice(
+          id: event.id,
+          title: '已報名活動即將開始',
+          body: '${event.name}（${event.time}）',
+          at: at,
+          link: 'niulife://events',
+        ),
+      );
+    }
+    found.sort((a, b) => a.at.compareTo(b.at));
+    return found.take(50).toList();
+  }
+
+  static bool isConfirmedRegistration(String status) =>
+      ['已報名', '報名成功', '正取', '錄取'].any(status.contains) &&
+      !['取消', '停辦', '候補', '備取', '審核', '未'].any(status.contains);
+
+  /// The start of 「2026/10/13 13:30 ~ …」 in Taipei time. A date without a
+  /// clock time is unknown, never midnight.
+  static DateTime? eventStart(String raw) {
+    final m = RegExp(
+      r'^(\d{4})[/-](\d{1,2})[/-](\d{1,2})\s*(?:(上午|下午)\s*(\d{1,2})|(\d{2})):(\d{2})(?::(\d{2}))?(?=\s*(?:起|[~～]|$))',
+    ).firstMatch(raw.trim());
+    if (m == null) return null;
+    final year = int.parse(m[1]!), month = int.parse(m[2]!);
+    final day = int.parse(m[3]!), minute = int.parse(m[7]!);
+    final second = m[8] == null ? 0 : int.parse(m[8]!);
+    var hour = int.parse(m[5] ?? m[6]!);
+    if (m[4] != null) {
+      if (hour < 1 || hour > 12) return null;
+      hour = hour % 12 + (m[4] == '下午' ? 12 : 0);
+    }
+    if (month < 1 || month > 12 || hour > 23 || minute > 59 || second > 59) {
+      return null;
+    }
+    // Taipei is UTC+8 all year.
+    final at = DateTime.utc(year, month, day, hour - 8, minute, second);
+    final local = at.add(const Duration(hours: 8));
+    return local.day == day && local.month == month ? at : null;
   }
 
   Future<List<CampusNotice>> _calendarDates() async {

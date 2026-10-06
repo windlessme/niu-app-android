@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:niu_mobile/core/platform/schedule_gateway.dart';
 import 'package:niu_mobile/core/session/campus_session.dart';
 import 'package:niu_mobile/features/academic_calendar/calendar_repository.dart';
+import 'package:niu_mobile/features/events/event_models.dart';
 import 'package:niu_mobile/features/moodle/moodle_demo.dart';
 import 'package:niu_mobile/features/notifications/campus_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -32,14 +33,61 @@ void main() {
   );
   tearDown(() => session.dispose());
 
-  CampusNotifications notifications({DateTime Function()? clock}) =>
-      CampusNotifications(
-        session: session,
-        moodle: () async => DemoMoodleRepository()..bindSession(session),
-        calendar: BundledCalendarRepository(rootBundle),
-        gateway: gateway,
-        clock: clock,
-      );
+  CampusNotifications notifications({
+    DateTime Function()? clock,
+    Future<List<CampusEvent>> Function()? events,
+  }) => CampusNotifications(
+    session: session,
+    moodle: () async => DemoMoodleRepository()..bindSession(session),
+    calendar: BundledCalendarRepository(rootBundle),
+    gateway: gateway,
+    clock: clock,
+    events: events,
+  );
+
+  CampusEvent registered(String id, String status, String time) =>
+      CampusEvent.fromJson({
+        'id': id,
+        'name': '活動 $id',
+        'status': status,
+        'time': time,
+      });
+
+  test('event reminders: confirmed registrations with a clock time', () async {
+    SharedPreferences.setMockInitialValues({
+      CampusNotifications.eventsKey: true,
+      CampusNotifications.eventLeadKey: 60,
+    });
+    final now = DateTime.utc(2026, 10, 10, 4); // 12:00 Taipei.
+    await notifications(
+      clock: () => now,
+      events: () async => [
+        registered('1', '報名成功', '2026/10/12 13:30 ~ 2026/10/12 16:00'),
+        registered('2', '候補', '2026/10/12 13:30'),
+        registered('3', '已報名', '2026/10/12'), // No clock time.
+        registered('4', '已報名', '2026/10/10 12:30'), // Lead already passed.
+        registered('5', '報名取消', '2026/10/12 13:30'),
+        registered('6', '錄取', '2026/10/11 下午 2:00'),
+      ],
+    ).refresh();
+    final items = gateway.sent['events']!;
+    expect([for (final i in items) i.id], ['6', '1']);
+    expect(items[1].at, DateTime.utc(2026, 10, 12, 4, 30));
+    expect(items[0].at, DateTime.utc(2026, 10, 11, 5));
+    expect(items[1].title, '已報名活動即將開始');
+    expect(items[1].link, 'niulife://events');
+  });
+
+  test('a failed read keeps the scheduled event reminders', () async {
+    SharedPreferences.setMockInitialValues({
+      CampusNotifications.eventsKey: true,
+    });
+    await expectLater(
+      notifications(events: () async => throw StateError('offline')).refresh(),
+      throwsStateError,
+    );
+    expect(gateway.sent.containsKey('events'), isFalse);
+  });
 
   test('disabled kinds clear their pending notifications', () async {
     SharedPreferences.setMockInitialValues({});

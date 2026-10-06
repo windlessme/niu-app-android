@@ -9,8 +9,17 @@ import 'event_models.dart';
 
 /// Outcome of one register / save / cancel request.
 class EventActionResult {
-  const EventActionResult(this.success, this.message, {this.needsWeb = false});
+  const EventActionResult(
+    this.success,
+    this.message, {
+    this.needsWeb = false,
+    this.uncertain = false,
+  });
   final bool success;
+
+  /// The request may have reached the school without a readable reply.
+  /// Such an action must not be sent again before 「我的報名」 is checked.
+  final bool uncertain;
 
   /// School text when available, otherwise a short explanation.
   final String message;
@@ -76,6 +85,9 @@ abstract class EventActions {
 
   /// The student's 「我的報名」 list, read without showing the school page.
   Future<List<CampusEvent>> registrations();
+
+  /// 可報名活動, read without showing the school page.
+  Future<List<CampusEvent>> available();
 }
 
 class EventFormUnavailable implements Exception {
@@ -168,8 +180,14 @@ class WebEventActions implements EventActions {
   );
 
   @override
-  Future<List<CampusEvent>> registrations() async {
-    final page = await _EventPage.open(session, eventVerificationUri);
+  Future<List<CampusEvent>> registrations() => _list(eventVerificationUri);
+
+  @override
+  Future<List<CampusEvent>> available() =>
+      _list(Uri.parse('https://ccsys.niu.edu.tw/MvcTeam/Act'));
+
+  Future<List<CampusEvent>> _list(Uri target) async {
+    final page = await _EventPage.open(session, target);
     try {
       final raw = await page.eval(eventsExtractScript);
       if (raw is! String) throw const EventFormUnavailable('無法讀取我的報名');
@@ -255,6 +273,7 @@ class WebEventActions implements EventActions {
         false,
         '學校沒有回傳明確結果，請同步「我的報名」確認。',
         needsWeb: true,
+        uncertain: true,
       );
     } on EventFormUnavailable catch (e) {
       return EventActionResult(false, e.message, needsWeb: true);
@@ -263,12 +282,14 @@ class WebEventActions implements EventActions {
         false,
         '學校系統回應逾時，請同步「我的報名」確認是否已完成。',
         needsWeb: true,
+        uncertain: true,
       );
     } catch (_) {
       return const EventActionResult(
         false,
         '無法連上活動報名系統，請稍後再試。',
         needsWeb: true,
+        uncertain: true,
       );
     } finally {
       await page?.dispose();

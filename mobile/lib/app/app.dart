@@ -15,6 +15,8 @@ import '../features/authentication/login_screen.dart';
 import '../features/authentication/remember_school_login.dart';
 import '../features/attendance/attendance_entry.dart';
 import '../features/events/events_screen.dart';
+import '../features/events/event_actions.dart';
+import '../features/events/events_demo.dart';
 import '../features/grades/grades_screen.dart';
 import '../features/graduation/graduation_screen.dart';
 import '../features/home/home_screen.dart';
@@ -61,6 +63,9 @@ class _NiuAppState extends State<NiuApp> {
     session: session,
     moodle: _restoreMoodle,
     calendar: AppCalendarRepository(),
+    events: () =>
+        (session.isDemo ? DemoEventActions() : WebEventActions(session))
+            .registrations(),
   );
   late final GoRouter router = GoRouter(
     observers: [libraryRouteObserver, AnalyticsRouteObserver()],
