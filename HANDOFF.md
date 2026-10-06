@@ -133,6 +133,7 @@
 另外：
 
 - google-play-developer MCP 已登記帳號 `niu-app`（金鑰在 `/root/.config/google-play-developer-mcp/service-account.json`），是目前使用中的帳號。
+- GA 的 MCP（官方 `analytics-mcp`）2026-10-06 登記在本機 Claude Code 的 user 設定，沿用 Play 的服務帳戶；帳戶與專案資訊只記在本機，不寫進 repo。查資料前需要在 GCP 啟用 Analytics Admin／Data API，並在 GA4 資源把服務帳戶加為「檢視者」。新 session 才會載入工具。GA 看的是 `first_open`／活躍使用者，下載數要看 Play Console。
 - MCP 工具已經可以直接用，服務帳號對 `me.windless.niulife` 有權限。
 
 ## 通知系統（0.13.7）
