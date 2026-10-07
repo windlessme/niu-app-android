@@ -25,6 +25,7 @@ class AppAnalytics {
   bool _started = false;
   // Events from the first frames, sent once Firebase is up.
   final _pending = <(String, Map<String, Object>?)>[];
+  final _pendingProperties = <String, String>{};
 
   /// On unless turned off with the former settings switch; that choice is
   /// kept, though it can no longer be changed.
@@ -38,6 +39,7 @@ class AppAnalytics {
     if (kDebugMode || storeScreenshots) {
       _started = true;
       _pending.clear();
+      _pendingProperties.clear();
       return;
     }
     try {
@@ -54,6 +56,8 @@ class AppAnalytics {
       event(name, parameters);
     }
     _pending.clear();
+    _pendingProperties.forEach(userProperty);
+    _pendingProperties.clear();
   }
 
   bool get _active =>
@@ -75,6 +79,19 @@ class AppAnalytics {
       _analytics!
           .logEvent(name: name, parameters: parameters)
           .catchError((_) {}),
+    );
+  }
+
+  /// A fixed description of how the app is set up, e.g. which home screen
+  /// widgets are placed. [value] is chosen in code, at most 36 characters.
+  void userProperty(String name, String value) {
+    if (!_started) {
+      _pendingProperties[name] = value;
+      return;
+    }
+    if (!_active) return;
+    unawaited(
+      _analytics!.setUserProperty(name: name, value: value).catchError((_) {}),
     );
   }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/analytics/app_analytics.dart';
 import '../../shared/shared.dart';
 import 'course_colors.dart';
 import 'custom_courses.dart';
@@ -128,6 +129,14 @@ class _CustomCourseEditorScreenState extends State<CustomCourseEditorScreen> {
     setState(() => saving = true);
     try {
       await store.save(widget.account, course);
+      AppAnalytics.instance.event('custom_course', {
+        'action': original == null ? 'add' : 'edit',
+        'color': colorId == null
+            ? 'auto'
+            : colourFromHex(colorId!) != null
+            ? 'picked'
+            : 'preset',
+      });
       if (mounted) Navigator.pop(context, true);
     } catch (_) {
       if (mounted) {
@@ -161,6 +170,7 @@ class _CustomCourseEditorScreenState extends State<CustomCourseEditorScreen> {
         false;
     if (!ok || !mounted) return;
     await store.delete(widget.account, id);
+    AppAnalytics.instance.event('custom_course', {'action': 'delete'});
     if (mounted) Navigator.pop(context, true);
   }
 

@@ -48,6 +48,7 @@ class _LearningHoursScreenState extends State<LearningHoursScreen> {
     });
     try {
       final fresh = await store.refresh();
+      AppAnalytics.instance.result('learning_hours', true);
       if (!mounted || fresh == null) return;
       setState(() {
         snapshot = fresh;
@@ -58,9 +59,15 @@ class _LearningHoursScreenState extends State<LearningHoursScreen> {
       });
     } on LearningHoursException catch (failure) {
       AppAnalytics.instance.error('learning_hours', failure.reason);
+      AppAnalytics.instance.result('learning_hours', false, {
+        'reason': failure.reason,
+      });
       if (mounted) setState(() => error = failure.message);
     } catch (_) {
       AppAnalytics.instance.error('learning_hours', 'unknown');
+      AppAnalytics.instance.result('learning_hours', false, {
+        'reason': 'unknown',
+      });
       if (mounted) {
         setState(() => error = LearningHoursException.invalidResponse.message);
       }

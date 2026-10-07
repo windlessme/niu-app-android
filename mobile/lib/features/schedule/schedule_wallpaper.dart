@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../core/analytics/app_analytics.dart';
 import '../../shared/shared.dart';
 import 'course_colors.dart';
 import 'schedule_models.dart';
@@ -452,11 +453,20 @@ class _ScheduleWallpaperScreenState extends State<ScheduleWallpaperScreen> {
 
   Future<String> setAs(Uint8List png, String target) async {
     final ok = await widget.gateway.set(png, target);
+    AppAnalytics.instance.result('schedule_wallpaper', ok, {'action': target});
     return ok ? (target == 'lock' ? '已設為鎖定畫面桌布' : '已設為主畫面與鎖定畫面桌布') : '無法設定桌布';
   }
 
   Future<String> save(Uint8List png) async {
-    if (await widget.gateway.save(png)) return '已儲存到相簿的 NIU-Life 資料夾';
+    if (await widget.gateway.save(png)) {
+      AppAnalytics.instance.result('schedule_wallpaper', true, {
+        'action': 'save',
+      });
+      return '已儲存到相簿的 NIU-Life 資料夾';
+    }
+    AppAnalytics.instance.result('schedule_wallpaper', true, {
+      'action': 'share',
+    });
     // Android 9 and older: hand the picture to another app instead.
     final dir = await getTemporaryDirectory();
     final file = File('${dir.path}/NIU-Life 課表桌布.png');
