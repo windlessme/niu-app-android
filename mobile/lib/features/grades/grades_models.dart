@@ -63,13 +63,16 @@ class GradeSemester {
     required this.key,
     required this.courses,
     this.rank = '',
+    this.departmentRank = '',
     this.schoolAverage,
   });
 
   /// `1142` → 114 學年度下學期.
   final String key;
   final List<GradeCourse> courses;
-  final String rank;
+
+  /// 班排名 and 系排名 as `place/size`; empty until the school lists them.
+  final String rank, departmentRank;
   final double? schoolAverage;
   late final stats = GradeStatistics(courses);
 
@@ -80,24 +83,28 @@ class GradeSemester {
   String get shortLabel => '$year$term';
   String get termTitle => '$term學期';
 
+  /// `班排 7/52 · 系排 15/88`, leaving out what the school hasn't listed.
+  String get rankLabel => [
+    if (rank.isNotEmpty) '班排 $rank',
+    if (departmentRank.isNotEmpty) '系排 $departmentRank',
+  ].join(' · ');
+
   /// The school's term average, or ours from numeric grades.
   double? get average => schoolAverage ?? stats.average;
 
   /// Groups 歷年 courses by term, newest first, and attaches the summary
-  /// table's rank (column 3) and average (column 4) to each term.
+  /// table's ranks and average (`{sem, classRank, departmentRank, average}`)
+  /// to each term.
   static List<GradeSemester> group(
     Iterable<GradeCourse> courses,
-    Iterable<List> summary,
+    Iterable<Map> summary,
   ) {
     final byKey = <String, List<GradeCourse>>{};
     for (final c in courses) {
       if (c.semesterKey.isEmpty) continue;
       byKey.putIfAbsent(c.semesterKey, () => []).add(c);
     }
-    final ranks = {
-      for (final s in summary)
-        if (s.length >= 4) '${s[0]}'.trim(): s,
-    };
+    final ranks = {for (final s in summary) '${s['sem'] ?? ''}'.trim(): s};
     final keys = byKey.keys.toList()
       ..sort((a, b) => int.parse(b).compareTo(int.parse(a)));
     return [
@@ -105,9 +112,10 @@ class GradeSemester {
         GradeSemester(
           key: key,
           courses: byKey[key]!,
-          rank: formatRank('${ranks[key]?[2] ?? ''}'),
+          rank: formatRank('${ranks[key]?['classRank'] ?? ''}'),
+          departmentRank: formatRank('${ranks[key]?['departmentRank'] ?? ''}'),
           schoolAverage: double.tryParse(
-            '${ranks[key]?[3] ?? ''}'.replaceAll(',', '').trim(),
+            '${ranks[key]?['average'] ?? ''}'.replaceAll(',', '').trim(),
           ),
         ),
     ];

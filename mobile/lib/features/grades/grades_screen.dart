@@ -15,8 +15,25 @@ String gradeExtractScript(GradeMode mode) =>
   const doc = docs.find(d => d.querySelector('#accordion修課紀錄'));
   if (!doc) return null;
   const rows = Array.from(doc.querySelectorAll('#accordion修課紀錄 table.table.table-striped tr'), r => Array.from(r.querySelectorAll('td'), c => clean(c.textContent))).filter(r => r.length >= 5);
-  const summary = Array.from(doc.querySelectorAll('div.row table.table tr'), r => Array.from(r.querySelectorAll('td'), c => clean(c.textContent))).filter(r => r.length >= 4 && /^\d{3,4}$/.test(r[0]));
-  return JSON.stringify({rows, summary});
+  // Course tables also start with a 學年期 column, so find the summary
+  // table by its rank headers and map its columns by header text.
+  const ranks = [];
+  for (const table of doc.querySelectorAll('table.table')) {
+    if (table.closest('#accordion修課紀錄')) continue;
+    const trs = Array.from(table.querySelectorAll('tr'));
+    if (!trs.length) continue;
+    const headers = Array.from(trs[0].querySelectorAll('th,td'), c => clean(c.textContent));
+    const col = word => headers.findIndex(h => h.includes(word));
+    const sem = col('學年期'), dept = col('系排名'), cls = col('班排名'), avg = col('平均');
+    if (sem < 0 || (dept < 0 && cls < 0)) continue;
+    for (const tr of trs.slice(1)) {
+      const cells = Array.from(tr.querySelectorAll('td'), c => clean(c.textContent));
+      const at = i => i >= 0 && i < cells.length ? cells[i] : '';
+      if (/^\d{3,4}$/.test(at(sem))) ranks.push({sem: at(sem), classRank: at(cls), departmentRank: at(dept), average: at(avg)});
+    }
+    break;
+  }
+  return JSON.stringify({rows, ranks});
   ''' : '''
   // The query page (_01) has a DataGrid too; the results page is the one
   // with a 成績 column. Wait for it to finish rather than read it half-built.
@@ -62,9 +79,11 @@ class _GradesScreenState extends State<GradesScreen> {
   ];
 
   List<Widget> history(BuildContext context, Map value) {
-    final summary = value['summary'] is List
-        ? (value['summary'] as List).whereType<List>()
-        : const <List>[];
+    // Snapshots from before 1.0.32 kept a `summary` that course rows could
+    // overwrite (credits read as rank), so only header-mapped `ranks` count.
+    final summary = value['ranks'] is List
+        ? (value['ranks'] as List).whereType<Map>()
+        : const <Map>[];
     final semesters = GradeSemester.group(
       GradeCourse.parseHistoryRows(_rows(value['rows'])),
       summary,

@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:niu_mobile/core/session/campus_session.dart';
@@ -27,17 +30,51 @@ void main() {
       ['1142', '', '0', '體育－桌球', '88'],
     ]);
     final semesters = GradeSemester.group(courses, [
-      ['1142', '12', '7/52', '84.6'],
-      ['1141', '10', '第 名', '尚未計算'],
+      {
+        'sem': '1142',
+        'classRank': '7/52',
+        'departmentRank': '15 / 88',
+        'average': '84.6',
+      },
+      {
+        'sem': '1141',
+        'classRank': '第 名',
+        'departmentRank': '',
+        'average': '尚未計算',
+      },
     ]);
     expect([for (final s in semesters) s.shortLabel], ['114下', '114上', '113暑']);
-    expect(semesters[0].rank, '7/52');
+    expect(semesters[0].rankLabel, '班排 7/52 · 系排 15/88');
     expect(semesters[0].average, 84.6);
     expect(semesters[0].courses.last.category, '體育');
     // No school rank or average yet: no rank, our own average.
-    expect(semesters[1].rank, '');
+    expect(semesters[1].rankLabel, '');
     expect(semesters[1].average, 76);
     expect(semesters[2].average, isNull);
+  });
+
+  test('歷年 ranks come from the summary table, not course rows', () {
+    final dir = Directory.systemTemp.createTempSync('grade_history');
+    addTearDown(() => dir.deleteSync(recursive: true));
+    final file = File('${dir.path}/scripts.json')
+      ..writeAsStringSync(
+        jsonEncode({'history': gradeExtractScript(GradeMode.history)}),
+      );
+    final result = Process.runSync('node', [
+      'test/fixtures/grade_history_dom.cjs',
+      file.path,
+    ]);
+    expect(result.exitCode, 0, reason: '${result.stdout}\n${result.stderr}');
+  });
+
+  test('cached 歷年 snapshots from before ranks were mapped show no rank', () {
+    final semesters = GradeSemester.group(
+      GradeCourse.parseHistoryRows([
+        ['1141', '必修', '3', '微積分（一）', '76'],
+      ]),
+      const [],
+    );
+    expect(semesters.single.rankLabel, '');
   });
 
   test('pass rate leaves textual grades out, like GPA', () {
@@ -119,8 +156,8 @@ void main() {
 
         expect(find.text('累計 GPA（估算）'), findsOneWidget);
         expect(find.byType(GradeTrendChart), findsOneWidget);
-        expect(find.text('班級排名 7/52'), findsOneWidget);
-        expect(find.text('班級排名 12/55'), findsOneWidget);
+        expect(find.text('班排 7/52 · 系排 15/88'), findsOneWidget);
+        expect(find.text('班排 12/55 · 系排 21/85'), findsOneWidget);
         // The newest term is open; the older one shows its first course.
         expect(find.text('離散數學'), findsOneWidget);
         expect(find.text('程式設計（一）'), findsOneWidget);
