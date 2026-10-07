@@ -1,6 +1,6 @@
 # HANDOFF
 
-給接手的 Claude Code session。最後更新：2026-10-07。目前版本：**1.0.31+112**。
+給接手的 Claude Code session。最後更新：2026-10-07。目前版本：**1.0.32+113**。
 
 ## 專案概況
 
@@ -31,7 +31,7 @@
 - Play 各軌道現況（2026-10-03 用 MCP 查過）：
   - **正式版：1.0.0 (81)**，已審核通過並發布。**1.0.17 (98) 已送審**（使用者 2026-10-06 告知）。
   - 公開測試（beta）：1.0.0 (81)。
-  - internal：**1.0.31 (112)**（2026-10-07 推送）。
+  - internal：**1.0.32 (113)**（2026-10-07 推送）。
 - 正式版由使用者在 Play Console 升級（Claude 推 production 會被權限擋下，屬正常）。
 - **正式版不用每版都推**，只要 versionCode 比上一個正式版大就行。建議 internal 每版都推；等使用者在手機上測過、累積一批改動或有重要修正時，再挑一版推正式版。**版本說明的寫法（使用者 2026-10-05 要求）**：
   - internal：只寫**這一版**改了什麼，讓使用者知道要測哪裡。沒有使用者看得到的改動時寫「內部調整，功能沒有變化」。不要再沿用累計說明，否則每版看起來都一樣。
@@ -71,6 +71,13 @@
   ・M 園區新增「問答」：測驗、即時問答、選擇與問卷可以在 App 內作答，測驗結果與題目複習也能直接看
   ・課表可以新增自訂課程，也能用課表製作鎖定畫面桌布
   ・M 園區課程頁改版：一眼看到待繳作業、最新公告、出席率與成績，可以搜尋整門課
+  ・登入時檢查密碼至少 8 個字元
+  ・歷年成績修正班級排名讀錯的問題，並加上系排名；通過、抵免計入實得學分，GPA 旁可以查看計算方式
+  ・期中、學期成績尚未公布時不再顯示空白卡片，改顯示已公布科數
+  ・畢業門檻全數達成時有驚喜
+  ・請假頁面開啟更快
+  ・報名或取消活動後，活動提醒立刻更新
+  ・自訂課程過了到期日，小工具與上課提醒也會自動移除
   ```
 - 公開測試的使用者會自動拿到 versionCode 較大的正式版，公開測試軌道不用特別處理。release 名稱用 `X.Y.Z (versionCode)`，附一句 zh-TW 版本說明。
 - 上傳流程（每個新版本都要做）：`flutter build appbundle --release`，然後用 MCP 依序 `edits_insert` → `bundles_upload` → `tracks_update`（internal，status `completed`）→ `edits_commit`。
@@ -141,6 +148,7 @@
 | 1.0.29 | `9d59a56` | 依 iOS（2026-10-07 `Features/ClassSchedule/` 的 `CustomCourse*`、`ClassScheduleWallpaper*`）：**自訂課程**（`custom_courses.dart`、`custom_course_editor.dart`）存在 SharedPreferences `customCourses.byAccount.v1`、依帳號分開、登出不刪（同 iOS），只放進空的節次、過到期日就不顯示；`SchedulePeriod.custom` 帶著課程物件，`scheduleLessons`、`scheduleBlocks`（小工具／提醒的快照）與首頁今日課程都會合併，學校課表快取不變，匯出行事曆不含自訂課程。課表頁右上改為「課表設定」（`schedule_settings_screen.dart`：自訂課程、桌布、行事曆）；單日加「新增自訂課程」、自訂課程標「自訂」、點擊進編輯，整週的自訂課程有外框。**課表桌布**（`schedule_wallpaper.dart`）：照片或預設漸層、淺／深色、標準／精簡、可不含自訂課程，原生 `niulife/wallpaper`（`ScheduleWallpaper.kt`）設為鎖定畫面或主畫面＋鎖定畫面（`SET_WALLPAPER`），或存到相簿 Pictures/NIU-Life（Android 9 以下改用分享） |
 | 1.0.30 | `6986932` | M 園區課程頁依 iOS `MoodleCourseDetailView` 重做（`moodle_course_screen.dart`）：拿掉 7 個橫向分頁，改成總覽：課名與老師、「下一份待繳／出席率／目前成績」摘要、搜尋整門課（各部分前 3 筆＋查看全部）、待繳作業（已知未繳、截止近的在上，最多 3 筆）、最新公告（3 則）、「課程內容」清單（作業／公告／資源／問答／出缺席／成績＋各自的數量或百分比）與課程說明。`CourseOverview` 平行載入各部分，一部分失敗不影響其他、保留上次資料；各部分頁面 `CourseDestinationScreen` 有自己的搜尋，公告與作業可反轉排序。討論區併入「資源」（iOS 也沒有獨立的討論分頁）。課程列表卡片加完成進度與「已隱藏」。`CourseDetailTabs` 已移除 |
 | 1.0.31 | `5961c2c` | 登入頁要求密碼至少 8 個字元（`LoginScreen.minPassword`）：不足時登入鍵停用、欄位下方灰字提示，按下鍵盤的登入後改為紅字錯誤；不影響已保存帳密的自動登入 |
+| 1.0.32 | （待填） | 與 iOS 同步 7 項：問答腳本 `moodleQuestionInstall` 同步 iOS `7d5444d`（文字題以題目當標籤、revision 過期回 changed、經校方 form 送出）。**歷年排名**：摘要表選取器也會抓到修課紀錄表，課程列蓋掉摘要（學分被當班排名），改以表頭（學年期／系排名／班排名／平均）找摘要表、依欄名對應，輸出 `ranks` 物件；舊快取的 `summary` 不再採用，學期卡顯示「班排 · 系排」。GPA：`GradeStatistics` 加 `earnedCredits`／`attemptedCredits`（通過、抵免、免修算實得，不計入 GPA），「GPA 怎麼算」說明對話框；期中／學期無已公布成績時顯示空狀態、統計改「已公布 n / m 科」。活動編號只讀「活動編號」段落、移除 badge、只收數字，否則用連結編號（`events_list_dom.cjs`）。請假輪詢 0.4→0.2 秒、`Logout.aspx` 視為過期、清單與選單導覽被 MainFrame 吃掉時最多重送 2 次。畢業門檻全數達成（學分學程不算）顯示「恭喜！已全數完成！」與彩帶（`graduation_confetti.dart`，不攔點擊、減少動態時關閉），未達成最多 99%。`EventsScreen.onRegistrations` → `CampusNotifications.refreshEvents` 只重排活動提醒。`ScheduleBlock.lastDay`：自訂課程的到期日寫進原生快照，`Snapshot.on(date)` 過期就不出現在小工具與提醒 |
 
 另外：
 
