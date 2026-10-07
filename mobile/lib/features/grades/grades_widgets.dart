@@ -301,7 +301,7 @@ class GradeSemesterCard extends StatelessWidget {
             button: true,
             expanded: expanded,
             label: '${semester.year} 學年度${semester.termTitle}',
-            value: semester.rank.isEmpty ? null : '班級排名 ${semester.rank}',
+            value: semester.rankLabel.isEmpty ? null : semester.rankLabel,
             excludeSemantics: true,
             child: InkWell(
               borderRadius: BorderRadius.circular(NiuRadius.md),
@@ -319,9 +319,9 @@ class GradeSemesterCard extends StatelessWidget {
                             semester.termTitle,
                             style: theme.textTheme.titleMedium,
                           ),
-                          if (semester.rank.isNotEmpty)
+                          if (semester.rankLabel.isNotEmpty)
                             Text(
-                              '班級排名 ${semester.rank}',
+                              semester.rankLabel,
                               style: theme.textTheme.bodySmall,
                             ),
                         ],
