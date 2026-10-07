@@ -45,7 +45,15 @@ class _LoginScreenState extends State<LoginScreen> {
   InAppWebViewController? web;
   Timer? revealTimer;
 
-  bool get valid => account.text.trim().isNotEmpty && password.text.isNotEmpty;
+  /// The school's passwords are at least this long.
+  static const minPassword = 8;
+
+  /// A sign-in was tried with a short password: the hint becomes an error.
+  bool passwordChecked = false;
+  bool get passwordShort =>
+      password.text.isNotEmpty && password.text.length < minPassword;
+  bool get valid =>
+      account.text.trim().isNotEmpty && password.text.length >= minPassword;
 
   @override
   void initState() {
@@ -97,6 +105,11 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> login() async {
     if (phase != _Phase.form) return;
     FocusScope.of(context).unfocus();
+    if (passwordShort) {
+      setState(() => passwordChecked = true);
+      showNiuMessage(context, '密碼至少需要 $minPassword 個字元');
+      return;
+    }
     if (!valid) {
       showNiuMessage(context, '請輸入學號和密碼');
       return;
@@ -454,10 +467,18 @@ class _LoginScreenState extends State<LoginScreen> {
             autocorrect: false,
             enableSuggestions: false,
             autofillHints: const [AutofillHints.password],
-            onChanged: (_) => setState(() {}),
+            onChanged: (_) => setState(() {
+              if (!passwordShort) passwordChecked = false;
+            }),
             onSubmitted: (_) => login(),
             decoration: InputDecoration(
               hintText: '密碼',
+              helperText: passwordShort && !passwordChecked
+                  ? '密碼至少需要 $minPassword 個字元'
+                  : null,
+              errorText: passwordChecked && passwordShort
+                  ? '密碼至少需要 $minPassword 個字元'
+                  : null,
               prefixIcon: const Icon(NiuIcons.lock),
               suffixIcon: IconButton(
                 tooltip: obscure ? '顯示密碼' : '隱藏密碼',

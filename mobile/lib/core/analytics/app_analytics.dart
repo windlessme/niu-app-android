@@ -14,8 +14,8 @@ import '../session/campus_session.dart';
 /// Only fixed names leave the device: which screen, which action and its
 /// outcome, which kind of error. Never accounts, names, grades, mail, course
 /// titles or any other school content. Off in debug builds, store-screenshot
-/// builds, the review demo, builds without a Firebase config, and whenever
-/// the student turns it off in settings.
+/// builds, the review demo, builds without a Firebase config, and for anyone
+/// who turned it off before 1.0.24, when settings still had a switch for it.
 class AppAnalytics {
   AppAnalytics._();
   static final instance = AppAnalytics._();
@@ -26,13 +26,14 @@ class AppAnalytics {
   // Events from the first frames, sent once Firebase is up.
   final _pending = <(String, Map<String, Object>?)>[];
 
-  /// The settings switch; on unless the student turned it off.
-  final enabled = ValueNotifier<bool>(true);
+  /// On unless turned off with the former settings switch; that choice is
+  /// kept, though it can no longer be changed.
+  bool enabled = true;
 
   Future<void> start() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      enabled.value = prefs.getBool(preferenceKey) ?? true;
+      enabled = prefs.getBool(preferenceKey) ?? true;
     } catch (_) {}
     if (kDebugMode || storeScreenshots) {
       _started = true;
@@ -44,7 +45,7 @@ class AppAnalytics {
       _analytics = FirebaseAnalytics.instance;
       // The manifest starts with collection off, so nothing is sent before
       // the saved choice is known.
-      await _analytics!.setAnalyticsCollectionEnabled(enabled.value);
+      await _analytics!.setAnalyticsCollectionEnabled(enabled);
     } catch (_) {
       _analytics = null; // Built without google-services.json.
     }
@@ -55,19 +56,8 @@ class AppAnalytics {
     _pending.clear();
   }
 
-  Future<void> setEnabled(bool value) async {
-    enabled.value = value;
-    try {
-      await (await SharedPreferences.getInstance()).setBool(
-        preferenceKey,
-        value,
-      );
-    } catch (_) {}
-    await _analytics?.setAnalyticsCollectionEnabled(value);
-  }
-
   bool get _active =>
-      _analytics != null && enabled.value && !CampusSession.instance.isDemo;
+      _analytics != null && enabled && !CampusSession.instance.isDemo;
 
   /// [name] is one of a fixed set of English screen names, e.g. `grades`.
   void screen(String name) =>

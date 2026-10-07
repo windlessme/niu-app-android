@@ -37,9 +37,24 @@ void main() {
       // Only letters and digits reach the 學號 field.
       await tester.enterText(fields.at(0), 'b12-3 4');
       expect(tester.widget<TextField>(fields.at(0)).controller!.text, 'b1234');
+      // School passwords have at least 8 characters.
       await tester.enterText(fields.at(1), 'secret');
       await tester.pump();
+      expect(button().onPressed, isNull);
+      // A quiet hint while typing; an error once sign-in is tried.
+      expect(find.text('密碼至少需要 8 個字元'), findsOneWidget);
+      await tester.testTextInput.receiveAction(TextInputAction.go);
+      await tester.pump();
+      expect(
+        tester.widget<TextField>(fields.at(1)).decoration!.errorText,
+        '密碼至少需要 8 個字元',
+      );
+      await tester.enterText(fields.at(1), 'secret12');
+      await tester.pump();
       expect(button().onPressed, isNotNull);
+      final decoration = tester.widget<TextField>(fields.at(1)).decoration!;
+      expect(decoration.errorText, isNull);
+      expect(decoration.helperText, isNull);
       // The password stays hidden until the student asks to see it.
       expect(tester.widget<TextField>(fields.at(1)).obscureText, isTrue);
       await tester.tap(find.byTooltip('顯示密碼'));
