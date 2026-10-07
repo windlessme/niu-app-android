@@ -39,6 +39,14 @@ assert.equal(run(s.navigation), null);
 assert.ok(clicks.includes('NAV:/NIU/Application/SEC/SEC20/SEC2015_.aspx?progcd=SEC2015'));
 assert.equal(run(s.navigation), null); // Opened once only.
 assert.equal(clicks.filter(c => c.startsWith('NAV:')).length, 1);
+// MainFrame dropped the navigation: sent again after 10 s, at most twice more.
+const sent = top['__niuLeaveOpened:SEC2015_01'];
+for (const expected of [2, 3, 3]) {
+  top['__niuLeaveOpened:SEC2015_01'].at -= 10001;
+  assert.equal(run(s.navigation), null);
+  assert.equal(clicks.filter(c => c.startsWith('NAV:')).length, expected);
+}
+assert.equal(sent.previous, blank);
 
 const first = listDoc([row('D1', {del: 2, mod: true}), row('D2', {detail: true}), row('D3', {})]);
 mainWin.document = first.d;
