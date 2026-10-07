@@ -1,6 +1,6 @@
 # HANDOFF
 
-給接手的 Claude Code session。最後更新：2026-10-07。目前版本：**1.0.29+110**。
+給接手的 Claude Code session。最後更新：2026-10-07。目前版本：**1.0.30+111**。
 
 ## 專案概況
 
@@ -31,7 +31,7 @@
 - Play 各軌道現況（2026-10-03 用 MCP 查過）：
   - **正式版：1.0.0 (81)**，已審核通過並發布。**1.0.17 (98) 已送審**（使用者 2026-10-06 告知）。
   - 公開測試（beta）：1.0.0 (81)。
-  - internal：**1.0.29 (110)**（2026-10-07 推送）。
+  - internal：**1.0.30 (111)**（2026-10-07 推送）。
 - 正式版由使用者在 Play Console 升級（Claude 推 production 會被權限擋下，屬正常）。
 - **正式版不用每版都推**，只要 versionCode 比上一個正式版大就行。建議 internal 每版都推；等使用者在手機上測過、累積一批改動或有重要修正時，再挑一版推正式版。**版本說明的寫法（使用者 2026-10-05 要求）**：
   - internal：只寫**這一版**改了什麼，讓使用者知道要測哪裡。沒有使用者看得到的改動時寫「內部調整，功能沒有變化」。不要再沿用累計說明，否則每版看起來都一樣。
@@ -70,6 +70,7 @@
   ・活動報名：可以收藏活動、一次報名多個活動，並在已報名活動開始前提醒
   ・M 園區新增「問答」：測驗、即時問答、選擇與問卷可以在 App 內作答，測驗結果與題目複習也能直接看
   ・課表可以新增自訂課程，也能用課表製作鎖定畫面桌布
+  ・M 園區課程頁改版：一眼看到待繳作業、最新公告、出席率與成績，可以搜尋整門課
   ```
 - 公開測試的使用者會自動拿到 versionCode 較大的正式版，公開測試軌道不用特別處理。release 名稱用 `X.Y.Z (versionCode)`，附一句 zh-TW 版本說明。
 - 上傳流程（每個新版本都要做）：`flutter build appbundle --release`，然後用 MCP 依序 `edits_insert` → `bundles_upload` → `tracks_update`（internal，status `completed`）→ `edits_commit`。
@@ -138,6 +139,7 @@
 | 1.0.27 | `4afdc9b` | 依 iOS `Features/Moodle/Questions/`：課程多一個「問答」分頁（插在作業後面），列出測驗、即時問答、選擇、回饋、問卷、調查；教材裡的這些活動也改開 `MoodleQuestionScreen`。做法與 iOS 相同：已登入的 M 園區頁面（autologin）在原生畫面底下，每秒注入 `moodleQuestionInstall`（`moodle_questions.dart`，**原封照搬 iOS 的 `MoodleQuestionPageScript.install`**，兩邊要一起改）讀題目、選項、按鈕、成績摘要與複習題；作答寫回校方欄位、按校方自己的按鈕，非導覽按鈕先確認；revision 不同就拒絕；倒數計時、圖片公式、上傳等由腳本回 `webReason`，改用校方頁面。校方 alert／confirm／prompt 都交給使用者。示範模式與測試用 `DemoQuestionDriver`（模擬開始→作答→複習）。jsdom 實測過腳本能讀表單並透過校方 form 送出 |
 | 1.0.28 | `51111f1` | 使用者回報：請假送出與撤回後都顯示「結果尚未確認」、收藏無法儲存。請假送出改等 `submissionSettled`（學校處理完送出），頁面上沒有新假單號時重開「請假紀錄」（SEC4030），找同日期、同假別、今天申請的假單（修改則找同假單號、新日期）來確認；撤回不再依送出當下的頁面狀態，學校處理完一律重開「學生請假修改」核對，假單不在、或還在但已無撤回連結都算撤回。GA 事件多記 `check`／`state` 代碼方便追查。收藏失敗是 `DeviceCredentialVault` 只允許白名單鍵，加上 `eventFavorites`（登出一樣清除）。送出前提醒改為「請務必在送出後至學校校務系統查看…」 |
 | 1.0.29 | `9d59a56` | 依 iOS（2026-10-07 `Features/ClassSchedule/` 的 `CustomCourse*`、`ClassScheduleWallpaper*`）：**自訂課程**（`custom_courses.dart`、`custom_course_editor.dart`）存在 SharedPreferences `customCourses.byAccount.v1`、依帳號分開、登出不刪（同 iOS），只放進空的節次、過到期日就不顯示；`SchedulePeriod.custom` 帶著課程物件，`scheduleLessons`、`scheduleBlocks`（小工具／提醒的快照）與首頁今日課程都會合併，學校課表快取不變，匯出行事曆不含自訂課程。課表頁右上改為「課表設定」（`schedule_settings_screen.dart`：自訂課程、桌布、行事曆）；單日加「新增自訂課程」、自訂課程標「自訂」、點擊進編輯，整週的自訂課程有外框。**課表桌布**（`schedule_wallpaper.dart`）：照片或預設漸層、淺／深色、標準／精簡、可不含自訂課程，原生 `niulife/wallpaper`（`ScheduleWallpaper.kt`）設為鎖定畫面或主畫面＋鎖定畫面（`SET_WALLPAPER`），或存到相簿 Pictures/NIU-Life（Android 9 以下改用分享） |
+| 1.0.30 | `COMMIT` | M 園區課程頁依 iOS `MoodleCourseDetailView` 重做（`moodle_course_screen.dart`）：拿掉 7 個橫向分頁，改成總覽：課名與老師、「下一份待繳／出席率／目前成績」摘要、搜尋整門課（各部分前 3 筆＋查看全部）、待繳作業（已知未繳、截止近的在上，最多 3 筆）、最新公告（3 則）、「課程內容」清單（作業／公告／資源／問答／出缺席／成績＋各自的數量或百分比）與課程說明。`CourseOverview` 平行載入各部分，一部分失敗不影響其他、保留上次資料；各部分頁面 `CourseDestinationScreen` 有自己的搜尋，公告與作業可反轉排序。討論區併入「資源」（iOS 也沒有獨立的討論分頁）。課程列表卡片加完成進度與「已隱藏」。`CourseDetailTabs` 已移除 |
 
 另外：
 
