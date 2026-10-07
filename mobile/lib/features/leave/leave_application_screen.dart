@@ -396,8 +396,10 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen>
     mutationConsent = true;
     try {
       final outcome = await gateway!.submit(data!);
+      final school = gateway;
       AppAnalytics.instance.event(_event, {
         'result': outcome.confirmed || outcome.sent ? 'success' : 'unconfirmed',
+        if (school is SchoolLeaveApplication) 'check': school.check ?? 'none',
       });
       if (current) setState(() => result = outcome);
     } catch (_) {

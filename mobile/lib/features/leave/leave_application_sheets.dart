@@ -207,8 +207,8 @@ class LeaveSubmitSheet extends StatelessWidget {
             NiuBanner(
               tone: NiuTone.neutral,
               message: modify
-                  ? '送出後會寫入學校的假單並重新審核，無法在 App 內復原。'
-                  : '送出後會進入學校審核，無法在 App 內撤回。',
+                  ? '請務必在送出後至學校校務系統查看，確認假單內容已正確修改。'
+                  : '請務必在送出後至學校校務系統查看，確認假單與證明文件已正確送出。',
             ),
             const SizedBox(height: NiuSpacing.lg),
             Row(

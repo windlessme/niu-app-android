@@ -56,6 +56,9 @@ class SchoolLeaveWithdraw implements LeaveWithdrawGateway {
   /// Set while the school's delete confirm may appear.
   bool expectingConfirm = false;
 
+  /// The last postback state and list check, for analytics.
+  String state = 'none', check = 'none';
+
   bool acceptsConfirm(String? message) {
     final text = message ?? '';
     if (!expectingConfirm || !(text.contains('刪除') || text.contains('撤回'))) {
@@ -113,26 +116,36 @@ class SchoolLeaveWithdraw implements LeaveWithdrawGateway {
     final clock = Stopwatch()..start();
     while (clock.elapsed < const Duration(seconds: 15)) {
       await Future<void>.delayed(interval);
-      final state = await _read(leaveWithdrawState);
-      if (state == 'declined') {
+      final now = await _read(leaveWithdrawState);
+      if (now is String) state = now;
+      if (now == 'declined') {
         throw const LeaveApplicationException('學校的確認沒有通過，沒有撤回');
       }
-      if (state == 'expired') return LeaveWithdrawOutcome.unconfirmed;
-      if (state == 'waiting' || state == 'reloaded' || state == 'removed') {
+      if (now == 'waiting' || now == 'reloaded' || now == 'removed') {
         posted = true;
       }
-      if (state == 'reloaded' || state == 'removed') break;
+      // A replaced page can no longer be read; the list check decides.
+      if (now == null && posted) break;
+      if (now == 'reloaded' || now == 'removed' || now == 'expired') break;
     }
     expectingConfirm = false;
-    if (!posted) return LeaveWithdrawOutcome.unconfirmed;
+    if (!posted && state == 'confirming') {
+      // The school's prompt was never answered: nothing was sent.
+      throw const LeaveApplicationException('學校的確認沒有完成，沒有撤回');
+    }
+    // 學生請假修改, read again, is the answer either way.
     try {
       await _read(leaveManageReset);
       await _settledList();
       final listed = await _read(leaveManageListed(formNo));
-      if (listed == 'gone') return LeaveWithdrawOutcome.withdrawn;
+      if (listed is String) check = listed;
+      // Gone, or still listed without its withdraw link: the school took it.
+      if (listed == 'gone' || listed == 'locked') {
+        return LeaveWithdrawOutcome.withdrawn;
+      }
       if (listed == 'listed') return LeaveWithdrawOutcome.stillListed;
     } on LeaveApplicationException {
-      // The check failed; the withdraw itself was already sent.
+      check = 'failed';
     }
     return LeaveWithdrawOutcome.unconfirmed;
   }
@@ -198,10 +211,15 @@ class _LeaveWithdrawScreenState extends State<LeaveWithdrawScreen> {
     started = true;
     try {
       final result = await gateway!.withdraw(widget.formNo);
+      final school = gateway;
       AppAnalytics.instance.event('leave_withdraw', {
         'result': result == LeaveWithdrawOutcome.withdrawn
             ? 'success'
             : 'unconfirmed',
+        if (school is SchoolLeaveWithdraw) ...{
+          'state': school.state,
+          'check': school.check,
+        },
       });
       if (current) setState(() => outcome = result);
     } on LeaveApplicationException catch (e) {

@@ -55,15 +55,29 @@ class LeaveActions {
 const leaveManagePath =
     '/NIU/Application/SEC/SEC20/SEC2015_.aspx?progcd=SEC2015';
 
-/// Shared by every script below: the frames of the school's MainFrame, and the
-/// 學生請假修改 list with its rows keyed by header text.
-const _leaveManageHelpers = r'''
+/// 請假紀錄 (SEC4030): every form with its approval state.
+const leaveRecordsPath =
+    '/NIU/Application/SEC/SEC40/SEC4030_.aspx?progcd=SEC4030';
+
+/// A school list page and the file its grid lives in.
+typedef LeaveListPage = ({String path, String file});
+const leaveManageList = (path: leaveManagePath, file: 'SEC2015_01');
+const leaveRecordsList = (path: leaveRecordsPath, file: 'SEC4030_01');
+
+/// Shared by every script below: the frames of the school's MainFrame, and
+/// the list page's rows keyed by header text.
+String _helpers(LeaveListPage page) =>
+    ' const listFile=${jsonEncode(page.file)};\n$_leaveListHelpers';
+
+const _leaveListHelpers = r'''
  const docs=[];function collect(w){try{docs.push(w.document);for(let i=0;i<w.frames.length;i++)collect(w.frames[i]);}catch(_){}}collect(window);
  const path=d=>{try{return new URL(d.location.href).pathname;}catch(_){return '';}};
  const expired=()=>docs.some(d=>/\/timeoutpage\.aspx$/i.test(path(d)));
- // A page replaced by [leaveManageReset] stays visible until the new one commits.
- const list=()=>docs.find(d=>/\/SEC2015_01\.aspx$/i.test(path(d))&&!d.__niuLeaveManageStale);
+ // A page replaced by [leaveListReset] stays visible until the new one commits.
+ const list=()=>docs.find(d=>path(d).toLowerCase().endsWith('/'+listFile.toLowerCase()+'.aspx')&&!d.__niuLeaveManageStale);
  const cellText=c=>String((c&&c.innerText)||'').replace(/\s+/g,' ').trim();
+ // The school writes the same date as 115/10/08 or 1151008.
+ const roc=v=>{const m=String(v||'').trim().match(/^(\d{2,3})\/?(\d{2})\/?(\d{2})$/);return m?m[1].padStart(3,'0')+'/'+m[2]+'/'+m[3]:String(v||'').trim();};
  function rows(d){
    const grid=d.getElementById('DataGrid');if(!grid||!grid.rows.length)return [];
    const head=Array.from(grid.rows[0].cells,cellText);
@@ -71,22 +85,22 @@ const _leaveManageHelpers = r'''
  }
 ''';
 
-/// Opens 學生請假修改 in mainFrame the way the school's menu does
+/// Opens a school list in mainFrame the way the school's menu does
 /// (`top.mainFrame.location.href = url; top.hideView()`), runs its「查詢」
-/// once and answers 'ready' when the list has settled. [AcademicPortalScreen]
-/// and the leave form poll it until then.
-const leaveManageNavigation =
+/// once and answers 'ready' when the list has settled. Callers poll it.
+String leaveListNavigation(LeaveListPage page) =>
     '''
 (() => {
-$_leaveManageHelpers
+${_helpers(page)}
  if(expired())return 'session-expired';
  const main=window.frames['mainFrame'];
  if(!main)return null;
+ const opened='__niuLeaveOpened:'+listFile;
  const d=list();
  if(!d){
-   if(!window.__niuLeaveManageOpened){
-     window.__niuLeaveManageOpened=true;
-     main.location.href='$leaveManagePath';
+   if(!window[opened]){
+     window[opened]=true;
+     main.location.href=${jsonEncode(page.path)};
      try{if(typeof window.hideView==='function')window.hideView();}catch(_){}
    }
    return null;
@@ -105,12 +119,15 @@ $_leaveManageHelpers
 })()
 ''';
 
+/// 學生請假修改, the list that offers 撤回、修改 and 補檔.
+final leaveManageNavigation = leaveListNavigation(leaveManageList);
+
 /// The actions each listed form allows: 撤回 is the row's delete link,
 /// 修改 and 補檔 are cells that open the form as `Mod` or `Detail`.
-const leaveManageExtract =
+final leaveManageExtract =
     '''
 (() => {
-$_leaveManageHelpers
+${_helpers(leaveManageList)}
  const d=list();if(!d||!d.getElementById('DataGrid'))return null;
  const actions=rows(d).map(r=>{
    const clicks=Array.from(r.row.cells,c=>c.getAttribute('onclick')||'');
@@ -126,7 +143,7 @@ $_leaveManageHelpers
 String leaveManageOpen(String formNo, String mode) =>
     '''
 (() => {
-$_leaveManageHelpers
+${_helpers(leaveManageList)}
  const formNo=${jsonEncode(formNo)}, cell=${jsonEncode(mode == 'MOD' ? 'Mod' : 'Detail')};
  const d=list();if(!d)return 'missing';
  const row=rows(d).find(r=>r.get('假單序號')===formNo);
@@ -145,7 +162,7 @@ $_leaveManageHelpers
 String leaveWithdraw(String formNo) =>
     '''
 (() => {
-$_leaveManageHelpers
+${_helpers(leaveManageList)}
  const formNo=${jsonEncode(formNo)};
  if(expired())return 'expired';
  const d=list();if(!d)return 'missing';
@@ -168,10 +185,10 @@ $_leaveManageHelpers
 
 /// Where the withdraw stands: 'confirming', 'declined', 'waiting' while the
 /// postback runs, then 'reloaded' or 'removed' once the list has changed.
-const leaveWithdrawState =
+final leaveWithdrawState =
     '''
 (() => {
-$_leaveManageHelpers
+${_helpers(leaveManageList)}
  const job=window.__niuLeaveWithdraw;if(!job)return 'none';
  if(expired())return 'expired';
  if(job.state!=='posted')return job.state;
@@ -184,27 +201,43 @@ $_leaveManageHelpers
 })()
 ''';
 
-/// Opens 學生請假修改 afresh for the check after a withdraw. The current page
-/// is marked stale so it is never read as the new one.
-const leaveManageReset =
+/// Opens a list afresh for a check after a change. The current page is
+/// marked stale so it is never read as the new one.
+String leaveListReset(LeaveListPage page) =>
     '''
 (() => {
-$_leaveManageHelpers
+${_helpers(page)}
  const old=list();if(old)old.__niuLeaveManageStale=true;
  window.__niuLeaveWithdraw=null;window.__niuLeaveManageClicked=null;
  const main=window.frames['mainFrame'];if(!main)return false;
- window.__niuLeaveManageOpened=true;
- main.location.href='$leaveManagePath';
+ window['__niuLeaveOpened:'+listFile]=true;
+ main.location.href=${jsonEncode(page.path)};
  return true;
 })()
 ''';
 
-/// Whether [formNo] is still listed (with or without actions) on the settled page.
+final leaveManageReset = leaveListReset(leaveManageList);
+
+/// Where [formNo] stands on the settled 學生請假修改 list: 'gone',
+/// 'locked' (still listed, no longer withdrawable) or 'listed'.
 String leaveManageListed(String formNo) =>
     '''
 (() => {
-$_leaveManageHelpers
+${_helpers(leaveManageList)}
  const d=list();if(!d)return null;
- return rows(d).some(r=>r.get('假單序號')===${jsonEncode(formNo)})?'listed':'gone';
+ const row=rows(d).find(r=>r.get('假單序號')===${jsonEncode(formNo)});
+ if(!row)return 'gone';
+ return row.row.querySelector('a[id\$="_del"]')?'listed':'locked';
+})()
+''';
+
+/// 請假紀錄 rows, dates as 115/10/08, for checking what a submit did.
+final leaveRecordRows =
+    '''
+(() => {
+${_helpers(leaveRecordsList)}
+ const d=list();if(!d||!d.getElementById('DataGrid'))return null;
+ return JSON.stringify(rows(d).map(r=>({formNo:r.get('假單序號'),applied:roc(r.get('申請日期')),
+   type:r.get('請假類別'),start:roc(r.get('請假起日')),end:roc(r.get('請假訖日')),status:r.get('審核結果')})).filter(r=>r.formNo));
 })()
 ''';

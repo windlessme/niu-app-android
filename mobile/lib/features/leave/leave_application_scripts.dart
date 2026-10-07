@@ -103,6 +103,19 @@ const leaveApplicationRuntime = r'''
    }
    return JSON.stringify({periods,revision:revision(picker)});
  }
+ // The school has handled the submit: its postback ended or the form page
+ // was replaced (often by a blank new form). A new form number on the
+ // same student's page proves a new application; otherwise the caller reads
+ // 請假紀錄 to check.
+ if(op==='submissionSettled'){
+   if(!state.submitted)return null;
+   if(main&&(pending(main)||revision(main)===state.submitRevision))return null;
+   const id=main?value(main,'M_FORM_NO'):'';
+   const owner=main?text(main,'M_STNO').toLowerCase():'';
+   const flow=main?main.getElementById('FLOW_BTN'):null;
+   const created=!formNo&&id&&owner===args.owner?.toLowerCase()&&flow&&!flow.disabled;
+   return JSON.stringify({settled:true,applicationId:created?id:null});
+ }
  if(op==='submissionResult'){
    if(!state.submitted)return null;
    if(formNo){

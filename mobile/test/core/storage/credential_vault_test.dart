@@ -3,6 +3,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:niu_mobile/core/session/campus_session.dart';
 import 'package:niu_mobile/core/storage/credential_vault.dart';
+import 'package:niu_mobile/features/events/event_favorites.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -71,4 +72,19 @@ void main() {
     session.dispose();
     restored.dispose();
   });
+
+  test(
+    'event favorites are stored on the device and cleared on logout',
+    () async {
+      final vault = DeviceCredentialVault(const FlutterSecureStorage());
+      final session = CampusSession(vault: vault, platformCleanup: []);
+      addTearDown(session.dispose);
+      session.account = 'b123';
+      final favorites = EventFavorites(session);
+      expect(await favorites.set(['11201'], favorite: true), {'11201'});
+      expect(await favorites.load(), {'11201'});
+      await vault.clear();
+      expect(await favorites.load(), isEmpty);
+    },
+  );
 }

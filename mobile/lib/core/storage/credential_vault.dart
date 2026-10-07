@@ -25,6 +25,8 @@ class DeviceCredentialVault implements CredentialVault {
     'leaveCache',
     'portalCache',
     'rememberedSchoolLogin',
+    // Starred events: personal, so cleared with the rest on logout.
+    'eventFavorites',
     'pendingCleanup',
   ];
 

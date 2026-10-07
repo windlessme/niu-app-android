@@ -71,6 +71,10 @@ class SchoolLeaveApplication implements LeaveApplicationGateway {
   final String owner, run;
   final Duration timeout, interval;
   bool _busy = false, _disposed = false, _submitted = false;
+
+  /// How the last submit was confirmed, for analytics: 'form', 'records',
+  /// 'sent', 'missing' or 'timeout'.
+  String? check;
   String? _pickerRevision;
 
   void guard() {
@@ -383,6 +387,7 @@ class SchoolLeaveApplication implements LeaveApplicationGateway {
     // Lock before the bridge call: navigation/timeout can swallow the reply even
     // when the server received the request. Never offer automatic resend.
     _submitted = true;
+    check = 'timeout';
     try {
       await call('submit', {
         ...args(data),
@@ -395,19 +400,38 @@ class SchoolLeaveApplication implements LeaveApplicationGateway {
           'periods': data.periods,
         },
       });
-      final result = await wait('submissionResult');
-      if (!entry.isApply) {
+      final settled = await wait('submissionSettled');
+      if (entry.isApply && settled['applicationId'] is String) {
+        check = 'form';
         return LeaveSubmitResult(
-          sent: result['sent'] == true,
-          message: entry.isModify
-              ? '學校已處理這次修改。請到請假紀錄確認假單內容與審核狀態。'
-              : '學校已處理補交的證明文件。請到請假紀錄確認附件。',
+          applicationId: settled['applicationId'] as String,
+          message: '學校已建立假單，請至請假紀錄確認審核狀態。',
         );
       }
-      return LeaveSubmitResult(
-        applicationId: result['applicationId'] as String,
-        message: result['message'] as String,
-      );
+      if (entry.isSupplement) {
+        check = 'sent';
+        return const LeaveSubmitResult(
+          sent: true,
+          message: '學校已處理補交的證明文件。請到請假紀錄確認附件。',
+        );
+      }
+      // The page gave no number: 請假紀錄 is what the student would check.
+      final found = await _findInRecords(data);
+      check = found == null ? 'missing' : 'records';
+      if (found == null) {
+        return const LeaveSubmitResult(
+          message: '學校已處理送出，但請假紀錄還沒有列出這張假單。請稍後到請假紀錄確認，不要重複送出。',
+        );
+      }
+      return entry.isApply
+          ? LeaveSubmitResult(
+              applicationId: found,
+              message: '請假紀錄已列出這張假單，審核結果可在請假紀錄查看。',
+            )
+          : const LeaveSubmitResult(
+              sent: true,
+              message: '請假紀錄已顯示修改後的日期，審核結果可在請假紀錄查看。',
+            );
     } on SessionChanged {
       rethrow;
     } catch (_) {
@@ -418,6 +442,50 @@ class SchoolLeaveApplication implements LeaveApplicationGateway {
       );
     }
   });
+
+  /// Finds what the submit did in 請假紀錄, opened afresh in mainFrame: the
+  /// new form (same dates, type, applied today) or the modified one.
+  Future<String?> _findInRecords(LeaveApplicationData data) async {
+    guard();
+    await evaluate(leaveListReset(leaveRecordsList)).timeout(timeout);
+    final clock = Stopwatch()..start();
+    while (clock.elapsed < timeout) {
+      await Future<void>.delayed(interval);
+      guard();
+      dynamic step;
+      try {
+        step = await evaluate(
+          leaveListNavigation(leaveRecordsList),
+        ).timeout(timeout);
+      } catch (_) {
+        continue; // The list page is loading.
+      }
+      if (step == 'session-expired') return null;
+      if (step != 'ready') continue;
+      final raw = await evaluate(leaveRecordRows).timeout(timeout);
+      if (raw is! String) continue;
+      final taipei = DateTime.now().toUtc().add(const Duration(hours: 8));
+      final today = schoolLeaveDate(
+        DateTime(taipei.year, taipei.month, taipei.day),
+      );
+      for (final row in (jsonDecode(raw) as List).whereType<Map>()) {
+        final sameDates = row['start'] == data.start && row['end'] == data.end;
+        if (!entry.isApply) {
+          if (row['formNo'] == entry.formNo && sameDates) return entry.formNo;
+          continue;
+        }
+        final type = '${row['type']}';
+        if (sameDates &&
+            row['applied'] == today &&
+            type.isNotEmpty &&
+            (type.contains(data.typeLabel) || data.typeLabel.contains(type))) {
+          return '${row['formNo']}';
+        }
+      }
+      return null;
+    }
+    return null;
+  }
 
   @override
   void dispose() {
