@@ -4,6 +4,7 @@ import '../../core/session/campus_session.dart';
 import '../academic_portal/academic_portal_screen.dart';
 import '../../shared/shared.dart';
 import '../authentication/login_screen.dart';
+import 'graduation_confetti.dart';
 import 'graduation_dashboard.dart';
 
 class GraduationData {
@@ -158,7 +159,8 @@ class _GraduationScreenState extends State<GraduationScreen> {
           ],
         );
       }
-      return NiuScrollPage(
+      final data = GraduationData.fromJson(cached.data);
+      final page = NiuScrollPage(
         title: '畢業門檻',
         actions: [
           NiuIconButton(
@@ -169,12 +171,19 @@ class _GraduationScreenState extends State<GraduationScreen> {
         ],
         children: [
           GraduationDashboard(
-            data: GraduationData.fromJson(cached.data),
+            data: data,
             updatedAt: cached.fetchedAt,
             offline: session.isOffline,
             needsReauthentication: session.ssoNeedsReauthentication,
             embedded: true,
           ),
+        ],
+      );
+      if (!graduationComplete(data)) return page;
+      return Stack(
+        children: [
+          page,
+          const Positioned.fill(child: GraduationConfetti()),
         ],
       );
     },

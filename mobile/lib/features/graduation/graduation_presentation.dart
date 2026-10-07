@@ -112,6 +112,18 @@ class GraduationPresentation {
   int get applicableCount => requirements.where((r) => !r.nonApplicable).length;
   int get missingCount =>
       requirements.where((r) => !r.nonApplicable && r.progress == null).length;
+
+  /// Every requirement that applies is known and met. 學分學程 is only
+  /// listed, so it never holds this back.
+  bool get allComplete {
+    final applicable = [
+      ...hours,
+      ...qualifications,
+      credits,
+    ].where((r) => !r.nonApplicable);
+    return applicable.isNotEmpty && applicable.every((r) => r.isComplete);
+  }
+
   double? get progress {
     final known = requirements
         .map((r) => r.progress)
