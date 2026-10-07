@@ -27,8 +27,19 @@ const eventsExtractScript = r'''
     const cell = n => clean(table?.querySelectorAll('tr')[n]?.querySelectorAll('td')[1]);
     const iconText = selector => clean(row.querySelector(selector)?.parentElement);
     const link = row.querySelector('a[href*="/Act/RegData/"],a[href*="/Act/Apply/"]')?.href || '';
-    const serial = clean(row.querySelector('p')).match(/[：:]\s*([A-Za-z0-9-]+)/)?.[1]
-      || link.match(/\/Act\/(?:RegData|Apply)\/(\d+)/)?.[1];
+    // The 活動編號 paragraph also holds status and 認證 badges: drop them and
+    // accept digits only, so a badge never becomes part of the ID.
+    const ids = new Set();
+    for (const p of row.querySelectorAll('p')) {
+      if (p.closest('.modal') || p.closest('.enr-list-sec') !== row) continue;
+      const field = p.cloneNode(true);
+      field.querySelectorAll('.badge').forEach(b => b.remove());
+      const text = field.textContent.normalize('NFKC').trim();
+      if (!/^活動編號\s*[:：]/.test(text)) continue;
+      ids.add(text.match(/^活動編號\s*[:：]\s*([0-9]{1,20})\s*$/)?.[1] || '');
+    }
+    const listed = ids.size === 1 ? [...ids][0] : '';
+    const serial = listed || link.match(/\/Act\/(?:RegData|Apply)\/(\d+)/)?.[1];
     return {id: serial || '', name: clean(row.querySelector('h3')),
       action: link, targets: iconText('.fa-id-badge'),
       department: (row.querySelector('.enr-list-dep-nam')?.title || '').replace(/^.*?[：:]/, '').trim(),

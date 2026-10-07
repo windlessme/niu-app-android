@@ -7,6 +7,7 @@ import 'package:niu_mobile/core/web/event_cookie_store.dart';
 import 'package:niu_mobile/core/session/campus_session.dart';
 import 'package:niu_mobile/features/events/event_login_service.dart';
 import 'package:niu_mobile/features/events/event_portal.dart';
+import 'package:niu_mobile/features/events/events_screen.dart';
 import '../../support/fakes.dart';
 
 void node(String source) {
@@ -15,6 +16,18 @@ void node(String source) {
 }
 
 void main() {
+  test('event IDs leave status badges out and accept digits only', () {
+    final dir = Directory.systemTemp.createTempSync('events_list');
+    addTearDown(() => dir.deleteSync(recursive: true));
+    final file = File('${dir.path}/scripts.json')
+      ..writeAsStringSync(jsonEncode({'list': eventsExtractScript}));
+    final result = Process.runSync('node', [
+      'test/fixtures/events_list_dom.cjs',
+      file.path,
+    ]);
+    expect(result.exitCode, 0, reason: '${result.stdout}\n${result.stderr}');
+  });
+
   test(
     'restored event entry goes directly to the requested protected page',
     () async {
