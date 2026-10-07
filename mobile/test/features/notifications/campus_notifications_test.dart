@@ -104,6 +104,22 @@ void main() {
     expect(reads, 1);
   });
 
+  test('the calendar widget gets today on, without an account', () async {
+    await session.logout();
+    final now = DateTime.utc(2026, 10, 10, 4);
+    await notifications(clock: () => now).saveCalendarWidget();
+    final events = gateway.calendar!;
+    expect(events, isNotEmpty);
+    for (final e in events) {
+      expect(e['end']!.compareTo('2026-10-10'), greaterThanOrEqualTo(0));
+      expect(e['start']!.compareTo('2027-04-08'), lessThanOrEqualTo(0));
+      expect(e['title'], isNotEmpty);
+    }
+    expect([
+      for (final e in events) e['start']!,
+    ], [for (final e in events) e['start']!]..sort());
+  });
+
   test('a failed read keeps the scheduled event reminders', () async {
     SharedPreferences.setMockInitialValues({
       CampusNotifications.eventsKey: true,

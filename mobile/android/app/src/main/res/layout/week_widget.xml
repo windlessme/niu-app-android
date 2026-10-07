@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 完整課表: weekdays across, hours down; day headers, rows and cells are added in code. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/week_root" android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:padding="12dp" android:background="@drawable/widget_background"
+    android:contentDescription="本週課表，點一下開啟課表">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:gravity="center_vertical" android:paddingStart="4dp"
+        android:paddingEnd="4dp">
+        <TextView android:id="@+id/week_title" android:layout_width="0dp" android:layout_height="wrap_content"
+            android:layout_weight="1" android:text="本週課表" android:textColor="@color/widget_text"
+            android:textSize="15sp" android:textStyle="bold" android:maxLines="1" />
+        <TextView android:id="@+id/week_range" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="" android:textColor="@color/widget_text_secondary" android:textSize="12sp"
+            android:fontFeatureSettings="tnum" android:maxLines="1" />
+    </LinearLayout>
+    <LinearLayout android:id="@+id/week_days" android:layout_width="match_parent" android:layout_height="22dp"
+        android:layout_marginTop="8dp" android:orientation="horizontal" />
+    <LinearLayout android:id="@+id/week_grid" android:layout_width="match_parent" android:layout_height="0dp"
+        android:layout_weight="1" android:layout_marginTop="2dp" android:orientation="vertical" />
+    <LinearLayout android:id="@+id/week_empty" android:layout_width="match_parent" android:layout_height="0dp"
+        android:layout_weight="1" android:orientation="vertical" android:gravity="center" android:visibility="gone">
+        <TextView android:id="@+id/week_empty_title" android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:text="這週沒有課" android:textColor="@color/widget_text"
+            android:textSize="15sp" android:textStyle="bold" android:maxLines="1" />
+        <TextView android:id="@+id/week_empty_detail" android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text=""
+            android:textColor="@color/widget_text_secondary" android:textSize="12sp" android:maxLines="2"
+            android:gravity="center" />
+    </LinearLayout>
+</LinearLayout>

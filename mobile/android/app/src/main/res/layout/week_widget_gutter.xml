@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/gutter" android:layout_width="22dp" android:layout_height="match_parent"
+    android:gravity="top|center_horizontal" android:text="" android:textColor="@color/widget_text_secondary"
+    android:textSize="9sp" android:fontFeatureSettings="tnum" android:maxLines="1" />

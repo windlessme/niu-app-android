@@ -112,6 +112,10 @@ class ScheduleSession extends CampusSession {
 
 class FakeGateway extends ScheduleGateway {
   final sent = <String, List<CampusNotice>>{};
+  List<Map<String, String>>? calendar;
+  @override
+  Future<void> saveCalendar(List<Map<String, String>> events) async =>
+      calendar = events;
   @override
   Future<void> setNotifications(String kind, List<CampusNotice> items) async =>
       sent[kind] = items;

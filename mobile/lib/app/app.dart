@@ -380,6 +380,7 @@ class _NiuAppState extends State<NiuApp> {
     CustomCourseStore.instance.addListener(_customCoursesChanged);
     _restorePreferences();
     session.restore().catchError((Object _) {});
+    notifications.saveCalendarWidget().catchError((Object _) {});
     PlayUpdate(messenger).check();
   }
 

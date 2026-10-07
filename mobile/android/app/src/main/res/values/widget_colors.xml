@@ -8,4 +8,24 @@
     <color name="widget_glyph">#0A62D0</color>
     <color name="shortcut_background">#E5EEFC</color>
     <color name="shortcut_glyph">#0A62D0</color>
+    <color name="widget_lesson_0">#E4EEFA</color>
+    <color name="widget_lesson_0_bar">#0A62D0</color>
+    <color name="widget_lesson_1">#F2EAF9</color>
+    <color name="widget_lesson_1_bar">#8A3FC4</color>
+    <color name="widget_lesson_2">#E3F0EF</color>
+    <color name="widget_lesson_2_bar">#00786F</color>
+    <color name="widget_lesson_3">#F7ECE3</color>
+    <color name="widget_lesson_3_bar">#B85300</color>
+    <color name="widget_lesson_4">#ECEBF9</color>
+    <color name="widget_lesson_4_bar">#4F46C8</color>
+    <color name="widget_lesson_5">#E6F1EB</color>
+    <color name="widget_lesson_5_bar">#1B7F45</color>
+    <color name="widget_lesson_6">#F8E9EF</color>
+    <color name="widget_lesson_6_bar">#C2336F</color>
+    <color name="widget_lesson_7">#E3EFF4</color>
+    <color name="widget_lesson_7_bar">#00729A</color>
+    <color name="widget_accent">#0A62D0</color>
+    <color name="widget_on_accent">#FFFFFF</color>
+    <color name="widget_hairline">#E2E4EA</color>
+    <color name="widget_muted">#C9CDD6</color>
 </resources>

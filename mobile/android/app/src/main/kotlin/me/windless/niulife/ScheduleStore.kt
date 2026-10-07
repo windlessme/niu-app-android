@@ -22,7 +22,8 @@ internal fun AlarmManager.wakeBy(at: Long, op: PendingIntent, now: Long = System
 }
 /** [lastDay]: a custom course is not shown after it, even if the app isn't opened. */
 internal data class Block(val id: String, val title: String, val room: String,
-    val weekday: Int, val startMinute: Int, val endMinute: Int, val lastDay: LocalDate? = null)
+    val weekday: Int, val startMinute: Int, val endMinute: Int, val lastDay: LocalDate? = null,
+    val teacher: String = "")
 internal data class Snapshot(val start: LocalDate, val end: LocalDate, val blocks: List<Block>) {
     companion object {
         fun parse(json: JSONObject): Snapshot {
@@ -36,7 +37,8 @@ internal data class Snapshot(val start: LocalDate, val end: LocalDate, val block
                 val b = entries.getJSONObject(i)
                 Block(b.getString("id"), b.getString("title"), b.optString("room"),
                     b.getInt("weekday"), b.getInt("startMinute"), b.getInt("endMinute"),
-                    b.optString("lastDay").takeIf { it.isNotEmpty() }?.let(LocalDate::parse)).also {
+                    b.optString("lastDay").takeIf { it.isNotEmpty() }?.let(LocalDate::parse),
+                    b.optString("teacher")).also {
                     require(it.id.isNotBlank() && it.title.isNotBlank() && it.weekday in 1..7 &&
                         it.startMinute in 0..1439 && it.endMinute in 1..1440 && it.endMinute > it.startMinute)
                 }

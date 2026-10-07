@@ -55,6 +55,11 @@ class ScheduleGateway {
   Future<void> saveSnapshot(ScheduleSnapshot snapshot) =>
       channel.invokeMethod<void>('saveSnapshot', snapshot.toJson());
 
+  /// The academic calendar for the 行事曆 widget: `{title, start, end}`
+  /// with ISO dates. It is public school data and survives sign-out.
+  Future<void> saveCalendar(List<Map<String, String>> events) =>
+      channel.invokeMethod<void>('saveCalendar', {'events': events});
+
   /// Call on logout/account switch, including failed or expired sessions.
   Future<void> clear() => channel.invokeMethod<void>('clear');
   Future<bool> requestNotificationPermission() async =>
