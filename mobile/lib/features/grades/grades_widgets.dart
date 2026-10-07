@@ -35,11 +35,26 @@ class GradeSummaryCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          NiuStat(
-            label: title,
-            value: stats.gpa?.toStringAsFixed(2) ?? '—',
-            unit: '/ 4.30',
-            large: true,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: NiuStat(
+                  label: title,
+                  value: stats.gpa?.toStringAsFixed(2) ?? '—',
+                  unit: '/ 4.30',
+                  large: true,
+                ),
+              ),
+              IconButton(
+                tooltip: 'GPA 怎麼算',
+                icon: const Icon(Icons.info_outline_rounded),
+                onPressed: () => showDialog<void>(
+                  context: context,
+                  builder: (_) => const GpaExplanation(),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: NiuSpacing.md),
           NiuProgressBar(value: (stats.gpa ?? 0) / 4.3, semanticLabel: title),
@@ -57,9 +72,9 @@ class GradeSummaryCard extends StatelessWidget {
               ),
               Expanded(
                 child: NiuStat(
-                  label: '及格學分',
-                  value: _credits(stats.passedCredits),
-                  unit: '/ ${_credits(stats.credits)}',
+                  label: '實得學分',
+                  value: _credits(stats.earnedCredits),
+                  unit: '/ ${_credits(stats.attemptedCredits)}',
                 ),
               ),
             ],
@@ -72,11 +87,57 @@ class GradeSummaryCard extends StatelessWidget {
           ],
           const SizedBox(height: NiuSpacing.lg),
           Text(
-            '依數字成績估算；通過、抵免等文字成績不計入。正式結果以學校為準。',
+            '依數字成績估算；通過、抵免等文字成績不計入 GPA，但計入實得學分。正式結果以學校為準。',
             style: theme.textTheme.labelMedium,
           ),
         ],
       ),
+    );
+  }
+}
+
+/// How the app estimates GPA: the school doesn't publish one.
+class GpaExplanation extends StatelessWidget {
+  const GpaExplanation({super.key});
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final figures = theme.textTheme.bodyMedium?.copyWith(
+      fontFeatures: tabularFigures,
+    );
+    return AlertDialog(
+      title: const Text('GPA 怎麼算'),
+      scrollable: true,
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            '學校沒有提供 GPA，這裡由 App 依分數換算 4.3 制績分，僅供參考。\n\n'
+            'GPA ＝ Σ（績分 × 學分）÷ Σ 學分\n\n'
+            '只計入有數字成績且學分大於 0 的課程；通過、抵免等文字成績不計入。'
+            '例如 85 分 3 學分、72 分 2 學分：(4.0×3 + 2.7×2) ÷ 5 = 3.48。',
+          ),
+          const SizedBox(height: NiuSpacing.lg),
+          for (final (range, letter, points) in GradeStatistics.bands)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Row(
+                children: [
+                  Expanded(child: Text(range, style: figures)),
+                  Expanded(child: Text(letter, style: figures)),
+                  Text(points.toStringAsFixed(1), style: figures),
+                ],
+              ),
+            ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('知道了'),
+        ),
+      ],
     );
   }
 }

@@ -77,7 +77,7 @@ void main() {
     expect(semesters.single.rankLabel, '');
   });
 
-  test('pass rate leaves textual grades out, like GPA', () {
+  test('通過 and 抵免 count as earned credits but not toward GPA', () {
     final stats = GradeStatistics([
       const GradeCourse(
         semester: '',
@@ -102,7 +102,29 @@ void main() {
       ),
     ]);
     expect(stats.credits, 4);
-    expect(stats.passRate, .75);
+    // 通過 is earned but stays out of the GPA.
+    expect(stats.earnedCredits, 5);
+    expect(stats.attemptedCredits, 6);
+    expect(stats.gpa, closeTo((4.3 * 3) / 4, 1e-9));
+    expect(
+      GradeStatistics([
+        const GradeCourse(
+          semester: '',
+          name: 'D',
+          type: '',
+          score: '停修',
+          credits: 2,
+        ),
+        const GradeCourse(
+          semester: '',
+          name: 'E',
+          type: '',
+          score: '不通過',
+          credits: 1,
+        ),
+      ]).passRate,
+      0,
+    );
     expect(GradeStatistics(const []).passRate, isNull);
   });
 
@@ -135,15 +157,16 @@ void main() {
       expect(find.text('學期平均'), findsOneWidget);
       expect(find.text('84.6'), findsOneWidget);
       expect(find.text('7/52'), findsOneWidget);
-      expect(find.text('課程數'), findsOneWidget);
-      expect(find.text('5'), findsOneWidget);
+      expect(find.text('已公布'), findsOneWidget);
+      expect(find.text('5 / 5 科', findRichText: true), findsOneWidget);
       expect(find.widgetWithText(NiuBadge, '選修'), findsOneWidget);
 
       await tester.tap(find.text('期中'));
       await tester.pumpAndSettle();
       expect(find.text('期中平均'), findsOneWidget);
-      // Neither is out yet.
+      // Neither is out yet; three of five courses are.
       expect(find.text('—'), findsNWidgets(2));
+      expect(find.text('3 / 5 科', findRichText: true), findsOneWidget);
     });
 
     for (final dark in [false, true]) {
@@ -155,6 +178,14 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.text('累計 GPA（估算）'), findsOneWidget);
+        await tester.tap(find.byTooltip('GPA 怎麼算'));
+        await tester.pumpAndSettle();
+        expect(
+          find.textContaining('(4.0×3 + 2.7×2) ÷ 5 = 3.48'),
+          findsOneWidget,
+        );
+        await tester.tap(find.text('知道了'));
+        await tester.pumpAndSettle();
         expect(find.byType(GradeTrendChart), findsOneWidget);
         expect(find.text('班排 7/52 · 系排 15/88'), findsOneWidget);
         expect(find.text('班排 12/55 · 系排 21/85'), findsOneWidget);
