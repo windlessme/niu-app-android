@@ -88,6 +88,13 @@ second.d.body.innerText = '【第 1 頁/共 1 頁】';
 assert.equal(run(s.navigation), 'ready');
 assert.equal(run(s.listedD1), 'gone');
 
+// Still listed without its delete link: the school took the withdraw.
+const lockedList = listDoc([row('D1', {mod: true})]);
+run(s.reset); mainWin.document = lockedList.d; run(s.navigation);
+lockedList.d.body.innerText = '【第 1 頁/共 1 頁】';
+assert.equal(run(s.navigation), 'ready');
+assert.equal(run(s.listedD1), 'locked');
+
 // A declined school confirm sends nothing.
 const third = listDoc([row('D1', {del: 3, mod: true})]);
 run(s.reset); mainWin.document = third.d; run(s.navigation);
@@ -141,6 +148,7 @@ assert.ok(clicks.includes('SUBMIT'));
 assert.equal(execute('submissionResult', mod), null);
 endRequests.forEach(cb => cb());
 assert.deepEqual(execute('submissionResult', mod), {sent: true});
+assert.deepEqual(execute('submissionSettled', mod), {settled: true, applicationId: null});
 
 // DETAIL (補檔): fields are locked; only attachments and「送出」.
 formWin.__niuPersonalLeave = undefined; // A new screen starts a new run.

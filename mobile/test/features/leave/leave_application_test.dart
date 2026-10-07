@@ -37,11 +37,15 @@ Map<String, dynamic> applicationFixture({String revision = 'd:1'}) => {
 class ScriptWire {
   final calls = <(String, Map<String, dynamic>)>[];
   FutureOr<Object?> Function(String, Map<String, dynamic>)? reply;
+
+  /// Answers scripts other than the form runtime (list pages); 'ready'
+  /// unless set.
+  Object? Function(String source)? page;
   Future<Object?> evaluate(String source) async {
     final match = RegExp(
       r'const run=(.*), op=(.*), args=(.*);',
     ).firstMatch(source);
-    if (match == null) return 'ready';
+    if (match == null) return page?.call(source) ?? 'ready';
     final op = jsonDecode(match[2]!) as String;
     final args = jsonDecode(match[3]!) as Map<String, dynamic>;
     calls.add((op, args));
@@ -165,8 +169,8 @@ void main() {
     expect(wire.calls.where((c) => c.$1 == 'submit'), hasLength(1));
   });
   test('only confirmed server number yields a success result', () async {
-    wire.reply = (op, _) => op == 'submissionResult'
-        ? {'applicationId': 'fixture-001', 'message': '已建立假單'}
+    wire.reply = (op, _) => op == 'submissionSettled'
+        ? {'settled': true, 'applicationId': 'fixture-001'}
         : {'ok': true};
     final result = await gateway.submit(
       LeaveApplicationData.fromJson(applicationFixture()),
@@ -174,6 +178,53 @@ void main() {
     expect(result.confirmed, isTrue);
     expect(result.applicationId, 'fixture-001');
   });
+  String today() {
+    final t = DateTime.now().toUtc().add(const Duration(hours: 8));
+    return schoolLeaveDate(DateTime(t.year, t.month, t.day));
+  }
+
+  test('without a number on the page, 請假紀錄 confirms the new form', () async {
+    wire.reply = (op, _) =>
+        op == 'submissionSettled' ? {'settled': true} : {'ok': true};
+    final rows = [
+      // An older form with the same dates was not applied today.
+      {
+        'formNo': 'D1',
+        'applied': '115/09/01',
+        'type': '事假',
+        'start': '115/10/01',
+        'end': '115/10/01',
+      },
+      {
+        'formNo': 'D2',
+        'applied': today(),
+        'type': '事假',
+        'start': '115/10/01',
+        'end': '115/10/01',
+      },
+    ];
+    wire.page = (source) =>
+        source.contains('applied:roc') ? jsonEncode(rows) : 'ready';
+    final result = await gateway.submit(
+      LeaveApplicationData.fromJson(applicationFixture()),
+    );
+    expect(result.confirmed, isTrue);
+    expect(result.applicationId, 'D2');
+    expect(gateway.check, 'records');
+  });
+
+  test('a form missing from 請假紀錄 stays unconfirmed', () async {
+    wire.reply = (op, _) =>
+        op == 'submissionSettled' ? {'settled': true} : {'ok': true};
+    wire.page = (source) => source.contains('applied:roc') ? '[]' : 'ready';
+    final result = await gateway.submit(
+      LeaveApplicationData.fromJson(applicationFixture()),
+    );
+    expect(result.confirmed, isFalse);
+    expect(result.message, contains('還沒有列出'));
+    expect(gateway.check, 'missing');
+  });
+
   test(
     'public leave and unsupported attachments never invoke school mutations',
     () async {
