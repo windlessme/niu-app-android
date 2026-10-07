@@ -20,6 +20,7 @@ class CustomCourse {
     required this.startPeriod,
     required this.endPeriod,
     required this.lastDay,
+    this.colorId,
   });
 
   final String id, name, classroom, note;
@@ -32,6 +33,11 @@ class CustomCourse {
 
   /// Inclusive last day in Taipei, 「2027-01-31」.
   final String lastDay;
+
+  /// A `CustomCourseColor` name or a picked `#RRGGBB`; null colours the
+  /// course by its name. Kept as text, as on iOS, so a value from a newer
+  /// version survives.
+  final String? colorId;
 
   static String newId() => List.generate(
     16,
@@ -50,6 +56,7 @@ class CustomCourse {
     startPeriod: '${json['startPeriod'] ?? ''}',
     endPeriod: '${json['endPeriod'] ?? ''}',
     lastDay: '${json['lastDay'] ?? ''}',
+    colorId: json['colorId'] is String ? json['colorId'] as String : null,
   );
 
   Map<String, Object> toJson() => {
@@ -61,6 +68,7 @@ class CustomCourse {
     'startPeriod': startPeriod,
     'endPeriod': endPeriod,
     'lastDay': lastDay,
+    'colorId': ?colorId,
   };
 
   static String day(DateTime date) =>

@@ -23,7 +23,9 @@ internal fun AlarmManager.wakeBy(at: Long, op: PendingIntent, now: Long = System
 /** [lastDay]: a custom course is not shown after it, even if the app isn't opened. */
 internal data class Block(val id: String, val title: String, val room: String,
     val weekday: Int, val startMinute: Int, val endMinute: Int, val lastDay: LocalDate? = null,
-    val teacher: String = "")
+    val teacher: String = "",
+    /** A custom course's chosen colour (light, dark); null colours it by title. */
+    val color: Int? = null, val colorDark: Int? = null)
 internal data class Snapshot(val start: LocalDate, val end: LocalDate, val blocks: List<Block>) {
     companion object {
         fun parse(json: JSONObject): Snapshot {
@@ -38,7 +40,8 @@ internal data class Snapshot(val start: LocalDate, val end: LocalDate, val block
                 Block(b.getString("id"), b.getString("title"), b.optString("room"),
                     b.getInt("weekday"), b.getInt("startMinute"), b.getInt("endMinute"),
                     b.optString("lastDay").takeIf { it.isNotEmpty() }?.let(LocalDate::parse),
-                    b.optString("teacher")).also {
+                    b.optString("teacher"), hexColor(b.optString("color")),
+                    hexColor(b.optString("colorDark"))).also {
                     require(it.id.isNotBlank() && it.title.isNotBlank() && it.weekday in 1..7 &&
                         it.startMinute in 0..1439 && it.endMinute in 1..1440 && it.endMinute > it.startMinute)
                 }
@@ -51,6 +54,11 @@ internal data class Snapshot(val start: LocalDate, val end: LocalDate, val block
         else blocks.filter { it.weekday == date.dayOfWeek.value && (it.lastDay == null || !date.isAfter(it.lastDay)) }
             .sortedBy { it.startMinute }
 }
+
+/** `#RRGGBB` → opaque ARGB, or null. */
+internal fun hexColor(value: String): Int? =
+    if (value.length == 7 && value[0] == '#') value.substring(1).toIntOrNull(16)?.let { it or 0xFF000000.toInt() }
+    else null
 
 internal object ScheduleStore {
     fun prefs(c: Context) = c.getSharedPreferences("schedule_v1", Context.MODE_PRIVATE)

@@ -14,6 +14,7 @@ class GraduationDashboard extends StatelessWidget {
     this.offline = false,
     this.needsReauthentication = false,
     this.embedded = false,
+    this.onLearningHours,
   });
   final GraduationData data;
   final DateTime? updatedAt;
@@ -21,6 +22,9 @@ class GraduationDashboard extends StatelessWidget {
 
   /// Embedded dashboards render inside a parent scroll view.
   final bool embedded;
+
+  /// Opens the 多元學習 record list; no button when null.
+  final VoidCallback? onLearningHours;
 
   @override
   Widget build(BuildContext context) {
@@ -45,6 +49,20 @@ class GraduationDashboard extends StatelessWidget {
       _Card(
         icon: NiuIcons.time,
         title: '多元時數',
+        trailing: onLearningHours == null
+            ? null
+            : TextButton.icon(
+                onPressed: onLearningHours,
+                icon: const Icon(Icons.list_alt_rounded, size: 18),
+                label: const Text('時數紀錄'),
+                style: TextButton.styleFrom(
+                  minimumSize: const Size(48, 48),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: NiuSpacing.sm,
+                  ),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ),
         child: Column(
           children: [
             for (var i = 0; i < model.hours.length; i++) ...[
@@ -289,10 +307,16 @@ class _RingPainter extends CustomPainter {
 }
 
 class _Card extends StatelessWidget {
-  const _Card({required this.icon, required this.title, required this.child});
+  const _Card({
+    required this.icon,
+    required this.title,
+    required this.child,
+    this.trailing,
+  });
   final IconData icon;
   final String title;
   final Widget child;
+  final Widget? trailing;
   @override
   Widget build(BuildContext context) => NiuCard(
     padding: const EdgeInsets.all(NiuSpacing.xl),
@@ -312,9 +336,10 @@ class _Card extends StatelessWidget {
                 ),
               ),
             ),
+            ?trailing,
           ],
         ),
-        const SizedBox(height: NiuSpacing.lg),
+        SizedBox(height: trailing == null ? NiuSpacing.lg : NiuSpacing.xs),
         child,
       ],
     ),

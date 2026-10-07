@@ -6,6 +6,7 @@ import '../../shared/shared.dart';
 import '../authentication/login_screen.dart';
 import 'graduation_confetti.dart';
 import 'graduation_dashboard.dart';
+import 'learning_hours_screen.dart';
 
 class GraduationData {
   GraduationData.fromJson(Map<String, dynamic> json)
@@ -176,6 +177,12 @@ class _GraduationScreenState extends State<GraduationScreen> {
             offline: session.isOffline,
             needsReauthentication: session.ssoNeedsReauthentication,
             embedded: true,
+            onLearningHours: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                settings: const RouteSettings(name: '/learning_hours'),
+                builder: (_) => LearningHoursScreen(session: session),
+              ),
+            ),
           ),
         ],
       );

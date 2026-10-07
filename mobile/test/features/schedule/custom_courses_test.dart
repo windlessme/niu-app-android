@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'dart:ui' show Tristate;
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:niu_mobile/features/schedule/course_colors.dart';
 import 'package:niu_mobile/features/schedule/custom_course_editor.dart';
 import 'package:niu_mobile/features/schedule/custom_courses.dart';
 import 'package:niu_mobile/features/schedule/schedule_export.dart';
@@ -22,6 +25,7 @@ CustomCourse course({
   String start = '3',
   String end = '3',
   String lastDay = '2026-12-31',
+  String? colorId,
 }) => CustomCourse(
   id: id,
   name: '日文社',
@@ -30,6 +34,7 @@ CustomCourse course({
   startPeriod: start,
   endPeriod: end,
   lastDay: lastDay,
+  colorId: colorId,
 );
 
 final monday = DateTime(2026, 10, 5);
@@ -130,6 +135,108 @@ void main() {
     await tester.tap(find.text('儲存'));
     await tester.pumpAndSettle();
     expect(store.coursesFor('b1').single.weekdays, [1]);
+  });
+
+  test('colours: presets, picked hex, and unknown values fall back', () {
+    expect(customCourseTint(null), isNull);
+    expect(customCourseTint('blue'), LessonTint.hue(NiuHue.blue));
+    expect(
+      customCourseTint('mint')!.dark,
+      isNot(customCourseTint('mint')!.light),
+    );
+    expect(customCourseTint('#12AB9F')!.light, const Color(0xff12ab9f));
+    expect(customCourseTint('#12AB9F')!.dark, const Color(0xff12ab9f));
+    expect(customCourseTint('chartreuse'), isNull);
+    expect(customCourseTint('#12AB9'), isNull);
+    expect(hexFromColour(const Color(0xff0a62d0)), '#0A62D0');
+    expect(lessonTint('日文社', 'nope'), LessonTint.hue(lessonHue('日文社')));
+    // Stored as text, so a value from a newer version survives a round trip.
+    final kept = CustomCourse.fromJson(course(colorId: 'chartreuse').toJson());
+    expect(kept.colorId, 'chartreuse');
+    expect(CustomCourse.fromJson(course().toJson()).colorId, isNull);
+    expect(course().toJson().containsKey('colorId'), isFalse);
+  });
+
+  test('lessons and widget blocks carry the chosen colour', () {
+    final merged = school.withCustomCourses([
+      course(colorId: 'red', start: '3', end: '3'),
+    ], monday);
+    expect(scheduleLessons(merged, '星期一').last.colorId, 'red');
+    final blocks = scheduleBlocks(merged);
+    final custom = blocks.singleWhere((b) => b.title == '日文社').toJson();
+    expect(custom['color'], hexFromColour(NiuHue.red.light));
+    expect(custom['colorDark'], hexFromColour(NiuHue.red.dark));
+    final schoolBlock = blocks.firstWhere((b) => b.title != '日文社');
+    expect(schoolBlock.toJson().containsKey('color'), isFalse);
+  });
+
+  testWidgets('the editor picks a preset or a custom colour', (tester) async {
+    final semantics = tester.ensureSemantics();
+    SharedPreferences.setMockInitialValues({});
+    final store = CustomCourseStore.instance..reset();
+    await store.save('b1', course(colorId: 'chartreuse'));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: NiuTheme.dark,
+        home: CustomCourseEditorScreen(
+          schedule: school,
+          account: 'b1',
+          course: store.coursesFor('b1').single,
+          now: monday,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byType(CourseColorPicker),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    // An unknown value selects nothing, and saving unchanged keeps it.
+    expect(
+      tester
+          .getSemantics(find.bySemanticsLabel('自動'))
+          .flagsCollection
+          .isSelected,
+      Tristate.isFalse,
+    );
+    await tester.ensureVisible(find.bySemanticsLabel('紫色'));
+    await tester.tap(find.bySemanticsLabel('紫色'));
+    await tester.pump();
+    await tester.tap(find.text('儲存'));
+    await tester.pumpAndSettle();
+    expect(store.coursesFor('b1').single.colorId, 'purple');
+
+    await tester.pumpWidget(
+      MaterialApp(
+        // Saving popped the first editor's only route.
+        key: const ValueKey('again'),
+        theme: NiuTheme.light,
+        home: CustomCourseEditorScreen(
+          schedule: school,
+          account: 'b1',
+          course: store.coursesFor('b1').single,
+          now: monday,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byType(CourseColorPicker),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.ensureVisible(find.bySemanticsLabel('自選顏色'));
+    await tester.tap(find.bySemanticsLabel('自選顏色'));
+    await tester.pumpAndSettle();
+    expect(find.text('#0A62D0'), findsOneWidget);
+    await tester.tap(find.text('使用這個顏色'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('儲存'));
+    await tester.pumpAndSettle();
+    expect(store.coursesFor('b1').single.colorId, '#0A62D0');
+    expect(tester.takeException(), isNull);
+    semantics.dispose();
   });
 
   test('the wallpaper shows the weekdays and only the periods in use', () {

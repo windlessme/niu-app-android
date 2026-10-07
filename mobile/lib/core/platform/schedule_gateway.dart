@@ -11,8 +11,14 @@ class ScheduleBlock {
     this.room = '',
     this.teacher = '',
     this.lastDay = '',
+    this.color = '',
+    this.colorDark = '',
   });
   final String id, title, room, teacher;
+
+  /// A custom course's chosen colour as `#RRGGBB` for light and dark
+  /// widgets; empty colours the block by its title.
+  final String color, colorDark;
   final int weekday, startMinute, endMinute;
 
   /// A custom course's last day (`2026-12-31`), after which the device stops
@@ -27,6 +33,8 @@ class ScheduleBlock {
     'room': room,
     'teacher': teacher,
     if (lastDay.isNotEmpty) 'lastDay': lastDay,
+    if (color.isNotEmpty) 'color': color,
+    if (colorDark.isNotEmpty) 'colorDark': colorDark,
   };
 }
 

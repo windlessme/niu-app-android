@@ -83,7 +83,8 @@ class ScheduleWidget : AppWidgetProvider() {
                 row.setTextViewText(R.id.row_title, block.title)
                 row.setTextViewText(R.id.row_detail,
                     listOf(block.room, block.teacher).filter(String::isNotBlank).joinToString(" · "))
-                row.setImageViewResource(R.id.row_bar, if (ended) R.drawable.widget_bar_muted else lessonBar(block.title))
+                if (ended) row.setImageViewResource(R.id.row_bar, R.drawable.widget_bar_muted)
+                else row.setLessonBar(R.id.row_bar, block, c)
                 row.setViewVisibility(R.id.row_badge, if (block === current) View.VISIBLE else View.GONE)
                 row.setViewVisibility(R.id.row_next, if (block === next && current == null) View.VISIBLE else View.GONE)
                 if (ended) row.setFloat(R.id.row_root, "setAlpha", 0.5f)

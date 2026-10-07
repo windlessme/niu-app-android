@@ -11,9 +11,9 @@ import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../shared/shared.dart';
+import 'course_colors.dart';
 import 'schedule_models.dart';
 import 'schedule_presentation.dart';
-import 'schedule_week_view.dart';
 
 /// One course over its consecutive periods in the wallpaper grid.
 typedef WallpaperBlock = ({
@@ -252,7 +252,10 @@ class ScheduleWallpaperCanvas extends StatelessWidget {
     double rowHeight,
     Color ink,
   ) {
-    final colour = lessonHue(block.lesson.name).foreground(context);
+    final colour = lessonTint(
+      block.lesson.name,
+      block.lesson.colorId,
+    ).foreground(context);
     final height = (block.bottom - block.top + 1) * rowHeight;
     final nameSize = (rowHeight * .3).clamp(8.5, 11.5).toDouble();
     final custom = block.lesson.customId != null;

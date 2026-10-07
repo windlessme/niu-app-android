@@ -15,10 +15,14 @@ class ScheduleLesson {
     required this.start,
     required this.end,
     this.customId,
+    this.colorId,
   });
 
   /// Set for a course added on this device rather than by the school.
   final String? customId;
+
+  /// A custom course's chosen colour (see `customCourseTint`).
+  final String? colorId;
   final String day;
   final String name;
   final String teacher;
@@ -128,6 +132,7 @@ List<ScheduleLesson> scheduleLessons(
         start: previous.start,
         end: end,
         customId: previous.customId,
+        colorId: previous.colorId,
       );
     } else {
       flush();
@@ -140,6 +145,7 @@ List<ScheduleLesson> scheduleLessons(
         start: start,
         end: end,
         customId: custom?.id,
+        colorId: custom?.colorId,
       );
     }
   }

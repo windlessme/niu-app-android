@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../shared/shared.dart';
+import 'course_colors.dart';
 import 'custom_courses.dart';
 import 'schedule_models.dart';
 import 'schedule_presentation.dart';
@@ -60,6 +61,10 @@ class _CustomCourseEditorScreenState extends State<CustomCourseEditorScreen> {
   late DateTime lastDay =
       (original == null ? null : CustomCourse.date(original!.lastDay)) ??
       defaultCustomCourseLastDay(today);
+
+  /// An unknown stored value (from a newer version) shows as unselected
+  /// but is kept until changed.
+  late String? colorId = original?.colorId;
   bool saving = false;
 
   List<SchedulePeriod> get periods => widget.schedule.periods;
@@ -97,6 +102,7 @@ class _CustomCourseEditorScreenState extends State<CustomCourseEditorScreen> {
           startPeriod: periods[startRow].label,
           endPeriod: periods[endRow < startRow ? startRow : endRow].label,
           lastDay: CustomCourse.day(lastDay),
+          colorId: colorId,
         );
 
   String? get conflict {
@@ -308,6 +314,16 @@ class _CustomCourseEditorScreenState extends State<CustomCourseEditorScreen> {
             ),
           ),
           NiuSection(
+            title: '顏色',
+            subtitle: '「自動」會依課程名稱配色；最後一格可以自選顏色。',
+            child: NiuCard(
+              child: CourseColorPicker(
+                value: colorId,
+                onChanged: (v) => setState(() => colorId = v),
+              ),
+            ),
+          ),
+          NiuSection(
             title: '期限',
             subtitle: expired
                 ? '這個日期已經過了，課程不會顯示在課表上'
@@ -344,6 +360,206 @@ class _CustomCourseEditorScreenState extends State<CustomCourseEditorScreen> {
           const SizedBox(height: NiuSpacing.lg),
           Text('自訂課程只存在這支手機，不會傳送到學校系統。', style: theme.textTheme.labelMedium),
         ],
+      ),
+    );
+  }
+}
+
+/// 「自動」, the presets, and a swatch that opens a picker for any colour.
+class CourseColorPicker extends StatelessWidget {
+  const CourseColorPicker({
+    super.key,
+    required this.value,
+    required this.onChanged,
+  });
+  final String? value;
+  final ValueChanged<String?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final picked = value == null ? null : colourFromHex(value!);
+    return Wrap(
+      spacing: NiuSpacing.xs,
+      runSpacing: NiuSpacing.xs,
+      children: [
+        _Swatch(
+          label: '自動',
+          selected: value == null,
+          icon: Icons.auto_awesome_rounded,
+          onTap: () => onChanged(null),
+        ),
+        for (final preset in CustomCourseColor.values)
+          _Swatch(
+            label: preset.title,
+            colour: preset.tint.foreground(context),
+            selected: value == preset.name,
+            onTap: () => onChanged(preset.name),
+          ),
+        _Swatch(
+          label: '自選顏色',
+          colour: picked,
+          icon: picked == null ? Icons.palette_outlined : null,
+          selected: picked != null,
+          onTap: () async {
+            final colour = await showModalBottomSheet<Color>(
+              context: context,
+              isScrollControlled: true,
+              builder: (_) =>
+                  _ColourSheet(initial: picked ?? NiuHue.blue.light),
+            );
+            if (colour != null) onChanged(hexFromColour(colour));
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _Swatch extends StatelessWidget {
+  const _Swatch({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    this.colour,
+    this.icon,
+  });
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final Color? colour;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = NiuColors.of(context);
+    final fill = colour ?? colors.fill;
+    // A ring and a check mark the choice without relying on colour alone.
+    final check = ThemeData.estimateBrightnessForColor(fill) == Brightness.dark
+        ? Colors.white
+        : Colors.black;
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      excludeSemantics: true,
+      child: Tooltip(
+        message: label,
+        child: InkResponse(
+          onTap: onTap,
+          radius: 24,
+          child: SizedBox(
+            width: 48,
+            height: 48,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                if (selected)
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: colors.ink, width: 2),
+                    ),
+                  ),
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: fill,
+                  ),
+                  child: icon != null
+                      ? Icon(icon, size: 18, color: colors.inkSecondary)
+                      : selected
+                      ? Icon(Icons.check_rounded, size: 18, color: check)
+                      : null,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Hue, saturation and brightness sliders with a preview.
+class _ColourSheet extends StatefulWidget {
+  const _ColourSheet({required this.initial});
+  final Color initial;
+  @override
+  State<_ColourSheet> createState() => _ColourSheetState();
+}
+
+class _ColourSheetState extends State<_ColourSheet> {
+  late HSVColor colour = HSVColor.fromColor(widget.initial);
+
+  Widget slider(
+    String label,
+    double value,
+    double max,
+    HSVColor Function(double) set,
+  ) => Row(
+    children: [
+      SizedBox(
+        width: 56,
+        child: Text(label, style: Theme.of(context).textTheme.labelLarge),
+      ),
+      Expanded(
+        child: Slider(
+          value: value,
+          max: max,
+          label: label,
+          onChanged: (v) => setState(() => colour = set(v)),
+        ),
+      ),
+    ],
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    final text = Theme.of(context).textTheme;
+    final result = colour.toColor();
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          NiuSpacing.gutter,
+          0,
+          NiuSpacing.gutter,
+          NiuSpacing.xl,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('自選顏色', style: text.titleLarge),
+            const SizedBox(height: NiuSpacing.lg),
+            Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: result,
+                  ),
+                ),
+                const SizedBox(width: NiuSpacing.md),
+                Text(hexFromColour(result), style: text.titleMedium),
+              ],
+            ),
+            const SizedBox(height: NiuSpacing.md),
+            slider('色相', colour.hue, 360, (v) => colour.withHue(v % 360)),
+            slider('飽和度', colour.saturation, 1, colour.withSaturation),
+            slider('亮度', colour.value, 1, colour.withValue),
+            const SizedBox(height: NiuSpacing.md),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, result),
+              child: const Text('使用這個顏色'),
+            ),
+          ],
+        ),
       ),
     );
   }
