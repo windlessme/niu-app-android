@@ -4,6 +4,7 @@ import '../../core/demo/demo_data.dart';
 import '../academic_portal/academic_portal_screen.dart';
 import '../../core/session/campus_session.dart';
 import '../../shared/shared.dart';
+import 'course_colors.dart';
 import 'custom_course_editor.dart';
 import 'custom_courses.dart';
 import 'schedule_presentation.dart';
@@ -617,7 +618,9 @@ class _LessonTile extends StatelessWidget {
     final colors = NiuColors.of(context);
     final scale = MediaQuery.textScalerOf(context).scale(1);
     final compact = MediaQuery.sizeOf(context).width < 360 && scale > 1.5;
+    final tint = customCourseTint(lesson.colorId);
     final card = NiuCard(
+      color: tint?.background(context),
       onTap: onOpen == null ? null : () => onOpen!(lesson.name),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -628,7 +631,10 @@ class _LessonTile extends StatelessWidget {
             children: [
               if (current)
                 const NiuBadge(label: '上課中', tone: NiuTone.accent, solid: true),
-              if (lesson.customId != null) const NiuBadge(label: '自訂'),
+              if (lesson.customId != null)
+                tint == null
+                    ? const NiuBadge(label: '自訂')
+                    : _TintBadge(label: '自訂', tint: tint),
               NiuBadge(label: lesson.periodLabel, tone: NiuTone.accent),
               if (compact) NiuBadge(label: '${lesson.start}–${lesson.end}'),
             ],
@@ -702,4 +708,32 @@ class _LessonTile extends StatelessWidget {
       ],
     ),
   );
+}
+
+/// 「自訂」 filled with a custom course's chosen colour.
+class _TintBadge extends StatelessWidget {
+  const _TintBadge({required this.label, required this.tint});
+  final String label;
+  final LessonTint tint;
+  @override
+  Widget build(BuildContext context) {
+    // Solid, so it stands out on a card washed in the same colour.
+    final fill = tint.foreground(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+      decoration: BoxDecoration(
+        color: fill,
+        borderRadius: BorderRadius.circular(NiuRadius.pill),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+          color: ThemeData.estimateBrightnessForColor(fill) == Brightness.dark
+              ? Colors.white
+              : Colors.black,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
 }

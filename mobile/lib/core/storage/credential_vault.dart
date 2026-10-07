@@ -27,6 +27,8 @@ class DeviceCredentialVault implements CredentialVault {
     'rememberedSchoolLogin',
     // Starred events: personal, so cleared with the rest on logout.
     'eventFavorites',
+    // 多元學習時數 from the campus-only student portal.
+    'learningHoursCache',
     'pendingCleanup',
   ];
 

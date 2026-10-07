@@ -1,6 +1,6 @@
 # HANDOFF
 
-給接手的 Claude Code session。最後更新：2026-10-07。目前版本：**1.0.33+114**。
+給接手的 Claude Code session。最後更新：2026-10-08。目前版本：**1.0.34+115**。
 
 ## 專案概況
 
@@ -15,7 +15,7 @@
 
 在 `mobile/` 底下執行：
 
-1. `set -o pipefail; tool/verify.sh`，包含 calendar/toolchain/分層/DOM 檢查、`dart format`、`flutter analyze`、`flutter test`，目前 412 項測試。
+1. `set -o pipefail; tool/verify.sh`，包含 calendar/toolchain/分層/DOM 檢查、`dart format`、`flutter analyze`、`flutter test`，目前 434 項測試。
 2. 把 `pubspec.yaml` 的 patch 版號和 build number 各加一。
 3. commit 到 `main`，**push 到 origin main**。
 4. `flutter build appbundle --release`，上傳到 Play internal 軌道（步驟見下節）。**每個新版本都要推。**
@@ -28,15 +28,15 @@
 - Firebase 設定檔（`google-services.json`，專案 `niu-life-ac16e`）也放在 repo 外：`/root/.config/niulife-firebase/google-services.json`，可以用 `NIULIFE_GOOGLE_SERVICES` 改路徑。建置時 Gradle 會把它複製到 `android/app/`（已加進 gitignore）並套用 Google Services 外掛；找不到檔案時照常建置，但 Analytics 會停用。
 - Upload key 的 SHA-256 指紋：`95:04:DD:13:D3:38:D6:E5:7C:83:89:42:9F:B0:A0:AB:25:4E:F1:1F:95:CE:AB:DC:5E:4B:B4:04:46:C8:4B:FA`。已經請使用者另外備份。
 - 已啟用 Play 應用程式簽署：發布用的金鑰由 Google 保管，這把只是 upload key。
-- Play 各軌道現況（2026-10-03 用 MCP 查過）：
-  - **正式版：1.0.0 (81)**，已審核通過並發布。**1.0.17 (98) 已送審**（使用者 2026-10-06 告知）。
+- Play 各軌道現況（2026-10-08 用 MCP 查過）：
+  - **正式版：1.0.17 (98)**，已審核通過、狀態 completed。GA 顯示 2026-10-08 時多數使用者仍在 1.0.0，還在陸續更新。
   - 公開測試（beta）：1.0.0 (81)。
-  - internal：**1.0.33 (114)**（2026-10-07 推送）。
+  - internal：**1.0.34 (115)**（2026-10-08 推送）。
 - 正式版由使用者在 Play Console 升級（Claude 推 production 會被權限擋下，屬正常）。
 - **正式版不用每版都推**，只要 versionCode 比上一個正式版大就行。建議 internal 每版都推；等使用者在手機上測過、累積一批改動或有重要修正時，再挑一版推正式版。**版本說明的寫法（使用者 2026-10-05 要求）**：
   - internal：只寫**這一版**改了什麼，讓使用者知道要測哪裡。沒有使用者看得到的改動時寫「內部調整，功能沒有變化」。不要再沿用累計說明，否則每版看起來都一樣。
   - 正式版：寫「從上一個正式版到現在的所有改變」。推正式版時由使用者貼上，草稿維護在下面的「下一個正式版的說明草稿」，每次 internal 有使用者看得到的改動就一起更新。
-- 1.0.17（含 1.0.4、1.0.5、1.0.8～1.0.17 的改動）已送審為正式版。審核結束前不要再提交新的正式版，否則會重新審查。下一個正式版的說明草稿從 1.0.17 之後重新累計。
+- 1.0.17（含 1.0.4、1.0.5、1.0.8～1.0.17 的改動）已審核通過並發布為正式版。下一個正式版的說明草稿從 1.0.17 之後累計。
 - **1.0.17 正式版的版本說明**（1.0.0 之後的累計改動，已送審）：
   ```
   ・長按 App 圖示可以直接開啟點名、課表、M 園區與圖書館入館碼
@@ -79,6 +79,8 @@
   ・報名或取消活動後，活動提醒立刻更新
   ・自訂課程過了到期日，小工具與上課提醒也會自動移除
   ・桌面小工具改版：今日課表逐堂列出時間、教室與上課狀態；新增「完整課表」與「行事曆」小工具
+  ・畢業門檻新增「時數紀錄」，列出每筆多元學習認證活動與時數（需校園網路）
+  ・自訂課程可以選顏色，課表、桌布與小工具都會套用
   ```
 - 公開測試的使用者會自動拿到 versionCode 較大的正式版，公開測試軌道不用特別處理。release 名稱用 `X.Y.Z (versionCode)`，附一句 zh-TW 版本說明。
 - 上傳流程（每個新版本都要做）：`flutter build appbundle --release`，然後用 MCP 依序 `edits_insert` → `bundles_upload` → `tracks_update`（internal，status `completed`）→ `edits_commit`。
@@ -151,6 +153,7 @@
 | 1.0.31 | `5961c2c` | 登入頁要求密碼至少 8 個字元（`LoginScreen.minPassword`）：不足時登入鍵停用、欄位下方灰字提示，按下鍵盤的登入後改為紅字錯誤；不影響已保存帳密的自動登入 |
 | 1.0.32 | `37a6771` | 與 iOS 同步 7 項：問答腳本 `moodleQuestionInstall` 同步 iOS `7d5444d`（文字題以題目當標籤、revision 過期回 changed、經校方 form 送出）。**歷年排名**：摘要表選取器也會抓到修課紀錄表，課程列蓋掉摘要（學分被當班排名），改以表頭（學年期／系排名／班排名／平均）找摘要表、依欄名對應，輸出 `ranks` 物件；舊快取的 `summary` 不再採用，學期卡顯示「班排 · 系排」。GPA：`GradeStatistics` 加 `earnedCredits`／`attemptedCredits`（通過、抵免、免修算實得，不計入 GPA），「GPA 怎麼算」說明對話框；期中／學期無已公布成績時顯示空狀態、統計改「已公布 n / m 科」。活動編號只讀「活動編號」段落、移除 badge、只收數字，否則用連結編號（`events_list_dom.cjs`）。請假輪詢 0.4→0.2 秒、`Logout.aspx` 視為過期、清單與選單導覽被 MainFrame 吃掉時最多重送 2 次。畢業門檻全數達成（學分學程不算）顯示「恭喜！已全數完成！」與彩帶（`graduation_confetti.dart`，不攔點擊、減少動態時關閉），未達成最多 99%。`EventsScreen.onRegistrations` → `CampusNotifications.refreshEvents` 只重排活動提醒。`ScheduleBlock.lastDay`：自訂課程的到期日寫進原生快照，`Snapshot.on(date)` 過期就不出現在小工具與提醒 |
 | 1.0.33 | `c77744a` | 桌面小工具（原生 RemoteViews，全部用資源顏色，跟著系統深淺色）：**今日課表**（`ScheduleWidget`）改成逐堂一列（`schedule_widget_row.xml`：起訖時間、課程色條、課名、教室·老師、「上課中」／「下堂」標籤，已下課變淡），依高度決定列數、放不下先藏已下課的並顯示「還有 n 堂」，高度 ≥230dp 才顯示點名／入館碼；最小尺寸改 2×2。**下一堂課**多一行「接著 …」。新增 **完整課表**（`WeekWidget`，4×4）：週一到五（週末有課才出現），每小時一列，課程填滿涵蓋的時段，第一格課名、第二格教室，正在上的用強調色；週末且本週已無課時顯示下週。新增 **行事曆**（`CalendarWidget`）：進行中的事件在前、接著依日期，日期方塊＋「明天／n 天後／進行中 · 至」；資料由 Flutter `CampusNotifications.saveCalendarWidget()`（App 啟動時）經 `saveCalendar` 存到 `calendar_widget_v1`，不需登入、登出不清。課程配色與 App 週課表 `lessonHue` 相同（同一個雜湊）。`Block` 多讀 `teacher`。四個小工具共用 `ScheduleWidget.refresh` 與同一個喚醒（下一個上下課時間或午夜）；縮放時重畫 |
+| 1.0.34 | （待補） | 依 iOS `17776fa`：畢業門檻「多元時數」卡片右上加「時數紀錄」（`learning_hours.dart`、`learning_hours_screen.dart`）：用記住的學校帳密登入學生服務平台 `ep.niu.edu.tw`（只有校園網路連得到；`/login/student` → `/Api/MultLearn` 摘要 → `/Api/MultLearnDetail?page=n` 明細，最多 30 頁，每次獨立 Dio 與 Cookie），領域 chip 篩選；快取在 vault `learningHoursCache`（綁帳號、登出清除），先顯示快取、更新失敗保留舊資料；示範模式用假資料；錯誤記 `load_error` page=`learning_hours`。依 iOS `4376938`：**自訂課程顏色**（`course_colors.dart`）：自動＋12 種預設（名稱與 iOS 相同）＋自選（色相／飽和度／亮度），存在 `CustomCourse.colorId`（預設名或 `#RRGGBB`，未知值保留但回退自動配色）；週課表、單日卡片（底色＋實心「自訂」標籤）、桌布套用；原生快照多 `color`／`colorDark`，今日課表色條用 `setColorFilter`，完整課表格子在 Android 12 以上用背景 tint，12 以下維持依課名配色。`lessonHue` 移到 `course_colors.dart` |
 
 另外：
 
@@ -436,7 +439,7 @@
 
 ## 可以接著做的事
 
-1. **1.0.17 已送審為正式版（2026-10-06）**，等審核結果；審核結束前不要提交新的正式版。
+1. **1.0.17 已是正式版（2026-10-08 確認）**。下一個正式版由使用者挑 internal 版本推，說明用上面的草稿。
 2. 在實機上驗證三種通知和點通知後的跳轉，必要時調整文案或時間。
 3. 等使用者把測試人員加進 internal 名單，再推版本號更大的 build，在實機上測 In-App Updates。
 4. 用 release 版上 Play 內部測試軌道，驗證 In-App Updates。

@@ -82,8 +82,8 @@ class WeekWidget : AppWidgetProvider() {
                     val cell = RemoteViews(c.packageName,
                         if (now) R.layout.week_widget_cell_now else R.layout.week_widget_cell)
                     if (block != null) {
-                        cell.setInt(R.id.cell, "setBackgroundResource",
-                            if (now) R.drawable.widget_lesson_now else lessonTile(block.title))
+                        if (now) cell.setInt(R.id.cell, "setBackgroundResource", R.drawable.widget_lesson_now)
+                        else cell.setLessonTile(R.id.cell, block, c)
                         cell.setTextViewText(R.id.cell, when (hour - block.startMinute / 60) {
                             0 -> block.title
                             1 -> block.room

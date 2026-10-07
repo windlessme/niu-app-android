@@ -5,7 +5,11 @@ import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.res.ColorStateList
+import android.content.res.Configuration
 import android.net.Uri
+import android.os.Build
+import android.widget.RemoteViews
 import java.time.LocalDate
 
 internal fun clock(minute: Int) = "%02d:%02d".format(minute / 60, minute % 60)
@@ -43,3 +47,37 @@ private fun lessonIndex(name: String): Int {
 
 internal fun lessonTile(name: String) = lessonTiles[lessonIndex(name)]
 internal fun lessonBar(name: String) = lessonBars[lessonIndex(name)]
+
+/** A custom course's chosen colour for the current light or dark theme. */
+internal fun Block.tint(c: Context): Int? = if (c.isNight()) colorDark ?: color else color
+
+private fun Context.isNight() =
+    resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
+
+/** Draws [block]'s bar in its custom colour, else the title's palette colour. */
+internal fun RemoteViews.setLessonBar(id: Int, block: Block, c: Context) {
+    val tint = block.tint(c)
+    if (tint == null) {
+        setImageViewResource(id, lessonBar(block.title))
+    } else {
+        setImageViewResource(id, R.drawable.widget_bar_tint)
+        setInt(id, "setColorFilter", tint)
+    }
+}
+
+/**
+ * Fills [block]'s cell with a light wash of its custom colour. Background
+ * tints are remote only from Android 12; older versions keep the palette tile.
+ */
+internal fun RemoteViews.setLessonTile(id: Int, block: Block, c: Context) {
+    val tint = block.tint(c)
+    if (tint == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+        setInt(id, "setBackgroundResource", lessonTile(block.title))
+        return
+    }
+    val night = c.isNight()
+    val alpha = if (night) 0x47 else 0x24
+    setInt(id, "setBackgroundResource", R.drawable.widget_lesson_tint)
+    setColorStateList(id, "setBackgroundTintList",
+        ColorStateList.valueOf((tint and 0x00FFFFFF) or (alpha shl 24)))
+}

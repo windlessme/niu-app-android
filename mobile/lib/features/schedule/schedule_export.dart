@@ -4,6 +4,7 @@ import '../../shared/shared.dart';
 import '../../core/platform/schedule_gateway.dart';
 import '../../core/platform/schedule_ics.dart';
 import '../../core/session/campus_session.dart';
+import 'course_colors.dart';
 import 'schedule_models.dart';
 
 List<ScheduleBlock> scheduleBlocks(ClassSchedule schedule) {
@@ -58,6 +59,7 @@ List<ScheduleBlock> scheduleBlocks(ClassSchedule schedule) {
       final title = custom?.name ?? (lines.length > 1 ? lines[1] : lines.first);
       final teacher = custom?.note ?? (lines.length > 1 ? lines.first : '');
       final room = custom?.classroom ?? lines.skip(2).join(' ');
+      final tint = customCourseTint(custom?.colorId);
       if (pending != null && raw == identity && start >= pending!.endMinute) {
         pending = ScheduleBlock(
           id: pending!.id,
@@ -68,6 +70,8 @@ List<ScheduleBlock> scheduleBlocks(ClassSchedule schedule) {
           teacher: teacher,
           room: room,
           lastDay: pending!.lastDay,
+          color: pending!.color,
+          colorDark: pending!.colorDark,
         );
       } else {
         flush();
@@ -81,6 +85,8 @@ List<ScheduleBlock> scheduleBlocks(ClassSchedule schedule) {
           teacher: teacher,
           room: room,
           lastDay: custom?.lastDay ?? '',
+          color: tint == null ? '' : hexFromColour(tint.light),
+          colorDark: tint == null ? '' : hexFromColour(tint.dark),
         );
       }
     }

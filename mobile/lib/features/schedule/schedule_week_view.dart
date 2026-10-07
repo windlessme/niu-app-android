@@ -1,27 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../shared/shared.dart';
+import 'course_colors.dart';
 import 'schedule_models.dart';
 import 'schedule_presentation.dart';
-
-const _lessonHues = [
-  NiuHue.blue,
-  NiuHue.purple,
-  NiuHue.teal,
-  NiuHue.orange,
-  NiuHue.indigo,
-  NiuHue.green,
-  NiuHue.pink,
-  NiuHue.cyan,
-];
-
-/// Stable per-course colour, so a course looks the same on every day.
-NiuHue lessonHue(String name) {
-  var hash = 0;
-  for (final unit in name.codeUnits) {
-    hash = (hash * 31 + unit) & 0x7fffffff;
-  }
-  return _lessonHues[hash % _lessonHues.length];
-}
 
 int? _clock(String v) {
   final m = RegExp(r'(\d{1,2}):(\d{2})').firstMatch(v);
@@ -241,7 +222,7 @@ class ScheduleWeekView extends StatelessWidget {
       context: context,
       builder: (sheet) {
         final text = Theme.of(sheet).textTheme;
-        final hue = lessonHue(lesson.name);
+        final hue = lessonTint(lesson.name, lesson.colorId);
         return SafeArea(
           top: false,
           child: Padding(
@@ -424,7 +405,7 @@ class _LessonBlock extends StatelessWidget {
   final VoidCallback onTap;
   @override
   Widget build(BuildContext context) {
-    final hue = lessonHue(lesson.name);
+    final hue = lessonTint(lesson.name, lesson.colorId);
     final text = Theme.of(context).textTheme;
     final colors = NiuColors.of(context);
     final dark = Theme.of(context).brightness == Brightness.dark;
