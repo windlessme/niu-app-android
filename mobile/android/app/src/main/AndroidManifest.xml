@@ -5,6 +5,8 @@
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Sets the timetable wallpaper the student made; granted at install. -->
+    <uses-permission android:name="android.permission.SET_WALLPAPER" />
     <!-- Analytics never uses the advertising ID, ad services attribution or
          the Play install referrer that Firebase would otherwise add. -->
     <uses-permission android:name="com.google.android.gms.permission.AD_ID" tools:node="remove" />

@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/demo/demo_data.dart';
 import '../academic_portal/academic_portal_screen.dart';
-import 'schedule_export.dart';
 import '../../core/session/campus_session.dart';
 import '../../shared/shared.dart';
+import 'custom_course_editor.dart';
+import 'custom_courses.dart';
 import 'schedule_presentation.dart';
 import 'schedule_models.dart';
+import 'schedule_settings_screen.dart';
 import 'schedule_week_view.dart';
 
 const scheduleExtractScript = r'''
@@ -48,9 +50,17 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   List<List<String>>? parsedRows;
   ClassSchedule? parsedSchedule;
 
+  late final store = CustomCourseStore.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    store.load(session.account);
+  }
+
   @override
   Widget build(BuildContext context) => ListenableBuilder(
-    listenable: session,
+    listenable: Listenable.merge([session, store]),
     builder: (context, _) => buildSchedule(context),
   );
 
@@ -67,6 +77,24 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         parsedRows = cached.rows;
       }
       final schedule = parsedSchedule!;
+      // This week's custom courses, for display; the cache stays the school's.
+      final shown = schedule.withCustomCourses(
+        store.coursesFor(owner),
+        taipeiToday(),
+      );
+      void edit({String? id, int? weekday}) {
+        if (owner == null) return;
+        editCustomCourse(
+          context,
+          schedule: schedule,
+          account: owner,
+          course: id == null
+              ? null
+              : store.coursesFor(owner).where((c) => c.id == id).firstOrNull,
+          weekday: weekday,
+        );
+      }
+
       return NiuScrollPage(
         title: '課表',
         large: true,
@@ -82,18 +110,29 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             }),
           ),
           NiuIconButton(
-            icon: NiuIcons.more,
-            tooltip: '課表選項',
-            onPressed: () => showScheduleOptions(context, schedule),
+            icon: NiuIcons.settings,
+            tooltip: '課表設定',
+            onPressed: owner == null
+                ? null
+                : () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => ScheduleSettingsScreen(
+                        schedule: schedule,
+                        account: owner,
+                      ),
+                    ),
+                  ),
           ),
         ],
         children: [
           ScheduleView(
-            schedule: schedule,
+            schedule: shown,
             updatedAt: cached.fetchedAt,
             offline: session.isOffline,
             embedded: true,
             onOpenCourse: widget.onOpenCourse,
+            onEditCustom: (id) => edit(id: id),
+            onAddCustom: (weekday) => edit(weekday: weekday),
           ),
         ],
       );
@@ -222,38 +261,6 @@ const scheduleQueryScript = r'''
 })()
 ''';
 
-Future<void> showScheduleOptions(
-  BuildContext context,
-  ClassSchedule schedule,
-) => showModalBottomSheet<void>(
-  context: context,
-  isScrollControlled: true,
-  builder: (context) => SafeArea(
-    child: SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(
-        NiuSpacing.gutter,
-        0,
-        NiuSpacing.gutter,
-        NiuSpacing.xl,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('課表選項', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: NiuSpacing.xs),
-          Text(
-            '設定學期日期後，可以匯出到行事曆，並更新桌面小工具與上課提醒。',
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-          const SizedBox(height: NiuSpacing.lg),
-          ScheduleExportBar(schedule: schedule),
-        ],
-      ),
-    ),
-  ),
-);
-
 const _weekdayShort = '一二三四五六日';
 
 class ScheduleView extends StatefulWidget {
@@ -265,8 +272,14 @@ class ScheduleView extends StatefulWidget {
     this.initialWeekday,
     this.embedded = false,
     this.onOpenCourse,
+    this.onEditCustom,
+    this.onAddCustom,
   });
   final ClassSchedule schedule;
+
+  /// Edit a course added on this device; add one on a Monday-based weekday.
+  final void Function(String id)? onEditCustom;
+  final void Function(int weekday)? onAddCustom;
   final DateTime? updatedAt;
   final bool offline;
   final int? initialWeekday;
@@ -349,6 +362,7 @@ class _ScheduleViewState extends State<ScheduleView> {
                   MediaQuery.paddingOf(context).vertical -
                   290,
               onOpenCourse: widget.onOpenCourse,
+              onEditCustom: widget.onEditCustom,
             ),
             if (widget.updatedAt != null || widget.offline) ...[
               const SizedBox(height: NiuSpacing.lg),
@@ -408,13 +422,26 @@ class _ScheduleViewState extends State<ScheduleView> {
                 padding: const EdgeInsets.only(bottom: NiuSpacing.md),
                 child: _LessonTile(
                   lesson: lesson,
-                  onOpen: widget.onOpenCourse,
+                  onOpen: lesson.customId != null
+                      ? (widget.onEditCustom == null
+                            ? null
+                            : (_) => widget.onEditCustom!(lesson.customId!))
+                      : widget.onOpenCourse,
                   current:
                       selected == today &&
                       _minutes(lesson.start) != null &&
                       _minutes(lesson.end) != null &&
                       _minutes(lesson.start)! <= minute &&
                       minute < _minutes(lesson.end)!,
+                ),
+              ),
+            if (widget.onAddCustom != null)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () => widget.onAddCustom!(selected),
+                  icon: const Icon(NiuIcons.add),
+                  label: const Text('新增自訂課程'),
                 ),
               ),
             if (widget.updatedAt != null || widget.offline) ...[
@@ -601,6 +628,7 @@ class _LessonTile extends StatelessWidget {
             children: [
               if (current)
                 const NiuBadge(label: '上課中', tone: NiuTone.accent, solid: true),
+              if (lesson.customId != null) const NiuBadge(label: '自訂'),
               NiuBadge(label: lesson.periodLabel, tone: NiuTone.accent),
               if (compact) NiuBadge(label: '${lesson.start}–${lesson.end}'),
             ],

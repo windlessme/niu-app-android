@@ -15,6 +15,7 @@ import '../features/authentication/login_screen.dart';
 import '../features/authentication/remember_school_login.dart';
 import '../features/attendance/attendance_entry.dart';
 import '../features/events/events_screen.dart';
+import '../features/schedule/custom_courses.dart';
 import '../features/events/event_actions.dart';
 import '../features/events/events_demo.dart';
 import '../features/grades/grades_screen.dart';
@@ -78,7 +79,10 @@ class _NiuAppState extends State<NiuApp> {
             GoRoute(
               path: '/',
               builder: (_, _) => ListenableBuilder(
-                listenable: session,
+                listenable: Listenable.merge([
+                  session,
+                  CustomCourseStore.instance,
+                ]),
                 builder: (_, _) => CampusHomeScreen(
                   name: session.hasLocalAccount ? session.displayName : null,
                   department: session.profile['facultyName']?.toString(),
@@ -333,11 +337,25 @@ class _NiuAppState extends State<NiuApp> {
     }
     _notifiedAccount = account;
     _notifiedSchedule = schedule;
-    if (account != null) notifications.refresh().catchError((Object _) {});
+    // Each account's own custom courses, loaded before the timetable is used.
+    CustomCourseStore.instance.load(account).then((_) {
+      if (account != null) notifications.refresh().catchError((Object _) {});
+    }, onError: (Object _) {});
+  }
+
+  /// Widgets and reminders follow custom course changes too.
+  void _customCoursesChanged() {
+    if (session.hasLocalAccount) {
+      notifications.refresh().catchError((Object _) {});
+    }
   }
 
   List<HomeCourse> _todayCourses() {
-    return todayCourses(session.cachedSchedule, now: DateTime.now());
+    return todayCourses(
+      session.cachedSchedule,
+      now: DateTime.now(),
+      custom: CustomCourseStore.instance.coursesFor(session.account),
+    );
   }
 
   Future<void> _clearMoodle() async {
@@ -354,6 +372,7 @@ class _NiuAppState extends State<NiuApp> {
     super.initState();
     session.registerCleanup(_clearMoodle);
     session.addListener(_syncNotifications);
+    CustomCourseStore.instance.addListener(_customCoursesChanged);
     _restorePreferences();
     session.restore().catchError((Object _) {});
     PlayUpdate(messenger).check();

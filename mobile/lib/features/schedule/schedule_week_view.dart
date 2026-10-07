@@ -47,8 +47,12 @@ class ScheduleWeekView extends StatelessWidget {
     this.now,
     this.height,
     this.onOpenCourse,
+    this.onEditCustom,
   });
   final ClassSchedule schedule;
+
+  /// Opens a course added on this device for editing.
+  final void Function(String id)? onEditCustom;
 
   /// Wall-clock time in Taipei; null leaves today and the time line out.
   final DateTime? now;
@@ -181,7 +185,11 @@ class ScheduleWeekView extends StatelessWidget {
                                         lesson,
                                         now!.hour * 60 + now!.minute,
                                       ),
-                                  onTap: () => _showLesson(context, lesson),
+                                  onTap: () =>
+                                      lesson.customId != null &&
+                                          onEditCustom != null
+                                      ? onEditCustom!(lesson.customId!)
+                                      : _showLesson(context, lesson),
                                 ),
                               ),
                           if (d == today)
@@ -430,6 +438,7 @@ class _LessonBlock extends StatelessWidget {
         '${lesson.start} 到 ${lesson.end}',
         if (lesson.room.isNotEmpty) lesson.room,
         if (current) '上課中',
+        if (lesson.customId != null) '自訂課程',
       ].join('，'),
       excludeSemantics: true,
       child: Material(
@@ -442,8 +451,11 @@ class _LessonBlock extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           child: Container(
+            // Courses added on this device are outlined, as on iOS.
             decoration: BoxDecoration(
-              border: Border(left: BorderSide(color: accent, width: 3)),
+              border: lesson.customId != null
+                  ? Border.all(color: accent, width: 1.5)
+                  : Border(left: BorderSide(color: accent, width: 3)),
             ),
             padding: EdgeInsets.fromLTRB(compact ? 4 : 6, 4, 3, 4),
             child: Column(

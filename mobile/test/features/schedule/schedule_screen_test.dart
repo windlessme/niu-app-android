@@ -125,11 +125,13 @@ void main() {
   });
 
   testWidgets(
-    'options sheet contains export controls; reminders live in settings',
+    'settings hold custom courses, the wallpaper and export; reminders live in app settings',
     (tester) async {
       await tester.pumpWidget(app());
-      await tester.tap(find.byTooltip('課表選項'));
+      await tester.tap(find.byTooltip('課表設定'));
       await tester.pumpAndSettle();
+      expect(find.text('新增課程'), findsOneWidget);
+      expect(find.text('製作課表桌布'), findsOneWidget);
       expect(find.byType(ScheduleExportBar), findsOneWidget);
       expect(find.byTooltip('匯出行事曆'), findsOneWidget);
       expect(find.text('上課前 10 分鐘提醒'), findsNothing);

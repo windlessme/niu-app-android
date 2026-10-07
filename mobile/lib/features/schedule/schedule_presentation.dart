@@ -14,7 +14,11 @@ class ScheduleLesson {
     required this.periods,
     required this.start,
     required this.end,
+    this.customId,
   });
+
+  /// Set for a course added on this device rather than by the school.
+  final String? customId;
   final String day;
   final String name;
   final String teacher;
@@ -77,18 +81,24 @@ List<ScheduleLesson> scheduleLessons(
   }
 
   for (final period in schedule.periods) {
+    final custom = period.custom[day];
     final lines = (period.courses[day] ?? '')
         .split('\n')
         .map((line) => line.trim())
         .where((line) => line.isNotEmpty)
         .toList();
-    if (lines.isEmpty) {
+    if (lines.isEmpty && custom == null) {
       flush();
       continue;
     }
-    final teacher = lines.length > 1 ? lines.first : '';
-    final name = lines.length > 1 ? lines[1] : lines.first;
-    final room = lines.skip(2).join(' ');
+    // A device-added course carries its own fields; school cells are text.
+    final teacher = custom != null
+        ? custom.note
+        : lines.length > 1
+        ? lines.first
+        : '';
+    final name = custom?.name ?? (lines.length > 1 ? lines[1] : lines.first);
+    final room = custom?.classroom ?? lines.skip(2).join(' ');
     final times = RegExp(
       r'\d{1,2}:\d{2}',
     ).allMatches(period.time).map((match) => match.group(0)!).toList();
@@ -107,7 +117,8 @@ List<ScheduleLesson> scheduleLessons(
         previous.day == day &&
         previous.name == name &&
         previous.teacher == teacher &&
-        previous.room == room) {
+        previous.room == room &&
+        previous.customId == custom?.id) {
       pending = ScheduleLesson(
         day: day,
         name: name,
@@ -116,6 +127,7 @@ List<ScheduleLesson> scheduleLessons(
         periods: [...previous.periods, period.label],
         start: previous.start,
         end: end,
+        customId: previous.customId,
       );
     } else {
       flush();
@@ -127,6 +139,7 @@ List<ScheduleLesson> scheduleLessons(
         periods: [period.label],
         start: start,
         end: end,
+        customId: custom?.id,
       );
     }
   }
