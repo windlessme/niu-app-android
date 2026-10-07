@@ -53,7 +53,7 @@ class SchoolLeaveApplication implements LeaveApplicationGateway {
     required this.isActive,
     this.entry = LeaveEntry.apply,
     this.timeout = const Duration(seconds: 30),
-    this.interval = const Duration(milliseconds: 400),
+    this.interval = const Duration(milliseconds: 200),
   }) : epoch = session.coordinator.epoch,
        owner = session.account ?? '',
        run = List.generate(

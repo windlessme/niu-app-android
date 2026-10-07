@@ -147,7 +147,7 @@ String leaveMenuNavigation(
     '''
 (() => {
  const docs=[];function collect(w){try{docs.push(w.document);for(let i=0;i<w.frames.length;i++)collect(w.frames[i]);}catch(_){}}collect(window);
- for(const d of docs){if(new URL(d.location.href).pathname.toLowerCase().endsWith('/timeoutpage.aspx'))return 'session-expired';}
+ for(const d of docs){if(/\\/(?:timeoutpage|logout)\\.aspx\$/.test(new URL(d.location.href).pathname.toLowerCase()))return 'session-expired';}
  if(window.__niuLeaveWorkflowDetail)return 'ready';
  for(const d of docs){
   const path=new URL(d.location.href).pathname;
@@ -166,9 +166,14 @@ String leaveMenuNavigation(
    return 'ready';
   }
  }
- for(const label of ${jsonEncode(application ? ['學務系統', '學生請假', '學生請假作業', '學生請假申請'] : ['學務系統', '學生請假', '查詢作業', '請假紀錄'])}){
+ const labels=${jsonEncode(application ? ['學務系統', '學生請假', '學生請假作業', '學生請假申請'] : ['學務系統', '學生請假', '查詢作業', '請假紀錄'])};
+ for(const label of labels){
   for(const d of docs){const a=Array.from(d.querySelectorAll('a')).find(e=>e.textContent.trim()===label);
-   if(a && !a.dataset.niuLeaveOpened){a.dataset.niuLeaveOpened='true';a.click();return null;}}
+   if(a && !a.dataset.niuLeaveOpened){a.dataset.niuLeaveOpened=String(Date.now());a.click();return null;}
+   // The page link (never a folder, which would fold up again) is clicked
+   // again at most twice when MainFrame drops the navigation.
+   if(a && label===labels[labels.length-1] && Date.now()-Number(a.dataset.niuLeaveOpened)>8000 && Number(a.dataset.niuLeaveRetries||0)<2){
+    a.dataset.niuLeaveRetries=String(Number(a.dataset.niuLeaveRetries||0)+1);a.dataset.niuLeaveOpened=String(Date.now());a.click();return null;}}
  }
  return null;
 })()

@@ -72,7 +72,7 @@ String _helpers(LeaveListPage page) =>
 const _leaveListHelpers = r'''
  const docs=[];function collect(w){try{docs.push(w.document);for(let i=0;i<w.frames.length;i++)collect(w.frames[i]);}catch(_){}}collect(window);
  const path=d=>{try{return new URL(d.location.href).pathname;}catch(_){return '';}};
- const expired=()=>docs.some(d=>/\/timeoutpage\.aspx$/i.test(path(d)));
+ const expired=()=>docs.some(d=>/\/(?:timeoutpage|logout)\.aspx$/i.test(path(d)));
  // A page replaced by [leaveListReset] stays visible until the new one commits.
  const list=()=>docs.find(d=>path(d).toLowerCase().endsWith('/'+listFile.toLowerCase()+'.aspx')&&!d.__niuLeaveManageStale);
  const cellText=c=>String((c&&c.innerText)||'').replace(/\s+/g,' ').trim();
@@ -98,8 +98,14 @@ ${_helpers(page)}
  const opened='__niuLeaveOpened:'+listFile;
  const d=list();
  if(!d){
-   if(!window[opened]){
-     window[opened]=true;
+   // MainFrame's own scripts can drop or replace the navigation: send it
+   // again, at most twice, once mainFrame has stayed on its old page for
+   // 10 s or moved somewhere else for 4 s.
+   const sent=window[opened];
+   const waited=sent&&Date.now()-sent.at;
+   const stuck=sent&&sent.count<3&&(main.document===sent.previous?waited>10000:waited>4000);
+   if(!sent||stuck){
+     window[opened]={at:Date.now(),count:(sent?sent.count:0)+1,previous:main.document};
      main.location.href=${jsonEncode(page.path)};
      try{if(typeof window.hideView==='function')window.hideView();}catch(_){}
    }
@@ -210,7 +216,7 @@ ${_helpers(page)}
  const old=list();if(old)old.__niuLeaveManageStale=true;
  window.__niuLeaveWithdraw=null;window.__niuLeaveManageClicked=null;
  const main=window.frames['mainFrame'];if(!main)return false;
- window['__niuLeaveOpened:'+listFile]=true;
+ window['__niuLeaveOpened:'+listFile]={at:Date.now(),count:1,previous:main.document};
  main.location.href=${jsonEncode(page.path)};
  return true;
 })()
