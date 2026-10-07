@@ -78,6 +78,10 @@ class MainActivity : FlutterActivity() {
                                 "semesterEnd" to snapshot?.end?.toString(),
                             ))
                         }
+                        "saveCalendar" -> {
+                            CalendarWidgetStore.save(this, call.argument<List<Map<*, *>>>("events") ?: emptyList())
+                            result.success(null)
+                        }
                         "setNotifications" -> {
                             val kind = call.argument<String>("kind") ?: error("Missing kind")
                             val items = call.argument<List<Map<*, *>>>("items") ?: emptyList()

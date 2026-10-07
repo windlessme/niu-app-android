@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One class: start/end, a course-colour bar, name and room, and a status pill. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/row_root" android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:orientation="horizontal" android:gravity="center_vertical"
+    android:paddingTop="4dp" android:paddingBottom="4dp">
+    <LinearLayout android:layout_width="44dp" android:layout_height="wrap_content" android:orientation="vertical">
+        <TextView android:id="@+id/row_start" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="08:10" android:textColor="@color/widget_text" android:textSize="13sp"
+            android:textStyle="bold" android:fontFeatureSettings="tnum" android:maxLines="1" />
+        <TextView android:id="@+id/row_end" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="10:00" android:textColor="@color/widget_text_secondary" android:textSize="11sp"
+            android:fontFeatureSettings="tnum" android:maxLines="1" />
+    </LinearLayout>
+    <ImageView android:id="@+id/row_bar" android:layout_width="4dp" android:layout_height="32dp"
+        android:layout_marginEnd="10dp" android:src="@drawable/widget_bar_0" android:scaleType="fitXY"
+        android:importantForAccessibility="no" />
+    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+        android:orientation="vertical">
+        <TextView android:id="@+id/row_title" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="" android:textColor="@color/widget_text" android:textSize="14sp" android:textStyle="bold"
+            android:maxLines="1" android:ellipsize="end" />
+        <TextView android:id="@+id/row_detail" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="" android:textColor="@color/widget_text_secondary" android:textSize="12sp"
+            android:maxLines="1" android:ellipsize="end" />
+    </LinearLayout>
+    <TextView android:id="@+id/row_badge" android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_marginStart="8dp" android:background="@drawable/widget_pill_accent"
+        android:paddingStart="8dp" android:paddingEnd="8dp" android:paddingTop="2dp" android:paddingBottom="2dp"
+        android:text="上課中" android:textColor="@color/widget_on_accent" android:textSize="11sp"
+        android:textStyle="bold" android:maxLines="1" android:visibility="gone" />
+    <TextView android:id="@+id/row_next" android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_marginStart="8dp" android:background="@drawable/widget_pill"
+        android:paddingStart="8dp" android:paddingEnd="8dp" android:paddingTop="2dp" android:paddingBottom="2dp"
+        android:text="下堂" android:textColor="@color/widget_glyph" android:textSize="11sp"
+        android:textStyle="bold" android:maxLines="1" android:visibility="gone" />
+</LinearLayout>

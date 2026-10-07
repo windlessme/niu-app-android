@@ -5,4 +5,24 @@
     <color name="widget_text_secondary">#ABAFBA</color>
     <color name="widget_tile">#15284A</color>
     <color name="widget_glyph">#62A3FF</color>
+    <color name="widget_lesson_0">#243145</color>
+    <color name="widget_lesson_0_bar">#62A3FF</color>
+    <color name="widget_lesson_1">#382F45</color>
+    <color name="widget_lesson_1_bar">#CF96FF</color>
+    <color name="widget_lesson_2">#213A3B</color>
+    <color name="widget_lesson_2_bar">#4FD6C8</color>
+    <color name="widget_lesson_3">#413128</color>
+    <color name="widget_lesson_3_bar">#FFA45C</color>
+    <color name="widget_lesson_4">#2F2F45</color>
+    <color name="widget_lesson_4_bar">#9D97FF</color>
+    <color name="widget_lesson_5">#243A30</color>
+    <color name="widget_lesson_5_bar">#5FD38C</color>
+    <color name="widget_lesson_6">#412D39</color>
+    <color name="widget_lesson_6_bar">#FF8FBB</color>
+    <color name="widget_lesson_7">#233943</color>
+    <color name="widget_lesson_7_bar">#5CCFF5</color>
+    <color name="widget_accent">#62A3FF</color>
+    <color name="widget_on_accent">#04142C</color>
+    <color name="widget_hairline">#2D2F35</color>
+    <color name="widget_muted">#43464F</color>
 </resources>

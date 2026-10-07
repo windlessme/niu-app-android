@@ -80,6 +80,14 @@
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/next_class_widget_info" />
         </receiver>
+        <receiver android:name=".WeekWidget" android:exported="false" android:label="@string/week_widget_label">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/week_widget_info" />
+        </receiver>
+        <receiver android:name=".CalendarWidget" android:exported="false" android:label="@string/calendar_widget_label">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/calendar_widget_info" />
+        </receiver>
         <receiver android:name=".WidgetClockReceiver" android:exported="false" />
         <receiver android:name=".QuickWidget" android:exported="false" android:label="@string/quick_widget_label">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>

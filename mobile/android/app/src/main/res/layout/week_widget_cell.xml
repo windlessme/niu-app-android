@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/cell" android:layout_width="0dp" android:layout_height="match_parent"
+    android:layout_weight="1" android:layout_margin="1dp" android:paddingStart="3dp" android:paddingEnd="2dp"
+    android:paddingTop="1dp" android:gravity="top|start" android:text="" android:textColor="@color/widget_text"
+    android:autoSizeTextType="uniform" android:autoSizeMinTextSize="7sp" android:autoSizeMaxTextSize="10sp"
+    android:maxLines="2" android:ellipsize="end" />

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 行事曆: what is on today, then what comes next; rows are added in code. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/calendar_root" android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:paddingStart="16dp" android:paddingEnd="16dp"
+    android:paddingTop="14dp" android:paddingBottom="12dp" android:background="@drawable/widget_background"
+    android:contentDescription="行事曆，點一下開啟行事曆">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:gravity="center_vertical">
+        <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
+            android:text="行事曆" android:textColor="@color/widget_text" android:textSize="16sp"
+            android:textStyle="bold" android:maxLines="1" />
+        <TextView android:id="@+id/calendar_year" android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:text="" android:textColor="@color/widget_text_secondary"
+            android:textSize="12sp" android:maxLines="1" />
+    </LinearLayout>
+    <LinearLayout android:id="@+id/calendar_rows" android:layout_width="match_parent" android:layout_height="0dp"
+        android:layout_weight="1" android:layout_marginTop="8dp" android:orientation="vertical" />
+    <LinearLayout android:id="@+id/calendar_empty" android:layout_width="match_parent" android:layout_height="0dp"
+        android:layout_weight="1" android:orientation="vertical" android:gravity="center" android:visibility="gone">
+        <TextView android:id="@+id/calendar_empty_title" android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:text="尚未取得行事曆" android:textColor="@color/widget_text"
+            android:textSize="15sp" android:textStyle="bold" android:maxLines="1" />
+        <TextView android:id="@+id/calendar_empty_detail" android:layout_width="wrap_content"
+            android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="開啟 App 更新一次"
+            android:textColor="@color/widget_text_secondary" android:textSize="12sp" android:maxLines="2"
+            android:gravity="center" />
+    </LinearLayout>
+</LinearLayout>

@@ -262,6 +262,38 @@ class CampusNotifications {
     return local.day == day && local.month == month ? at : null;
   }
 
+  /// Hands the 行事曆 widget the calendar from today on, about half a year
+  /// ahead, so it keeps working offline. Needs no account.
+  Future<void> saveCalendarWidget() async {
+    final now = clock();
+    final today = CampusDate.at(now);
+    final limit = CampusDate.at(now.add(const Duration(days: 180)));
+    final events = <CalendarEvent>[];
+    for (final year in {today.academicYear, limit.academicYear}) {
+      try {
+        events.addAll((await calendar.load(year)).events);
+      } catch (_) {
+        if (year == today.academicYear) rethrow;
+      }
+    }
+    String iso(CampusDate d) =>
+        '${d.year.toString().padLeft(4, '0')}-'
+        '${d.month.toString().padLeft(2, '0')}-'
+        '${d.day.toString().padLeft(2, '0')}';
+    final kept =
+        events
+            .where(
+              (e) =>
+                  e.end.compareTo(today) >= 0 && e.start.compareTo(limit) <= 0,
+            )
+            .toList()
+          ..sort((a, b) => a.start.compareTo(b.start));
+    await gateway.saveCalendar([
+      for (final e in kept.take(200))
+        {'title': e.title, 'start': iso(e.start), 'end': iso(e.end)},
+    ]);
+  }
+
   Future<List<CampusNotice>> _calendarDates() async {
     final now = clock();
     final today = CampusDate.at(now);

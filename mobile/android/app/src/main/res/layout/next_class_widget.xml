@@ -3,13 +3,19 @@
     android:id="@+id/next_root" android:layout_width="match_parent" android:layout_height="match_parent"
     android:orientation="vertical" android:gravity="center_vertical" android:padding="14dp"
     android:background="@drawable/widget_background" android:contentDescription="下一堂課，點一下開啟課表">
-    <TextView android:id="@+id/next_label" android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:text="下一堂" android:textColor="@color/widget_glyph" android:textSize="12sp"
-        android:textStyle="bold" android:maxLines="1" android:ellipsize="end" />
+    <TextView android:id="@+id/next_label" android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:background="@drawable/widget_pill" android:paddingStart="8dp" android:paddingEnd="8dp"
+        android:paddingTop="2dp" android:paddingBottom="2dp" android:text="下一堂"
+        android:textColor="@color/widget_glyph" android:textSize="11sp" android:textStyle="bold"
+        android:maxLines="1" android:ellipsize="end" />
     <TextView android:id="@+id/next_title" android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:layout_marginTop="4dp" android:text="課表" android:textColor="@color/widget_text"
+        android:layout_marginTop="8dp" android:text="課表" android:textColor="@color/widget_text"
         android:textSize="17sp" android:textStyle="bold" android:maxLines="2" android:ellipsize="end" />
     <TextView android:id="@+id/next_detail" android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:layout_marginTop="4dp" android:text="" android:textColor="@color/widget_text_secondary"
-        android:textSize="13sp" android:maxLines="2" android:ellipsize="end" />
+        android:layout_marginTop="2dp" android:text="" android:textColor="@color/widget_text_secondary"
+        android:textSize="13sp" android:fontFeatureSettings="tnum" android:maxLines="2" android:ellipsize="end" />
+    <TextView android:id="@+id/next_after" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="8dp" android:text="" android:textColor="@color/widget_text_secondary"
+        android:textSize="12sp" android:fontFeatureSettings="tnum" android:maxLines="1" android:ellipsize="end"
+        android:visibility="gone" />
 </LinearLayout>
