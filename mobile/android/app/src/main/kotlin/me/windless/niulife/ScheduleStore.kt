@@ -20,8 +20,9 @@ internal fun AlarmManager.wakeBy(at: Long, op: PendingIntent, now: Long = System
     val trigger = if (delay <= 60_000) at else now + (delay / 1.75).toLong()
     setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, trigger, op)
 }
+/** [lastDay]: a custom course is not shown after it, even if the app isn't opened. */
 internal data class Block(val id: String, val title: String, val room: String,
-    val weekday: Int, val startMinute: Int, val endMinute: Int)
+    val weekday: Int, val startMinute: Int, val endMinute: Int, val lastDay: LocalDate? = null)
 internal data class Snapshot(val start: LocalDate, val end: LocalDate, val blocks: List<Block>) {
     companion object {
         fun parse(json: JSONObject): Snapshot {
@@ -34,7 +35,8 @@ internal data class Snapshot(val start: LocalDate, val end: LocalDate, val block
             val blocks = (0 until entries.length()).map { i ->
                 val b = entries.getJSONObject(i)
                 Block(b.getString("id"), b.getString("title"), b.optString("room"),
-                    b.getInt("weekday"), b.getInt("startMinute"), b.getInt("endMinute")).also {
+                    b.getInt("weekday"), b.getInt("startMinute"), b.getInt("endMinute"),
+                    b.optString("lastDay").takeIf { it.isNotEmpty() }?.let(LocalDate::parse)).also {
                     require(it.id.isNotBlank() && it.title.isNotBlank() && it.weekday in 1..7 &&
                         it.startMinute in 0..1439 && it.endMinute in 1..1440 && it.endMinute > it.startMinute)
                 }
@@ -44,7 +46,8 @@ internal data class Snapshot(val start: LocalDate, val end: LocalDate, val block
         }
     }
     fun on(date: LocalDate): List<Block> = if (date < start || date > end) emptyList()
-        else blocks.filter { it.weekday == date.dayOfWeek.value }.sortedBy { it.startMinute }
+        else blocks.filter { it.weekday == date.dayOfWeek.value && (it.lastDay == null || !date.isAfter(it.lastDay)) }
+            .sortedBy { it.startMinute }
 }
 
 internal object ScheduleStore {

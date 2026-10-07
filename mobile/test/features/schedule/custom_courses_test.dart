@@ -82,6 +82,11 @@ void main() {
     final custom = blocks.where((b) => b.title == '日文社').single;
     expect(custom.room, '社辦');
     expect(custom.weekday, 1);
+    // The device drops it after its last day, even if the app isn't opened.
+    expect(custom.lastDay, '2026-12-31');
+    expect(custom.toJson()['lastDay'], '2026-12-31');
+    final schoolBlock = blocks.firstWhere((b) => b.title != '日文社');
+    expect(schoolBlock.toJson().containsKey('lastDay'), isFalse);
   });
 
   test('each account keeps its own courses', () async {
