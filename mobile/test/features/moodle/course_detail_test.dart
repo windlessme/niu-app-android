@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:niu_mobile/core/network/school_clients.dart';
 import 'package:niu_mobile/features/moodle/course_detail_presentation.dart';
-import 'package:niu_mobile/features/moodle/course_detail_widgets.dart';
 import 'package:niu_mobile/features/moodle/course_presentation.dart';
 import 'package:niu_mobile/features/moodle/course_widgets.dart';
 import 'package:niu_mobile/features/moodle/moodle_repository.dart';
@@ -74,47 +73,6 @@ const course = {
 };
 
 void main() {
-  testWidgets(
-    'all seven tabs including questions and attendance load once until refresh',
-    (tester) async {
-      final loads = List.filled(7, 0);
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: CourseDetailTabs(
-              builders: [
-                for (var i = 0; i < 7; i++)
-                  (_) => CourseDetailList(
-                    load: () async {
-                      loads[i]++;
-                      return [];
-                    },
-                    item: (_) => const SizedBox(),
-                    emptyTitle: 'empty $i',
-                    emptyMessage: 'message $i',
-                  ),
-              ],
-            ),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-      expect(loads, [1, 0, 0, 0, 0, 0, 0]);
-      for (final label in ['出席', '教材', '問答', '成績', '出席', '公告']) {
-        await tester.tap(find.text(label));
-        await tester.pumpAndSettle();
-      }
-      expect(loads, [1, 1, 0, 1, 0, 1, 1]);
-      await tester.drag(find.byType(ListView), const Offset(0, 350));
-      await tester.pumpAndSettle();
-      expect(loads, [2, 1, 0, 1, 0, 1, 1]);
-      // A swipe moves to the next tab; the visited one does not reload.
-      await tester.fling(find.byType(PageView), const Offset(-300, 0), 1000);
-      await tester.pumpAndSettle();
-      expect(find.text('empty 1'), findsOneWidget);
-      expect(loads, [2, 1, 0, 1, 0, 1, 1]);
-    },
-  );
   test('conservative sections keep unknown text and explicit percentages', () {
     final sections = courseDetailSections(CoursePresentation(course));
     expect(sections.map((s) => s.title), ['教學目標', '評分方式']);
@@ -150,7 +108,7 @@ void main() {
   });
 
   for (final brightness in Brightness.values) {
-    testWidgets('detail tabs accessible at 320px scale 2 in $brightness', (
+    testWidgets('course overview accessible at 320px scale 2 in $brightness', (
       tester,
     ) async {
       tester.view.physicalSize = const Size(320, 900);
@@ -172,56 +130,71 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(repo.announcementLoads, 1);
-      expect(repo.contentLoads, 0);
       expect(find.text('資料結構'), findsOneWidget);
       expect(find.text('資料結構 (1131_CS)'), findsNothing);
+      // The assignment's submission state could not be read.
+      expect(find.text('1 份作業狀態未知，請到作業頁確認'), findsOneWidget);
       expect(tester.takeException(), isNull);
-      final list = find
-          .descendant(
-            of: find.byType(CourseDetailList),
-            matching: find.byType(Scrollable),
-          )
-          .last;
-      await tester.drag(list, const Offset(0, -500));
-      await tester.pumpAndSettle();
-      final position = tester.state<ScrollableState>(list).position.pixels;
-      await tester.tap(find.text('教材'));
-      await tester.pumpAndSettle();
+
+      Future<void> open(String part) async {
+        await tester.scrollUntilVisible(
+          find.text(part),
+          200,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await tester.ensureVisible(find.text(part));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text(part));
+        await tester.pumpAndSettle();
+      }
+
+      Future<void> back() async {
+        await tester.tap(find.byTooltip('返回'));
+        await tester.pumpAndSettle();
+      }
+
+      await open('資源');
       expect(find.text('9 月 6 日 – 9 月 12 日'), findsOneWidget);
-      expect(find.byType(ExpansionTile), findsNothing);
       await tester.tap(find.text('第一週講義'));
       await tester.pumpAndSettle();
       expect(find.byType(MoodleModuleScreen), findsOneWidget);
-      await tester.tap(find.byTooltip('返回'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('公告'));
-      await tester.pumpAndSettle();
-      expect(repo.announcementLoads, 1);
-      expect(tester.state<ScrollableState>(list).position.pixels, position);
-      await tester.tap(find.text('作業'));
-      await tester.pumpAndSettle();
+      await back();
+      await back();
+      await open('作業');
       expect(find.text('繳交狀態未提供'), findsOneWidget);
-      await tester.tap(find.text('閱讀作業'));
-      await tester.pumpAndSettle();
-      expect(find.text('繳交狀態未提供'), findsWidgets);
-      expect(find.text('未提供'), findsWidgets);
-      expect(tester.takeException(), isNull);
-      await tester.tap(find.byTooltip('返回'));
-      await tester.pumpAndSettle();
-      final tabs = find
-          .descendant(
-            of: find.byType(CourseDetailTabs),
-            matching: find.byType(SingleChildScrollView),
-          )
-          .first;
-      await tester.drag(tabs, const Offset(-350, 0));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('成績'));
-      await tester.pumpAndSettle();
+      await back();
+      await open('成績');
       expect(find.text('尚未公布'), findsOneWidget);
+      await back();
+      // Every part shares the overview's single load.
+      expect(repo.announcementLoads, 1);
       expect(tester.takeException(), isNull);
     });
   }
+
+  testWidgets('search covers the whole course', (tester) async {
+    tester.view.physicalSize = const Size(400, 1200);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MoodleCourseScreen(
+          repository: DetailRepository(),
+          course: course,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), '講義');
+    await tester.pumpAndSettle();
+    expect(find.text('資源（1）'), findsOneWidget);
+    expect(find.text('查看全部資源（1）'), findsOneWidget);
+    expect(find.text('待繳作業'), findsNothing);
+    await tester.enterText(find.byType(TextField), '不存在的東西');
+    await tester.pumpAndSettle();
+    expect(find.text('找不到符合的結果'), findsOneWidget);
+  });
 
   testWidgets('hero preserves malformed and unlabelled summary', (
     tester,

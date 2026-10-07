@@ -88,6 +88,38 @@ class MoodleCourseCard extends StatelessWidget {
                                 style: theme.textTheme.labelSmall,
                               ),
                             ],
+                            // Moodle's own completion tracking, as on iOS.
+                            if (num.tryParse('${course.source['progress']}')
+                                case final progress? when progress > 0) ...[
+                              const SizedBox(height: NiuSpacing.sm),
+                              NiuProgressBar(
+                                value: progress / 100,
+                                height: 4,
+                                semanticLabel: '完成進度',
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '完成進度 ${progress.round()}%',
+                                style: theme.textTheme.labelSmall,
+                              ),
+                            ],
+                            if (course.source['hidden'] == true) ...[
+                              const SizedBox(height: NiuSpacing.xs),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.visibility_off_outlined,
+                                    size: 14,
+                                    color: colors.inkTertiary,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '已隱藏',
+                                    style: theme.textTheme.labelSmall,
+                                  ),
+                                ],
+                              ),
+                            ],
                           ],
                         ),
                       ),
