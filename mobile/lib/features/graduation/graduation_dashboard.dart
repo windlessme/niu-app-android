@@ -1,5 +1,8 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import '../../shared/shared.dart';
+import 'graduation_confetti.dart';
 import 'graduation_presentation.dart';
 import 'graduation_screen.dart';
 
@@ -37,7 +40,7 @@ class GraduationDashboard extends StatelessWidget {
         const NiuBanner(tone: NiuTone.warning, message: '校務登入已過期，先顯示上次保存的資料。'),
         const SizedBox(height: NiuSpacing.lg),
       ],
-      _Overview(progress: model.progress),
+      _Overview(progress: model.progress, complete: model.allComplete),
       const SizedBox(height: NiuSpacing.lg),
       _Card(
         icon: NiuIcons.time,
@@ -106,7 +109,7 @@ class GraduationDashboard extends StatelessWidget {
         children: children,
       );
     }
-    return ListView(
+    final list = ListView(
       padding: const EdgeInsets.fromLTRB(
         NiuSpacing.gutter,
         NiuSpacing.sm,
@@ -115,8 +118,25 @@ class GraduationDashboard extends StatelessWidget {
       ),
       children: children,
     );
+    if (!model.allComplete) return list;
+    return Stack(
+      children: [
+        list,
+        const Positioned.fill(child: GraduationConfetti()),
+      ],
+    );
   }
 }
+
+/// Whether [data] meets every requirement, for the confetti over a page
+/// that embeds the dashboard.
+bool graduationComplete(GraduationData data) => GraduationPresentation(
+  hours: data.hours,
+  credits: data.credits,
+  english: data.english,
+  fitness: data.fitness,
+  program: data.program,
+).allComplete;
 
 String _quantity(double? value) => value == null
     ? '—'
@@ -132,16 +152,24 @@ Color _tint(BuildContext context, double progress) {
 }
 
 class _Overview extends StatelessWidget {
-  const _Overview({required this.progress});
+  const _Overview({required this.progress, required this.complete});
   final double? progress;
+  final bool complete;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = NiuColors.of(context);
-    final percent = progress == null ? null : (progress! * 100).round();
+    // 100% only when everything is met, never from rounding up 99.6%.
+    final percent = progress == null
+        ? null
+        : complete
+        ? 100
+        : min(99, (progress! * 100).round());
     return Semantics(
-      label: '整體達成度 ${percent == null ? '資料待確認' : '$percent%'}',
+      label:
+          '整體達成度 ${percent == null ? '資料待確認' : '$percent%'}'
+          '${complete ? '，恭喜！已全數完成！' : ''}',
       excludeSemantics: true,
       child: Container(
         padding: const EdgeInsets.all(NiuSpacing.xl),
@@ -188,6 +216,13 @@ class _Overview extends StatelessWidget {
                       ],
                     ),
                   ),
+                  if (complete)
+                    Text(
+                      '恭喜！已全數完成！',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        color: colors.onAccent,
+                      ),
+                    ),
                 ],
               ),
             ),

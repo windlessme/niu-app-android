@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:niu_mobile/features/graduation/graduation_confetti.dart';
 import 'package:niu_mobile/features/graduation/graduation_dashboard.dart';
 import 'package:niu_mobile/features/graduation/graduation_presentation.dart';
 import 'package:niu_mobile/features/graduation/graduation_screen.dart';
@@ -44,6 +45,78 @@ void main() {
     expect(find.text('學分學程'), findsNothing);
     expect(find.byType(NiuSegmented<Object>), findsNothing);
     expect(tester.takeException(), isNull);
+  });
+
+  group('all requirements met', () {
+    Map<String, dynamic> json({String fitness = '已通過'}) => {
+      'diverseHours': ['20', '20', '20', '20', '20', '20', '40', '40'],
+      'creditRequired': ['128', '130'],
+      'englishAbility': '已通過',
+      'physicalFitness': fitness,
+      'creditCourse': '',
+    };
+    Future<void> show(
+      WidgetTester tester,
+      Map<String, dynamic> data, {
+      bool reduceMotion = false,
+    }) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MediaQuery(
+            data: MediaQueryData(disableAnimations: reduceMotion),
+            child: Scaffold(
+              body: GraduationDashboard(data: GraduationData.fromJson(data)),
+            ),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 500));
+    }
+
+    testWidgets('celebrates with confetti that never takes taps', (
+      tester,
+    ) async {
+      await show(tester, json());
+      expect(find.text('恭喜！已全數完成！'), findsOneWidget);
+      expect(find.text('100 %', findRichText: true), findsOneWidget);
+      expect(find.byType(GraduationConfetti), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(GraduationConfetti),
+          matching: find.byType(IgnorePointer),
+        ),
+        findsOneWidget,
+      );
+      // The confetti keeps falling, frame after frame.
+      await tester.pump(const Duration(seconds: 1));
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('almost there shows 99%, not a rounded 100%', (tester) async {
+      await show(tester, {
+        ...json(),
+        'creditRequired': ['128', '127.5'],
+      });
+      expect(find.text('恭喜！已全數完成！'), findsNothing);
+      expect(find.text('99 %', findRichText: true), findsOneWidget);
+      expect(find.byType(GraduationConfetti), findsNothing);
+    });
+
+    testWidgets('less motion: no confetti', (tester) async {
+      await show(tester, json(), reduceMotion: true);
+      expect(find.text('恭喜！已全數完成！'), findsOneWidget);
+      expect(
+        find
+            .byType(CustomPaint)
+            .evaluate()
+            .where(
+              (e) =>
+                  (e.widget as CustomPaint).painter.runtimeType.toString() ==
+                  '_ConfettiPainter',
+            ),
+        isEmpty,
+      );
+    });
   });
 
   test('unknown data is not zero progress', () {
