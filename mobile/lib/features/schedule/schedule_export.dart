@@ -67,6 +67,7 @@ List<ScheduleBlock> scheduleBlocks(ClassSchedule schedule) {
           endMinute: end,
           teacher: teacher,
           room: room,
+          lastDay: pending!.lastDay,
         );
       } else {
         flush();
@@ -79,6 +80,7 @@ List<ScheduleBlock> scheduleBlocks(ClassSchedule schedule) {
           endMinute: end,
           teacher: teacher,
           room: room,
+          lastDay: custom?.lastDay ?? '',
         );
       }
     }

@@ -10,9 +10,14 @@ class ScheduleBlock {
     required this.endMinute,
     this.room = '',
     this.teacher = '',
+    this.lastDay = '',
   });
   final String id, title, room, teacher;
   final int weekday, startMinute, endMinute;
+
+  /// A custom course's last day (`2026-12-31`), after which the device stops
+  /// showing it without the app being opened; empty for school courses.
+  final String lastDay;
   Map<String, Object> toJson() => {
     'id': id,
     'title': title,
@@ -21,6 +26,7 @@ class ScheduleBlock {
     'endMinute': endMinute,
     'room': room,
     'teacher': teacher,
+    if (lastDay.isNotEmpty) 'lastDay': lastDay,
   };
 }
 
