@@ -22,39 +22,24 @@ void main() {
     expect(name('期中考試時間公告'), isNull);
   });
 
-  test('the switch is on by default and remembers being turned off', () async {
+  test('on by default; an earlier opt-out is kept', () async {
     SharedPreferences.setMockInitialValues({});
     final analytics = AppAnalytics.instance;
     await analytics.start();
-    expect(analytics.enabled.value, isTrue);
-    await analytics.setEnabled(false);
-    final prefs = await SharedPreferences.getInstance();
-    expect(prefs.getBool(AppAnalytics.preferenceKey), isFalse);
+    expect(analytics.enabled, isTrue);
+    SharedPreferences.setMockInitialValues({AppAnalytics.preferenceKey: false});
     await analytics.start();
-    expect(analytics.enabled.value, isFalse);
-    await analytics.setEnabled(true);
+    expect(analytics.enabled, isFalse);
+    SharedPreferences.setMockInitialValues({});
+    await analytics.start();
   });
 
-  testWidgets('settings offer the analytics switch', (tester) async {
-    SharedPreferences.setMockInitialValues({});
-    await AppAnalytics.instance.start();
+  testWidgets('settings no longer offer an analytics switch', (tester) async {
     await tester.pumpWidget(
       MaterialApp(theme: NiuTheme.light, home: const SettingsScreen()),
     );
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('分享匿名使用統計'), 200);
-    final toggle = find.descendant(
-      of: find.widgetWithText(NiuRow, '分享匿名使用統計'),
-      matching: find.byType(Switch),
-    );
-    expect(tester.widget<Switch>(toggle).value, isTrue);
-    await tester.tap(toggle);
-    await tester.pumpAndSettle();
-    expect(AppAnalytics.instance.enabled.value, isFalse);
-    // The whole row toggles too.
-    await tester.tap(find.text('分享匿名使用統計'));
-    await tester.pumpAndSettle();
-    expect(AppAnalytics.instance.enabled.value, isTrue);
-    await AppAnalytics.instance.setEnabled(true);
+    expect(find.text('分享匿名使用統計'), findsNothing);
+    expect(find.text('隱私'), findsNothing);
   });
 }

@@ -33,7 +33,7 @@ class PrivacyScreen extends StatelessWidget {
     (
       Icons.query_stats_rounded,
       '匿名使用統計',
-      'App 使用 Google Analytics for Firebase 統計開啟了哪些頁面、用了哪些功能和結果（例如點名或寄信是否成功），以及學校系統出了哪一類錯誤，用來改善 App。Google 也會收集裝置型號、系統與 App 版本、大略地區等基本資訊。不會送出帳號、學號、姓名、成績、信件、課程名稱或其他校務內容，不使用廣告 ID。可以在設定的「分享匿名使用統計」關閉；示範模式不會收集。',
+      'App 使用 Google Analytics for Firebase 統計開啟了哪些頁面、用了哪些功能和結果（例如點名或寄信是否成功），以及學校系統出了哪一類錯誤，用來改善 App。Google 也會收集裝置型號、系統與 App 版本、大略地區等基本資訊。不會送出帳號、學號、姓名、成績、信件、課程名稱或其他校務內容，不使用廣告 ID。示範模式不會收集。',
     ),
     (
       NiuIcons.external,

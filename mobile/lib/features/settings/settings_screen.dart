@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../core/analytics/app_analytics.dart';
 import '../../core/platform/app_version.dart';
 import '../notifications/campus_notifications.dart';
 import '../notifications/notification_settings_screen.dart';
@@ -241,26 +240,6 @@ class SettingsScreen extends StatelessWidget {
             ],
           ),
         ],
-        const NiuEyebrow('隱私'),
-        NiuGroup(
-          children: [
-            ValueListenableBuilder<bool>(
-              valueListenable: AppAnalytics.instance.enabled,
-              builder: (context, enabled, _) => NiuRow(
-                icon: Icons.query_stats_rounded,
-                hue: NiuHue.teal,
-                title: '分享匿名使用統計',
-                subtitle: '用過哪些功能、哪裡出錯；不含帳號、成績或信件',
-                onTap: () => AppAnalytics.instance.setEnabled(!enabled),
-                chevron: false,
-                trailing: Switch(
-                  value: enabled,
-                  onChanged: AppAnalytics.instance.setEnabled,
-                ),
-              ),
-            ),
-          ],
-        ),
         const NiuEyebrow('關於'),
         NiuGroup(
           children: [
