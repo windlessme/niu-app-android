@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/analytics/app_analytics.dart';
 import '../../core/demo/demo_data.dart';
 import '../academic_portal/academic_portal_screen.dart';
 import '../../core/session/campus_session.dart';
@@ -331,6 +332,9 @@ class _ScheduleViewState extends State<ScheduleView> {
 
   void _setWeek(bool value) {
     setState(() => week = value);
+    AppAnalytics.instance.event('schedule_view', {
+      'mode': value ? 'week' : 'day',
+    });
     SharedPreferences.getInstance().then(
       (prefs) => prefs.setBool(_weekKey, value),
       onError: (_) => false,

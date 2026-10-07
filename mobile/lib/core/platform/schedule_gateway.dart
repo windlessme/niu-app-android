@@ -108,6 +108,10 @@ class ScheduleGateway {
         'kind': kind,
         'items': items.map((item) => item.toJson()).toList(),
       });
+
+  /// The kinds of home screen widget placed, e.g. `['schedule', 'week']`.
+  Future<List<String>> widgetsInUse() async =>
+      (await channel.invokeListMethod<String>('widgetsInUse')) ?? const [];
   Future<void> shareCalendar(String ics) =>
       channel.invokeMethod<void>('shareCalendar', {'ics': ics});
 }

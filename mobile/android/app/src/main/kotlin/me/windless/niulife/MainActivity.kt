@@ -4,6 +4,7 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import android.Manifest
+import android.appwidget.AppWidgetManager
 import android.content.Intent
 import android.content.ClipData
 import android.os.Build
@@ -77,6 +78,16 @@ class MainActivity : FlutterActivity() {
                                 "semesterStart" to snapshot?.start?.toString(),
                                 "semesterEnd" to snapshot?.end?.toString(),
                             ))
+                        }
+                        "widgetsInUse" -> {
+                            val manager = AppWidgetManager.getInstance(this)
+                            result.success(listOf(
+                                "schedule" to ScheduleWidget::class.java,
+                                "next" to NextClassWidget::class.java,
+                                "week" to WeekWidget::class.java,
+                                "calendar" to CalendarWidget::class.java,
+                                "quick" to QuickWidget::class.java,
+                            ).filter { (_, provider) -> manager.ids(this, provider).isNotEmpty() }.map { it.first })
                         }
                         "saveCalendar" -> {
                             CalendarWidgetStore.save(this, call.argument<List<Map<*, *>>>("events") ?: emptyList())

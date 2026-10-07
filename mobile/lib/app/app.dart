@@ -10,6 +10,7 @@ import 'dart:io';
 
 import '../core/analytics/app_analytics.dart';
 import '../core/platform/play_update.dart';
+import '../core/platform/schedule_gateway.dart';
 import '../core/session/cached_schedule.dart';
 import '../core/session/campus_session.dart';
 import '../features/academic_calendar/calendar_screen.dart';
@@ -381,7 +382,19 @@ class _NiuAppState extends State<NiuApp> {
     _restorePreferences();
     session.restore().catchError((Object _) {});
     notifications.saveCalendarWidget().catchError((Object _) {});
+    _reportWidgets();
     PlayUpdate(messenger).check();
+  }
+
+  /// Which home screen widgets are placed, as a user property.
+  Future<void> _reportWidgets() async {
+    try {
+      final kinds = await const ScheduleGateway().widgetsInUse();
+      AppAnalytics.instance.userProperty(
+        'widgets',
+        kinds.isEmpty ? 'none' : kinds.join(','),
+      );
+    } catch (_) {}
   }
 
   Future<void> _restorePreferences() async {
