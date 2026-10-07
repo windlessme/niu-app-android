@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -172,10 +174,13 @@ class _NiuAppState extends State<NiuApp> {
       ),
       GoRoute(
         path: '/events',
-        builder: (_, _) => const AuthGate(
+        builder: (_, _) => AuthGate(
           title: '活動報名',
           allowLocalAccount: true,
-          child: EventsScreen(),
+          child: EventsScreen(
+            onRegistrations: (list) =>
+                unawaited(notifications.refreshEvents(list).catchError((_) {})),
+          ),
         ),
       ),
       GoRoute(

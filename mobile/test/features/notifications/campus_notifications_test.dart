@@ -78,6 +78,32 @@ void main() {
     expect(items[1].link, 'niulife://events');
   });
 
+  test('a registration change updates event reminders alone', () async {
+    SharedPreferences.setMockInitialValues({
+      CampusNotifications.eventsKey: true,
+    });
+    var reads = 0;
+    final now = DateTime.utc(2026, 10, 10, 4);
+    final reminders = notifications(
+      clock: () => now,
+      events: () async {
+        reads++;
+        return [registered('7', '報名成功', '2026/10/20 09:00')];
+      },
+    );
+    // The screen's fresh list is used as is.
+    await reminders.refreshEvents([
+      registered('8', '報名成功', '2026/10/21 09:00'),
+    ]);
+    expect([for (final i in gateway.sent['events']!) i.id], ['8']);
+    expect(reads, 0);
+    expect(gateway.sent.keys, ['events']);
+    // Without one, 我的報名 is read again.
+    await reminders.refreshEvents();
+    expect([for (final i in gateway.sent['events']!) i.id], ['7']);
+    expect(reads, 1);
+  });
+
   test('a failed read keeps the scheduled event reminders', () async {
     SharedPreferences.setMockInitialValues({
       CampusNotifications.eventsKey: true,
