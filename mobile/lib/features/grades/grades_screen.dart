@@ -159,7 +159,8 @@ class _GradesScreenState extends State<GradesScreen> {
           score: r[5].isEmpty ? '尚未公布' : r[5],
         ),
     ];
-    if (courses.isEmpty) {
+    final published = courses.where((c) => c.score != '尚未公布').length;
+    if (published == 0) {
       return const [
         NiuEmpty(
           icon: NiuIcons.grades,
@@ -187,7 +188,11 @@ class _GradesScreenState extends State<GradesScreen> {
               child: NiuStat(label: '班級排名', value: rank.isEmpty ? '—' : rank),
             ),
             Expanded(
-              child: NiuStat(label: '課程數', value: '${courses.length}'),
+              child: NiuStat(
+                label: '已公布',
+                value: '$published',
+                unit: '/ ${courses.length} 科',
+              ),
             ),
           ],
         ),

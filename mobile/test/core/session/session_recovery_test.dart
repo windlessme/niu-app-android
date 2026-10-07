@@ -162,7 +162,8 @@ void main() {
         ),
       ]);
       expect(stats.credits, 4);
-      expect(stats.passedCredits, 3);
+      expect(stats.earnedCredits, 12);
+      expect(stats.attemptedCredits, 13);
       expect(stats.gpa, closeTo(3.225, 0.0001));
       expect(GradeStatistics.points(77), 3.3);
       expect(GradeStatistics.points(60), 1.7);
