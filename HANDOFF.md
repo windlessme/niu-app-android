@@ -1,6 +1,6 @@
 # HANDOFF
 
-給接手的 Claude Code session。最後更新：2026-10-07。目前版本：**1.0.32+113**。
+給接手的 Claude Code session。最後更新：2026-10-07。目前版本：**1.0.33+114**。
 
 ## 專案概況
 
@@ -31,7 +31,7 @@
 - Play 各軌道現況（2026-10-03 用 MCP 查過）：
   - **正式版：1.0.0 (81)**，已審核通過並發布。**1.0.17 (98) 已送審**（使用者 2026-10-06 告知）。
   - 公開測試（beta）：1.0.0 (81)。
-  - internal：**1.0.32 (113)**（2026-10-07 推送）。
+  - internal：**1.0.33 (114)**（2026-10-07 推送）。
 - 正式版由使用者在 Play Console 升級（Claude 推 production 會被權限擋下，屬正常）。
 - **正式版不用每版都推**，只要 versionCode 比上一個正式版大就行。建議 internal 每版都推；等使用者在手機上測過、累積一批改動或有重要修正時，再挑一版推正式版。**版本說明的寫法（使用者 2026-10-05 要求）**：
   - internal：只寫**這一版**改了什麼，讓使用者知道要測哪裡。沒有使用者看得到的改動時寫「內部調整，功能沒有變化」。不要再沿用累計說明，否則每版看起來都一樣。
@@ -78,6 +78,7 @@
   ・請假頁面開啟更快
   ・報名或取消活動後，活動提醒立刻更新
   ・自訂課程過了到期日，小工具與上課提醒也會自動移除
+  ・桌面小工具改版：今日課表逐堂列出時間、教室與上課狀態；新增「完整課表」與「行事曆」小工具
   ```
 - 公開測試的使用者會自動拿到 versionCode 較大的正式版，公開測試軌道不用特別處理。release 名稱用 `X.Y.Z (versionCode)`，附一句 zh-TW 版本說明。
 - 上傳流程（每個新版本都要做）：`flutter build appbundle --release`，然後用 MCP 依序 `edits_insert` → `bundles_upload` → `tracks_update`（internal，status `completed`）→ `edits_commit`。
@@ -149,6 +150,7 @@
 | 1.0.30 | `6986932` | M 園區課程頁依 iOS `MoodleCourseDetailView` 重做（`moodle_course_screen.dart`）：拿掉 7 個橫向分頁，改成總覽：課名與老師、「下一份待繳／出席率／目前成績」摘要、搜尋整門課（各部分前 3 筆＋查看全部）、待繳作業（已知未繳、截止近的在上，最多 3 筆）、最新公告（3 則）、「課程內容」清單（作業／公告／資源／問答／出缺席／成績＋各自的數量或百分比）與課程說明。`CourseOverview` 平行載入各部分，一部分失敗不影響其他、保留上次資料；各部分頁面 `CourseDestinationScreen` 有自己的搜尋，公告與作業可反轉排序。討論區併入「資源」（iOS 也沒有獨立的討論分頁）。課程列表卡片加完成進度與「已隱藏」。`CourseDetailTabs` 已移除 |
 | 1.0.31 | `5961c2c` | 登入頁要求密碼至少 8 個字元（`LoginScreen.minPassword`）：不足時登入鍵停用、欄位下方灰字提示，按下鍵盤的登入後改為紅字錯誤；不影響已保存帳密的自動登入 |
 | 1.0.32 | `37a6771` | 與 iOS 同步 7 項：問答腳本 `moodleQuestionInstall` 同步 iOS `7d5444d`（文字題以題目當標籤、revision 過期回 changed、經校方 form 送出）。**歷年排名**：摘要表選取器也會抓到修課紀錄表，課程列蓋掉摘要（學分被當班排名），改以表頭（學年期／系排名／班排名／平均）找摘要表、依欄名對應，輸出 `ranks` 物件；舊快取的 `summary` 不再採用，學期卡顯示「班排 · 系排」。GPA：`GradeStatistics` 加 `earnedCredits`／`attemptedCredits`（通過、抵免、免修算實得，不計入 GPA），「GPA 怎麼算」說明對話框；期中／學期無已公布成績時顯示空狀態、統計改「已公布 n / m 科」。活動編號只讀「活動編號」段落、移除 badge、只收數字，否則用連結編號（`events_list_dom.cjs`）。請假輪詢 0.4→0.2 秒、`Logout.aspx` 視為過期、清單與選單導覽被 MainFrame 吃掉時最多重送 2 次。畢業門檻全數達成（學分學程不算）顯示「恭喜！已全數完成！」與彩帶（`graduation_confetti.dart`，不攔點擊、減少動態時關閉），未達成最多 99%。`EventsScreen.onRegistrations` → `CampusNotifications.refreshEvents` 只重排活動提醒。`ScheduleBlock.lastDay`：自訂課程的到期日寫進原生快照，`Snapshot.on(date)` 過期就不出現在小工具與提醒 |
+| 1.0.33 | （待填） | 桌面小工具（原生 RemoteViews，全部用資源顏色，跟著系統深淺色）：**今日課表**（`ScheduleWidget`）改成逐堂一列（`schedule_widget_row.xml`：起訖時間、課程色條、課名、教室·老師、「上課中」／「下堂」標籤，已下課變淡），依高度決定列數、放不下先藏已下課的並顯示「還有 n 堂」，高度 ≥230dp 才顯示點名／入館碼；最小尺寸改 2×2。**下一堂課**多一行「接著 …」。新增 **完整課表**（`WeekWidget`，4×4）：週一到五（週末有課才出現），每小時一列，課程填滿涵蓋的時段，第一格課名、第二格教室，正在上的用強調色；週末且本週已無課時顯示下週。新增 **行事曆**（`CalendarWidget`）：進行中的事件在前、接著依日期，日期方塊＋「明天／n 天後／進行中 · 至」；資料由 Flutter `CampusNotifications.saveCalendarWidget()`（App 啟動時）經 `saveCalendar` 存到 `calendar_widget_v1`，不需登入、登出不清。課程配色與 App 週課表 `lessonHue` 相同（同一個雜湊）。`Block` 多讀 `teacher`。四個小工具共用 `ScheduleWidget.refresh` 與同一個喚醒（下一個上下課時間或午夜）；縮放時重畫 |
 
 另外：
 
