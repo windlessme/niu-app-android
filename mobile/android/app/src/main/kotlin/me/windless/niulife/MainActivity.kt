@@ -14,12 +14,18 @@ import org.json.JSONObject
 
 class MainActivity : FlutterActivity() {
     private val registrationDocuments by lazy { RegistrationDocuments(this) }
+    private val scheduleWallpaper by lazy { ScheduleWallpaper(this) }
     private var permissionResult: MethodChannel.Result? = null
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "niulife/registration")
             .setMethodCallHandler { call, result ->
                 registrationDocuments.handle(call.method, call.argument<ByteArray>("bytes"), result)
+            }
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "niulife/wallpaper")
+            .setMethodCallHandler { call, result ->
+                scheduleWallpaper.handle(call.method, call.argument<ByteArray>("bytes"),
+                    call.argument<String>("target"), result)
             }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "niulife/files")
             .setMethodCallHandler { call, result ->

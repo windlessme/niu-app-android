@@ -8,6 +8,7 @@ import '../academic_calendar/calendar_repository.dart';
 import '../events/event_models.dart';
 import '../moodle/course_presentation.dart';
 import '../moodle/moodle_repository.dart';
+import '../schedule/custom_courses.dart';
 import '../schedule/schedule_export.dart';
 import '../schedule/schedule_models.dart';
 
@@ -314,7 +315,13 @@ class CampusNotifications {
       ScheduleSnapshot(
         semesterStart: start,
         semesterEnd: end,
-        blocks: scheduleBlocks(ClassSchedule.fromRows(cached.rows)),
+        // Custom courses shown this week go to widgets and reminders too.
+        blocks: scheduleBlocks(
+          ClassSchedule.fromRows(cached.rows).withCustomCourses(
+            CustomCourseStore.instance.coursesFor(owner),
+            clock().toUtc().add(const Duration(hours: 8)),
+          ),
+        ),
       ),
       epoch: session.coordinator.epoch,
       owner: owner,

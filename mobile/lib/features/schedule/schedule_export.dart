@@ -19,7 +19,11 @@ List<ScheduleBlock> scheduleBlocks(ClassSchedule schedule) {
     }
 
     for (final period in schedule.periods) {
-      final raw = period.courses[days[day]];
+      // A device-added course is identified by its id, not its text.
+      final custom = period.custom[days[day]];
+      final raw = custom == null
+          ? period.courses[days[day]]
+          : 'custom:${custom.id}';
       if (raw == null) {
         flush();
         continue;
@@ -44,14 +48,16 @@ List<ScheduleBlock> scheduleBlocks(ClassSchedule schedule) {
       if (end <= start || start >= 1440) {
         throw const FormatException('課表時間範圍錯誤');
       }
-      final lines = raw
-          .split('\n')
-          .map((v) => v.trim())
-          .where((v) => v.isNotEmpty)
-          .toList();
-      final title = lines.length > 1 ? lines[1] : lines.first;
-      final teacher = lines.length > 1 ? lines.first : '';
-      final room = lines.skip(2).join(' ');
+      final lines = custom != null
+          ? const <String>[]
+          : raw
+                .split('\n')
+                .map((v) => v.trim())
+                .where((v) => v.isNotEmpty)
+                .toList();
+      final title = custom?.name ?? (lines.length > 1 ? lines[1] : lines.first);
+      final teacher = custom?.note ?? (lines.length > 1 ? lines.first : '');
+      final room = custom?.classroom ?? lines.skip(2).join(' ');
       if (pending != null && raw == identity && start >= pending!.endMinute) {
         pending = ScheduleBlock(
           id: pending!.id,

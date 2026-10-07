@@ -1,8 +1,20 @@
+import 'custom_courses.dart';
+
 class SchedulePeriod {
-  const SchedulePeriod(this.label, this.time, this.courses);
+  const SchedulePeriod(
+    this.label,
+    this.time,
+    this.courses, [
+    this.custom = const {},
+  ]);
   final String label;
   final String time;
+
+  /// The school's cell text per day: teacher, course and room on lines.
   final Map<String, String> courses;
+
+  /// Courses added on this device, per day, merged for display only.
+  final Map<String, CustomCourse> custom;
 }
 
 class ClassSchedule {
