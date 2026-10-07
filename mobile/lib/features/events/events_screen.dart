@@ -63,8 +63,13 @@ class EventsScreen extends StatefulWidget {
     this.actionBuilder,
     this.actions,
     this.session,
+    this.onRegistrations,
   });
   final CampusSession? session;
+
+  /// A fresh 「我的報名」 list, or null after a change whose list could not
+  /// be read; event reminders follow it.
+  final void Function(List<CampusEvent>? registrations)? onRegistrations;
   final EventLoaderBuilder? loaderBuilder;
 
   /// School-page fallback for register / modify / cancel.
@@ -139,9 +144,11 @@ class _EventsScreenState extends State<EventsScreen> {
     refreshingApplied = true;
     try {
       final result = await actions.registrations();
+      widget.onRegistrations?.call(result);
       if (mounted) setState(() => snapshots[true] = result);
     } catch (_) {
-      // The 我的報名 tab can still sync explicitly.
+      // The 我的報名 tab can still sync explicitly; reminders read it again.
+      widget.onRegistrations?.call(null);
     } finally {
       refreshingApplied = false;
     }
@@ -201,6 +208,7 @@ class _EventsScreenState extends State<EventsScreen> {
       setState(() {
         if (result != null) {
           snapshots[tab] = result;
+          if (tab) widget.onRegistrations?.call(result);
           notices.remove(tab);
           if (!tab && !attempted.contains(true)) unawaited(refreshApplied());
         } else {

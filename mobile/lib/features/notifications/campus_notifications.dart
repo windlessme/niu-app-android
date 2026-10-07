@@ -113,6 +113,25 @@ class CampusNotifications {
     return next;
   }
 
+  /// Recomputes event reminders alone, right after a registration change.
+  /// [registrations] is a 「我的報名」 list just read; without one the school
+  /// is asked again.
+  Future<void> refreshEvents([List<CampusEvent>? registrations]) {
+    final next = _queue.catchError((Object _) {}).then((_) async {
+      final account = session.account;
+      if (account == null || !session.hasLocalAccount) return;
+      final epoch = session.coordinator.epoch;
+      final items = await enabled(eventsKey)
+          ? await _events(registrations)
+          : <CampusNotice>[];
+      session.coordinator.requireCurrent(epoch);
+      if (session.account != account) throw StateError('帳號已變更');
+      await gateway.setNotifications('events', items);
+    });
+    _queue = next;
+    return next;
+  }
+
   Future<void> _refresh() async {
     final account = session.account;
     if (account == null || !session.hasLocalAccount) return;
@@ -188,13 +207,14 @@ class CampusNotifications {
 
   /// Like iOS: only confirmed registrations with a full start date and clock
   /// time; waitlisted, pending or unknown states are left out.
-  Future<List<CampusNotice>> _events() async {
+  Future<List<CampusNotice>> _events([List<CampusEvent>? registrations]) async {
     final read = events;
-    if (read == null) return const [];
+    if (registrations == null && read == null) return const [];
+    final list = registrations ?? await read!();
     final lead = Duration(minutes: await eventLead());
     final now = clock();
     final found = <CampusNotice>[];
-    for (final event in await read()) {
+    for (final event in list) {
       if (!isConfirmedRegistration(event.status) || event.id.isEmpty) continue;
       final start = eventStart(event.time);
       if (start == null) continue;

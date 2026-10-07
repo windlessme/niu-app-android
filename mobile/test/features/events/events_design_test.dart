@@ -292,10 +292,12 @@ void main() {
     tester,
   ) async {
     final other = CampusEvent.fromJson({'id': '2', 'name': '職涯講座'});
+    final reminders = <List<CampusEvent>?>[];
     await tester.pumpWidget(
       MaterialApp(
         theme: NiuTheme.light,
         home: EventsScreen(
+          onRegistrations: reminders.add,
           actions: FakeEventActions([event]),
           loaderBuilder: (_, applied) =>
               SnapshotRoute(events: applied ? [event] : [event, other]),
@@ -305,6 +307,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('職涯講座'), findsOneWidget);
     expect(find.text(event.name), findsNothing);
+    // Each fresh 「我的報名」 reaches the event reminders straight away.
+    expect(reminders.single?.single.id, event.id);
     await tester.tap(find.text('我的報名'));
     await tester.pumpAndSettle();
     expect(find.text(event.name), findsOneWidget);
