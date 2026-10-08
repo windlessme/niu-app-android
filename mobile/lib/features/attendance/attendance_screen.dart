@@ -120,7 +120,13 @@ class _AttendanceScannerScreenState extends State<AttendanceScannerScreen>
     );
     if (!mounted) return;
     unawaited(camera(true));
-    if (value != null && value.trim().isNotEmpty) await open(value);
+    if (value == null || value.trim().isEmpty) return;
+    final uri = attendanceLink(value);
+    if (uri == null) {
+      warn('找不到 M 園區點名連結');
+      return;
+    }
+    await open('$uri');
   }
 
   @override
@@ -340,7 +346,7 @@ class _LinkSheetState extends State<_LinkSheet> {
           Text('輸入點名網址', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: NiuSpacing.xs),
           Text(
-            '貼上老師提供的 M 園區點名連結。',
+            '貼上老師或同學分享的 M 園區點名連結，整段訊息也可以。',
             style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: NiuSpacing.lg),

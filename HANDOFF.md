@@ -1,6 +1,6 @@
 # HANDOFF
 
-給接手的 Claude Code session。最後更新：2026-10-08。目前版本：**1.0.35+116**。
+給接手的 Claude Code session。最後更新：2026-10-08。目前版本：**1.0.36+117**。
 
 ## 專案概況
 
@@ -15,7 +15,7 @@
 
 在 `mobile/` 底下執行：
 
-1. `set -o pipefail; tool/verify.sh`，包含 calendar/toolchain/分層/DOM 檢查、`dart format`、`flutter analyze`、`flutter test`，目前 434 項測試。
+1. `set -o pipefail; tool/verify.sh`，包含 calendar/toolchain/分層/DOM 檢查、`dart format`、`flutter analyze`、`flutter test`，目前 435 項測試。
 2. 把 `pubspec.yaml` 的 patch 版號和 build number 各加一。
 3. commit 到 `main`，**push 到 origin main**。
 4. `flutter build appbundle --release`，上傳到 Play internal 軌道（步驟見下節）。**每個新版本都要推。**
@@ -31,7 +31,7 @@
 - Play 各軌道現況（2026-10-08 用 MCP 查過）：
   - **正式版：1.0.0 (81)**。**1.0.17 (98) 仍在審查中**（使用者 2026-10-08 確認）。注意：審查中的正式版在 API 的 track 裡也會顯示 `status: completed`，不能拿來判斷已上線。
   - 公開測試（beta）：1.0.0 (81)。
-  - internal：**1.0.35 (116)**（2026-10-08 推送）。
+  - internal：**1.0.36 (117)**（2026-10-08 推送）。
 - 正式版由使用者在 Play Console 升級（Claude 推 production 會被權限擋下，屬正常）。
 - **正式版不用每版都推**，只要 versionCode 比上一個正式版大就行。建議 internal 每版都推；等使用者在手機上測過、累積一批改動或有重要修正時，再挑一版推正式版。**版本說明的寫法（使用者 2026-10-05 要求）**：
   - internal：只寫**這一版**改了什麼，讓使用者知道要測哪裡。沒有使用者看得到的改動時寫「內部調整，功能沒有變化」。不要再沿用累計說明，否則每版看起來都一樣。
@@ -81,6 +81,9 @@
   ・桌面小工具改版：今日課表逐堂列出時間、教室與上課狀態；新增「完整課表」與「行事曆」小工具
   ・畢業門檻新增「時數紀錄」，列出每筆多元學習認證活動與時數（需校園網路）
   ・自訂課程可以選顏色，課表、桌布與小工具都會套用
+  ・行事曆小工具優先顯示接下來的假期、截止日與考試，長期事項不再佔滿版面
+  ・快速點名可以直接貼上同學分享的整段訊息
+  ・活動可以選擇分享完整資訊或只分享連結
   ```
 - 公開測試的使用者會自動拿到 versionCode 較大的正式版，公開測試軌道不用特別處理。release 名稱用 `X.Y.Z (versionCode)`，附一句 zh-TW 版本說明。
 - 上傳流程（每個新版本都要做）：`flutter build appbundle --release`，然後用 MCP 依序 `edits_insert` → `bundles_upload` → `tracks_update`（internal，status `completed`）→ `edits_commit`。
@@ -155,6 +158,7 @@
 | 1.0.33 | `c77744a` | 桌面小工具（原生 RemoteViews，全部用資源顏色，跟著系統深淺色）：**今日課表**（`ScheduleWidget`）改成逐堂一列（`schedule_widget_row.xml`：起訖時間、課程色條、課名、教室·老師、「上課中」／「下堂」標籤，已下課變淡），依高度決定列數、放不下先藏已下課的並顯示「還有 n 堂」，高度 ≥230dp 才顯示點名／入館碼；最小尺寸改 2×2。**下一堂課**多一行「接著 …」。新增 **完整課表**（`WeekWidget`，4×4）：週一到五（週末有課才出現），每小時一列，課程填滿涵蓋的時段，第一格課名、第二格教室，正在上的用強調色；週末且本週已無課時顯示下週。新增 **行事曆**（`CalendarWidget`）：進行中的事件在前、接著依日期，日期方塊＋「明天／n 天後／進行中 · 至」；資料由 Flutter `CampusNotifications.saveCalendarWidget()`（App 啟動時）經 `saveCalendar` 存到 `calendar_widget_v1`，不需登入、登出不清。課程配色與 App 週課表 `lessonHue` 相同（同一個雜湊）。`Block` 多讀 `teacher`。四個小工具共用 `ScheduleWidget.refresh` 與同一個喚醒（下一個上下課時間或午夜）；縮放時重畫 |
 | 1.0.34 | `6203dff` | 依 iOS `17776fa`：畢業門檻「多元時數」卡片右上加「時數紀錄」（`learning_hours.dart`、`learning_hours_screen.dart`）：用記住的學校帳密登入學生服務平台 `ep.niu.edu.tw`（只有校園網路連得到；`/login/student` → `/Api/MultLearn` 摘要 → `/Api/MultLearnDetail?page=n` 明細，最多 30 頁，每次獨立 Dio 與 Cookie），領域 chip 篩選；快取在 vault `learningHoursCache`（綁帳號、登出清除），先顯示快取、更新失敗保留舊資料；示範模式用假資料；錯誤記 `load_error` page=`learning_hours`。依 iOS `4376938`：**自訂課程顏色**（`course_colors.dart`）：自動＋12 種預設（名稱與 iOS 相同）＋自選（色相／飽和度／亮度），存在 `CustomCourse.colorId`（預設名或 `#RRGGBB`，未知值保留但回退自動配色）；週課表、單日卡片（底色＋實心「自訂」標籤）、桌布套用；原生快照多 `color`／`colorDark`，今日課表色條用 `setColorFilter`，完整課表格子在 Android 12 以上用背景 tint，12 以下維持依課名配色。`lessonHue` 移到 `course_colors.dart` |
 | 1.0.35 | `aa0c9e7` | 補統計（使用者看不到差異）：使用者屬性 `widgets`（App 啟動時由原生 `widgetsInUse` 回報放了哪些小工具，`schedule,next,week,calendar,quick` 或 `none`）；事件 `custom_course`（action add/edit/delete、color auto/preset/picked）、`schedule_wallpaper`（action lock/both/save/share＋result）、`schedule_view`（mode day/week）、`learning_hours`（result＋失敗 reason）。GA 自訂維度清單見「Google Analytics」一節 |
+| 1.0.36 | （待補） | 與 iOS 同步 3 項：依 iOS `04fc726`，**行事曆小工具**的事件改傳 `category`（舊資料沒有就當 `other`），`CalendarWidget.visible()` 只留還沒結束的事件：已開始的只保留考試與選課，之後的教務事項只在有空位時補上，依日期、同日依考試→選課→其他排序，先依高度取筆數再排序。依 iOS `ef5f2c9`，**點名輸入網址**可以貼整段訊息：`attendanceLink()` 先試整段，再依空白與全形標點切開找連結，沒有 https 的 `euni.niu.edu.tw/…` 自動補上，仍由 `attendanceQr()` 驗證；找不到時提示「找不到 M 園區點名連結」。依 iOS `EventShareMenu`，**活動分享**有活動編號時改成選單：「分享活動資訊」（完整文字）或「只分享連結」（`CampusEvent.shareLink`）；沒有編號時維持直接分享 |
 
 另外：
 

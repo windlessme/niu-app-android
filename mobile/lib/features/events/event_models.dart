@@ -108,11 +108,14 @@ class CampusEvent {
     ]) {
       if (value.trim().isNotEmpty) lines.add('$label：${value.trim()}');
     }
-    if (RegExp(r'^\d+$').hasMatch(id)) {
-      lines.add('活動連結：https://ccsys.niu.edu.tw/MvcTeam/Act/Apply/$id');
-    }
+    if (shareLink case final link?) lines.add('活動連結：$link');
     return lines.join('\n');
   }
+
+  /// The public 報名 page, built from the event number.
+  Uri? get shareLink => RegExp(r'^\d+$').hasMatch(id)
+      ? Uri.https('ccsys.niu.edu.tw', '/MvcTeam/Act/Apply/$id')
+      : null;
 
   Uri actionUri({required bool applied}) {
     final link = Uri.tryParse(action);

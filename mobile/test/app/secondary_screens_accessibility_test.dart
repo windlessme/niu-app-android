@@ -105,7 +105,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(button);
       await tester.pumpAndSettle();
-      expect(find.text('這不是 M 園區點名 QR Code'), findsOneWidget);
+      expect(find.text('找不到 M 園區點名連結'), findsOneWidget);
       expect(find.byType(TextField), findsNothing);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox());

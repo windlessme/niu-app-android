@@ -355,6 +355,25 @@ Uri? attendanceQr(String raw) {
   });
 }
 
+/// Accepts a link pasted from a classmate's message, which may include
+/// surrounding text, as on iOS.
+Uri? attendanceLink(String text) {
+  final value = text.trim();
+  if (value.isEmpty || value.length > 2048) return null;
+  final whole = attendanceQr(value);
+  if (whole != null) return whole;
+  // Split on whitespace and the full-width punctuation chat apps add around links.
+  for (final token in value.split(RegExp('[\\s「」『』（）()<>《》，。、：；！？"\']+'))) {
+    if (token.isEmpty) continue;
+    final candidate = token.toLowerCase().startsWith('euni.niu.edu.tw/')
+        ? 'https://$token'
+        : token;
+    final uri = attendanceQr(candidate);
+    if (uri != null) return uri;
+  }
+  return null;
+}
+
 enum AttendanceOutcome {
   recorded,
   alreadyRecorded,
