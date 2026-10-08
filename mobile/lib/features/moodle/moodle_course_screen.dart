@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../../core/analytics/app_analytics.dart';
 import '../../shared/shared.dart';
 import '../attendance/attendance_repository.dart';
 import '../attendance/attendance_screen.dart';
@@ -113,12 +114,25 @@ class CourseOverview extends ChangeNotifier {
       contents,
       () => repository.contents(courseId),
     ),
-    CourseDestination.attendance => _run(
-      attendance,
-      () => AttendanceRepository(
-        repository,
-      ).course(courseId).timeout(const Duration(seconds: 45)),
-    ),
+    CourseDestination.attendance => _run(attendance, () async {
+      try {
+        final sections = await AttendanceRepository(
+          repository,
+        ).course(courseId).timeout(const Duration(seconds: 45));
+        // A section that could not be read shows its own message.
+        if (sections.any((s) => s.error != null)) {
+          AppAnalytics.instance.error('course_attendance', 'section');
+        }
+        return sections;
+      } catch (error) {
+        AppAnalytics.instance.error('course_attendance', switch (error) {
+          TimeoutException() => 'timeout',
+          FormatException() => 'format',
+          _ => 'other',
+        });
+        rethrow;
+      }
+    }),
     CourseDestination.grades => _run(grades, () => repository.grades(courseId)),
   };
 
@@ -712,9 +726,7 @@ class _CourseDestinationScreenState extends State<CourseDestinationScreen> {
             ),
             const SizedBox(height: NiuSpacing.lg),
           ],
-          if (d == CourseDestination.attendance)
-            AttendanceRecords(repository: widget.repository, courseId: courseId)
-          else if (part.loading && !part.loaded)
+          if (part.loading && !part.loaded)
             NiuLoading(message: '正在載入${d.title}')
           else if (part.error != null && !part.loaded)
             NiuError(title: '${d.title}載入失敗', onRetry: () => overview.retry(d))
@@ -850,7 +862,14 @@ class _CourseDestinationScreenState extends State<CourseDestinationScreen> {
             ),
         ];
       case CourseDestination.attendance:
-        return const [];
+        // The overview already read these; the page list scrolls them.
+        return [
+          AttendanceSectionList(
+            repository: repository,
+            sections: overview.attendance.data ?? const [],
+            onRetry: () => overview.retry(d),
+          ),
+        ];
       case CourseDestination.grades:
         final list = [
           for (final g in overview.grades.data ?? const <Json>[])

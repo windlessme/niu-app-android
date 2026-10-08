@@ -557,37 +557,6 @@ class _AttendanceRecordsState extends State<AttendanceRecords> {
     }
   }
 
-  NiuTone statusTone(AttendanceStatus status) => switch (status) {
-    AttendanceStatus.present => NiuTone.success,
-    AttendanceStatus.late => NiuTone.warning,
-    AttendanceStatus.absent => NiuTone.error,
-    AttendanceStatus.leave => NiuTone.accent,
-    AttendanceStatus.pending => NiuTone.neutral,
-  };
-  String statusText(AttendanceStatus status) => switch (status) {
-    AttendanceStatus.present => '出席',
-    AttendanceStatus.late => '遲到',
-    AttendanceStatus.absent => '缺席',
-    AttendanceStatus.leave => '請假',
-    AttendanceStatus.pending => '尚未點名',
-  };
-
-  Future<void> openSchoolRecords(AttendanceSection section) async {
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => MoodleWebScreen(
-          repository: widget.repository,
-          target: Uri.https('euni.niu.edu.tw', '/mod/attendance/view.php', {
-            'id': '${section.moduleId}',
-            'view': '5',
-          }),
-          title: '出席紀錄',
-        ),
-      ),
-    );
-    if (mounted) await retry();
-  }
-
   @override
   Widget build(BuildContext context) => FutureBuilder<List<AttendanceSection>>(
     future: future,
@@ -606,7 +575,6 @@ class _AttendanceRecordsState extends State<AttendanceRecords> {
       if (snapshot.connectionState == ConnectionState.waiting) {
         return const Center(child: NiuLoading(message: '正在讀取點名紀錄'));
       }
-      final theme = Theme.of(context);
       return RefreshIndicator(
         onRefresh: retry,
         child: ListView(
@@ -618,109 +586,168 @@ class _AttendanceRecordsState extends State<AttendanceRecords> {
             NiuSpacing.huge,
           ),
           children: [
-            FilledButton.tonalIcon(
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) =>
-                      AttendanceScannerScreen(repository: widget.repository),
-                ),
-              ),
-              icon: const Icon(NiuIcons.attendance),
-              label: const Text('掃描點名'),
+            AttendanceSectionList(
+              repository: widget.repository,
+              sections: snapshot.data!,
+              onRetry: retry,
             ),
-            if (snapshot.data!.isEmpty)
-              const NiuEmpty(
-                icon: NiuIcons.attendance,
-                title: '沒有點名活動',
-                message: '這門課尚未提供點名活動。',
-              ),
-            for (final section in snapshot.data!)
-              Padding(
-                padding: const EdgeInsets.only(top: NiuSpacing.lg),
-                child: NiuCard(
-                  padding: const EdgeInsets.fromLTRB(
-                    NiuSpacing.lg,
-                    NiuSpacing.lg,
-                    NiuSpacing.lg,
-                    NiuSpacing.xs,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(section.name, style: theme.textTheme.titleMedium),
-                      if (section.records.isNotEmpty) ...[
-                        const SizedBox(height: NiuSpacing.md),
-                        Wrap(
-                          spacing: NiuSpacing.sm,
-                          runSpacing: NiuSpacing.sm,
-                          children: [
-                            for (final status in AttendanceStatus.values)
-                              NiuBadge(
-                                label:
-                                    '${statusText(status)} ${section.records.where((r) => r.status == status).length}',
-                                tone: statusTone(status),
-                              ),
-                          ],
-                        ),
-                      ],
-                      if (section.error != null) ...[
-                        const SizedBox(height: NiuSpacing.md),
-                        NiuBanner(
-                          tone: NiuTone.error,
-                          message: section.error!,
-                          actionLabel: '再試一次',
-                          onAction: retry,
-                        ),
-                      ] else if (section.records.isEmpty) ...[
-                        const SizedBox(height: NiuSpacing.sm),
-                        Text(
-                          '這個點名活動還沒有上課紀錄。',
-                          style: theme.textTheme.bodySmall,
-                        ),
-                      ] else if (section.pending == section.records.length) ...[
-                        const SizedBox(height: NiuSpacing.md),
-                        Text(
-                          '所有時段都還沒點名，可以到學校網頁確認完整紀錄。',
-                          style: theme.textTheme.bodySmall,
-                        ),
-                      ],
-                      if (section.records.isNotEmpty)
-                        const SizedBox(height: NiuSpacing.sm),
-                      for (final (i, record) in section.records.indexed) ...[
-                        if (i > 0) const Divider(),
-                        _RecordRow(
-                          status: statusText(record.status),
-                          label: record.label,
-                          tone: statusTone(record.status),
-                          date: attendanceDateLines(record.date),
-                          description: record.description.replaceAll(
-                            RegExp(r'QR code', caseSensitive: false),
-                            'QR Code',
-                          ),
-                          remarks: record.remarks.trim() == '自行紀錄的'
-                              ? '來源：自行記錄'
-                              : record.remarks,
-                        ),
-                      ],
-                      const Divider(),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: TextButton.icon(
-                          style: TextButton.styleFrom(padding: EdgeInsets.zero),
-                          icon: const Icon(NiuIcons.external, size: 16),
-                          onPressed: () => openSchoolRecords(section),
-                          label: const Text('在學校網頁查看完整紀錄'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
           ],
         ),
       );
     },
   );
+}
+
+/// A course's 點名 activities and their sessions. It does not scroll itself,
+/// so it fits in any page's list (the course page's 出缺席 among them).
+class AttendanceSectionList extends StatelessWidget {
+  const AttendanceSectionList({
+    super.key,
+    required this.repository,
+    required this.sections,
+    required this.onRetry,
+  });
+  final MoodleRepository repository;
+  final List<AttendanceSection> sections;
+  final Future<void> Function() onRetry;
+
+  static NiuTone statusTone(AttendanceStatus status) => switch (status) {
+    AttendanceStatus.present => NiuTone.success,
+    AttendanceStatus.late => NiuTone.warning,
+    AttendanceStatus.absent => NiuTone.error,
+    AttendanceStatus.leave => NiuTone.accent,
+    AttendanceStatus.pending => NiuTone.neutral,
+  };
+  static String statusText(AttendanceStatus status) => switch (status) {
+    AttendanceStatus.present => '出席',
+    AttendanceStatus.late => '遲到',
+    AttendanceStatus.absent => '缺席',
+    AttendanceStatus.leave => '請假',
+    AttendanceStatus.pending => '尚未點名',
+  };
+
+  Future<void> openSchoolRecords(
+    BuildContext context,
+    AttendanceSection section,
+  ) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => MoodleWebScreen(
+          repository: repository,
+          target: Uri.https('euni.niu.edu.tw', '/mod/attendance/view.php', {
+            'id': '${section.moduleId}',
+            'view': '5',
+          }),
+          title: '出席紀錄',
+        ),
+      ),
+    );
+    await onRetry();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        FilledButton.tonalIcon(
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => AttendanceScannerScreen(repository: repository),
+            ),
+          ),
+          icon: const Icon(NiuIcons.attendance),
+          label: const Text('掃描點名'),
+        ),
+        if (sections.isEmpty)
+          const NiuEmpty(
+            icon: NiuIcons.attendance,
+            title: '沒有點名活動',
+            message: '這門課尚未提供點名活動。',
+          ),
+        for (final section in sections)
+          Padding(
+            padding: const EdgeInsets.only(top: NiuSpacing.lg),
+            child: NiuCard(
+              padding: const EdgeInsets.fromLTRB(
+                NiuSpacing.lg,
+                NiuSpacing.lg,
+                NiuSpacing.lg,
+                NiuSpacing.xs,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(section.name, style: theme.textTheme.titleMedium),
+                  if (section.records.isNotEmpty) ...[
+                    const SizedBox(height: NiuSpacing.md),
+                    Wrap(
+                      spacing: NiuSpacing.sm,
+                      runSpacing: NiuSpacing.sm,
+                      children: [
+                        for (final status in AttendanceStatus.values)
+                          NiuBadge(
+                            label:
+                                '${statusText(status)} ${section.records.where((r) => r.status == status).length}',
+                            tone: statusTone(status),
+                          ),
+                      ],
+                    ),
+                  ],
+                  if (section.error != null) ...[
+                    const SizedBox(height: NiuSpacing.md),
+                    NiuBanner(
+                      tone: NiuTone.error,
+                      message: section.error!,
+                      actionLabel: '再試一次',
+                      onAction: onRetry,
+                    ),
+                  ] else if (section.records.isEmpty) ...[
+                    const SizedBox(height: NiuSpacing.sm),
+                    Text('這個點名活動還沒有上課紀錄。', style: theme.textTheme.bodySmall),
+                  ] else if (section.pending == section.records.length) ...[
+                    const SizedBox(height: NiuSpacing.md),
+                    Text(
+                      '所有時段都還沒點名，可以到學校網頁確認完整紀錄。',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ],
+                  if (section.records.isNotEmpty)
+                    const SizedBox(height: NiuSpacing.sm),
+                  for (final (i, record) in section.records.indexed) ...[
+                    if (i > 0) const Divider(),
+                    _RecordRow(
+                      status: statusText(record.status),
+                      label: record.label,
+                      tone: statusTone(record.status),
+                      date: attendanceDateLines(record.date),
+                      description: record.description.replaceAll(
+                        RegExp(r'QR code', caseSensitive: false),
+                        'QR Code',
+                      ),
+                      remarks: record.remarks.trim() == '自行紀錄的'
+                          ? '來源：自行記錄'
+                          : record.remarks,
+                    ),
+                  ],
+                  const Divider(),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                      icon: const Icon(NiuIcons.external, size: 16),
+                      onPressed: () => openSchoolRecords(context, section),
+                      label: const Text('在學校網頁查看完整紀錄'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
 }
 
 class _RecordRow extends StatelessWidget {
