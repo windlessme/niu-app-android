@@ -114,6 +114,7 @@ void main() {
       expect(e['end']!.compareTo('2026-10-10'), greaterThanOrEqualTo(0));
       expect(e['start']!.compareTo('2027-04-08'), lessThanOrEqualTo(0));
       expect(e['title'], isNotEmpty);
+      expect(e['category'], isNotEmpty);
     }
     expect([
       for (final e in events) e['start']!,

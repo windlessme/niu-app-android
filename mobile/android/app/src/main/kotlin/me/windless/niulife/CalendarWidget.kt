@@ -10,7 +10,12 @@ import org.json.JSONArray
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 
-internal data class CalendarItem(val title: String, val start: LocalDate, val end: LocalDate)
+internal data class CalendarItem(
+    val title: String,
+    val start: LocalDate,
+    val end: LocalDate,
+    val category: String = "other",
+)
 
 /**
  * The academic calendar the app last loaded, kept on the device so the widget
@@ -24,10 +29,10 @@ internal object CalendarWidgetStore {
         val array = JSONArray()
         for (event in events.take(200)) {
             val item = CalendarItem("${event["title"]}".trim(), LocalDate.parse("${event["start"]}"),
-                LocalDate.parse("${event["end"]}"))
+                LocalDate.parse("${event["end"]}"), (event["category"] as? String) ?: "other")
             require(item.title.isNotEmpty() && !item.end.isBefore(item.start))
             array.put(org.json.JSONObject().put("title", item.title).put("start", "${item.start}")
-                .put("end", "${item.end}"))
+                .put("end", "${item.end}").put("category", item.category))
         }
         check(prefs(c).edit().putString("events", array.toString()).commit())
         ScheduleWidget.refresh(c)
@@ -37,7 +42,8 @@ internal object CalendarWidgetStore {
         val array = JSONArray(prefs(c).getString("events", null) ?: return null)
         (0 until array.length()).map {
             val e = array.getJSONObject(it)
-            CalendarItem(e.getString("title"), LocalDate.parse(e.getString("start")), LocalDate.parse(e.getString("end")))
+            CalendarItem(e.getString("title"), LocalDate.parse(e.getString("start")),
+                LocalDate.parse(e.getString("end")), e.optString("category", "other"))
         }
     }.getOrNull()
 }
@@ -57,12 +63,24 @@ class CalendarWidget : AppWidgetProvider() {
             for (id in ids) manager.updateAppWidget(id, build(c, events, today, manager.heightDp(id, 110)))
         }
 
-        /** Events under way (those starting today first), then upcoming ones by date. */
-        internal fun visible(events: List<CalendarItem>, today: LocalDate): List<CalendarItem> {
-            val active = events.filter { !it.start.isAfter(today) && !it.end.isBefore(today) }
-                .sortedWith(compareBy<CalendarItem> { it.start != today }.thenBy { it.start })
-            val upcoming = events.filter { it.start.isAfter(today) }.sortedBy { it.start }
-            return active + upcoming
+        /** Same-day events list exams first, then course selection, so the height cut drops the others. */
+        private val order = compareBy<CalendarItem>({ it.start }, {
+            when (it.category) { "exam" -> 0; "registration" -> 1; else -> 2 }
+        })
+
+        /**
+         * Up to [limit] events by date. Long warning/evaluation periods must not hide the next
+         * holidays, deadlines and exams: a period that already started stays only while it still
+         * calls for action (exams, course selection), and upcoming 教務 items only fill spare rows.
+         */
+        internal fun visible(events: List<CalendarItem>, today: LocalDate, limit: Int): List<CalendarItem> {
+            val pending = events.filter { !it.end.isBefore(today) }.sortedWith(order)
+            val important = pending.filter {
+                if (it.start.isBefore(today)) it.category == "exam" || it.category == "registration"
+                else it.category != "academic"
+            }
+            val filler = pending.filter { !it.start.isBefore(today) && it.category == "academic" }
+            return (important + filler).take(limit).sortedWith(order)
         }
 
         /** 學年度 runs from August: 2026-10 is 115. */
@@ -88,7 +106,8 @@ class CalendarWidget : AppWidgetProvider() {
             views.setOnClickPendingIntent(R.id.calendar_root, openApp(c, "calendar", 17))
             views.setTextViewText(R.id.calendar_year, "${academicYear(today)} 學年度")
             views.removeAllViews(R.id.calendar_rows)
-            val shown = events?.let { visible(it, today) }.orEmpty()
+            val capacity = maxOf(1, (heightDp - 26 - 26 - 8) / 50)
+            val shown = events?.let { visible(it, today, capacity) }.orEmpty()
             if (shown.isEmpty()) {
                 views.setViewVisibility(R.id.calendar_rows, View.GONE)
                 views.setViewVisibility(R.id.calendar_empty, View.VISIBLE)
@@ -99,8 +118,7 @@ class CalendarWidget : AppWidgetProvider() {
             }
             views.setViewVisibility(R.id.calendar_rows, View.VISIBLE)
             views.setViewVisibility(R.id.calendar_empty, View.GONE)
-            val capacity = maxOf(1, (heightDp - 26 - 26 - 8) / 50)
-            for (event in shown.take(capacity)) {
+            for (event in shown) {
                 val row = RemoteViews(c.packageName, R.layout.calendar_widget_row)
                 // An event already under way shows today's date on its tile.
                 val tile = if (event.start.isAfter(today)) event.start else today

@@ -290,7 +290,12 @@ class CampusNotifications {
           ..sort((a, b) => a.start.compareTo(b.start));
     await gateway.saveCalendar([
       for (final e in kept.take(200))
-        {'title': e.title, 'start': iso(e.start), 'end': iso(e.end)},
+        {
+          'title': e.title,
+          'start': iso(e.start),
+          'end': iso(e.end),
+          'category': e.category,
+        },
     ]);
   }
 

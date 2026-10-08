@@ -660,12 +660,28 @@ class _EventDetailScreenState extends State<EventDetailScreen> {
       child: NiuScrollPage(
         title: '活動詳情',
         actions: [
-          NiuIconButton(
-            tooltip: '分享活動',
-            icon: NiuIcons.share,
-            onPressed: () =>
-                SharePlus.instance.share(ShareParams(text: event.shareText)),
-          ),
+          if (event.shareLink case final link?)
+            PopupMenuButton<bool>(
+              tooltip: '分享活動',
+              icon: const Icon(NiuIcons.share),
+              onSelected: (full) => SharePlus.instance.share(
+                full
+                    ? ShareParams(text: event.shareText, subject: event.name)
+                    : ShareParams(text: '$link'),
+              ),
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: true, child: Text('分享活動資訊')),
+                PopupMenuItem(value: false, child: Text('只分享連結')),
+              ],
+            )
+          else
+            NiuIconButton(
+              tooltip: '分享活動',
+              icon: NiuIcons.share,
+              onPressed: () => SharePlus.instance.share(
+                ShareParams(text: event.shareText, subject: event.name),
+              ),
+            ),
         ],
         bottomBar: _actionBar(context),
         children: [

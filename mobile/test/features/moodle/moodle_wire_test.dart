@@ -226,6 +226,29 @@ void main() {
     );
     expect(records.single.status, AttendanceStatus.pending);
   });
+  test('a shared link is found inside a classmate\'s message', () {
+    const link =
+        'https://euni.niu.edu.tw/mod/attendance/attendance.php?qrpass=RAjWP5gHWP6P6Jg&sessid=3032';
+    for (final text in [
+      link,
+      '  $link\n',
+      '點名連結：$link 快點',
+      '「$link」',
+      'euni.niu.edu.tw/mod/attendance/attendance.php?qrpass=RAjWP5gHWP6P6Jg&sessid=3032',
+    ]) {
+      expect('${attendanceLink(text)}', link, reason: text);
+    }
+    for (final text in [
+      '',
+      'http://euni.niu.edu.tw/mod/attendance/attendance.php?qrpass=a&sessid=1',
+      'https://example.org/mod/attendance/attendance.php?qrpass=a&sessid=1',
+      'https://euni.niu.edu.tw/mod/attendance/attendance.php?qrpass=a&sessid=0',
+      'https://euni.niu.edu.tw/mod/attendance/attendance.php?qrpass=a&sessid=1&next=https://x',
+      'https://euni.niu.edu.tw/my/',
+    ]) {
+      expect(attendanceLink(text), isNull, reason: text);
+    }
+  });
   test('QR rejects extra keys, duplicate keys and foreign origins', () {
     const url =
         'https://euni.niu.edu.tw/mod/attendance/attendance.php?qrpass=a%2Bb&sessid=5';
