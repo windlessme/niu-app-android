@@ -1,6 +1,6 @@
 # HANDOFF
 
-給接手的 Claude Code session。最後更新：2026-10-08。目前版本：**1.0.37+118**。
+給接手的 Claude Code session。最後更新：2026-10-08。目前版本：**1.0.38+119**。
 
 ## 專案概況
 
@@ -15,7 +15,7 @@
 
 在 `mobile/` 底下執行：
 
-1. `set -o pipefail; tool/verify.sh`，包含 calendar/toolchain/分層/DOM 檢查、`dart format`、`flutter analyze`、`flutter test`，目前 436 項測試。
+1. `set -o pipefail; tool/verify.sh`，包含 calendar/toolchain/分層/DOM 檢查、`dart format`、`flutter analyze`、`flutter test`，目前 438 項測試。
 2. 把 `pubspec.yaml` 的 patch 版號和 build number 各加一。
 3. commit 到 `main`，**push 到 origin main**。
 4. `flutter build appbundle --release`，上傳到 Play internal 軌道（步驟見下節）。**每個新版本都要推。**
@@ -31,7 +31,7 @@
 - Play 各軌道現況（2026-10-08 用 MCP 查過）：
   - **正式版：1.0.0 (81)**。**1.0.17 (98) 仍在審查中**（使用者 2026-10-08 確認）。注意：審查中的正式版在 API 的 track 裡也會顯示 `status: completed`，不能拿來判斷已上線。
   - 公開測試（beta）：1.0.0 (81)。
-  - internal：**1.0.37 (118)**（2026-10-08 推送）。
+  - internal：**1.0.38 (119)**（2026-10-08 推送）。
 - 正式版由使用者在 Play Console 升級（Claude 推 production 會被權限擋下，屬正常）。
 - **正式版不用每版都推**，只要 versionCode 比上一個正式版大就行。建議 internal 每版都推；等使用者在手機上測過、累積一批改動或有重要修正時，再挑一版推正式版。**版本說明的寫法（使用者 2026-10-05 要求）**：
   - internal：只寫**這一版**改了什麼，讓使用者知道要測哪裡。沒有使用者看得到的改動時寫「內部調整，功能沒有變化」。不要再沿用累計說明，否則每版看起來都一樣。
@@ -85,6 +85,7 @@
   ・行事曆小工具優先顯示接下來的假期、截止日與考試，長期事項不再佔滿版面
   ・快速點名可以直接貼上同學分享的整段訊息
   ・活動可以選擇分享完整資訊或只分享連結
+  ・修正在首頁登入後，課表與 M 園區有時仍顯示登入頁
   ```
 - 公開測試的使用者會自動拿到 versionCode 較大的正式版，公開測試軌道不用特別處理。release 名稱用 `X.Y.Z (versionCode)`，附一句 zh-TW 版本說明。
 - 上傳流程（每個新版本都要做）：`flutter build appbundle --release`，然後用 MCP 依序 `edits_insert` → `bundles_upload` → `tracks_update`（internal，status `completed`）→ `edits_commit`。
@@ -161,6 +162,7 @@
 | 1.0.35 | `aa0c9e7` | 補統計（使用者看不到差異）：使用者屬性 `widgets`（App 啟動時由原生 `widgetsInUse` 回報放了哪些小工具，`schedule,next,week,calendar,quick` 或 `none`）；事件 `custom_course`（action add/edit/delete、color auto/preset/picked）、`schedule_wallpaper`（action lock/both/save/share＋result）、`schedule_view`（mode day/week）、`learning_hours`（result＋失敗 reason）。GA 自訂維度清單見「Google Analytics」一節 |
 | 1.0.36 | `4e7f555` | 與 iOS 同步 3 項：依 iOS `04fc726`，**行事曆小工具**的事件改傳 `category`（舊資料沒有就當 `other`），`CalendarWidget.visible()` 只留還沒結束的事件：已開始的只保留考試與選課，之後的教務事項只在有空位時補上，依日期、同日依考試→選課→其他排序，先依高度取筆數再排序。依 iOS `ef5f2c9`，**點名輸入網址**可以貼整段訊息：`attendanceLink()` 先試整段，再依空白與全形標點切開找連結，沒有 https 的 `euni.niu.edu.tw/…` 自動補上，仍由 `attendanceQr()` 驗證；找不到時提示「找不到 M 園區點名連結」。依 iOS `EventShareMenu`，**活動分享**有活動編號時改成選單：「分享活動資訊」（完整文字）或「只分享連結」（`CampusEvent.shareLink`）；沒有編號時維持直接分享 |
 | 1.0.37 | `e22be71` | 依 iOS `564eaa4`：**測驗改為原生作答流程**。`moodleQuestionInstall` 原封同步 iOS 新版（快照多 `stage`（overview/attempt/summary/confirm/review/activity）、`navigation`（答案卡，含其他頁）、`questions`、`timer`／`timerSeconds`；欄位多 `context`／`questionID`／`part`、選項 `blank`、動作 `role`；配合、下拉克漏字、綜合克漏字、拖放文字（用 Moodle 鍵盤操作）、排序（按校方移動鈕）、申論（TinyMCE API）可原生作答；圖片拖放、要上傳附件的申論仍交校方頁面）。`stage`／`perform` 變成 async，Android 改用 `callAsyncJavaScript`（`moodleQuestionPerform`／`moodleQuestionStage` 是 function body，參數 `revision`／`actionID`／`answers`）。畫面（`moodle_question_screen.dart`＋新的 `moodle_question_widgets.dart`）：`isQuizFlow` 時依步驟顯示首頁／作答（題目卡、已作答標記）／交卷前檢查／確認／複習，上方答案卡列（已作答 n／m、計時、點題號：本頁捲動、他頁經 Moodle 自己的按鈕先存檔）、下方固定主要／次要按鈕（下一頁、上一頁、檢查並交卷、交卷、返回作答、完成複習）；測驗步驟不再跳 App 的確認視窗（靠 Moodle 自己的確認），其他活動維持。單選選項把「a.」放進圓圈、配對與空格用可展開的選擇列、排序用上下移按鈕；答案變更以當下值計算（連點兩下都算）。**計時測驗每次改答案都立刻 `stage` 寫回校方表單**，送出前先等草稿寫完。示範模式的測驗改成 4 題兩頁、10 分鐘計時，走完首頁→作答→交卷前檢查→確認→複習。`tool/check_question_page.js` 用 jsdom 跑 iOS repo 的 `scripts/check-moodle-question-page.py` 測試頁面（18/18 通過；需另裝 jsdom，見檔頭） |
+| 1.0.38 | （待補） | 使用者回報：在首頁登入後，切到課表或 M 園區有時仍顯示登入頁。原因：兩個分頁 `preload: true`，未登入時就建好，`AuthGate` 一顯示自己的 `LoginScreen` 就把 `completingLogin` 設成 true，只有那個登入頁呼叫 `onSignedIn` 才清掉；在首頁登入時永遠不會清，所以一直卡在登入頁。改成 `LoginScreen.onCompleting(true/false)`：只有這個登入頁開始接受 token（或進示範模式）時才擋住內容，等 M 園區等連線建立完再放行，失敗就放開；在別處登入則直接顯示內容。`AuthGate` 加 `session` 參數供測試（`test/app/auth_gate_test.dart`） |
 
 另外：
 
