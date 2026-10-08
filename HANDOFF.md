@@ -1,6 +1,6 @@
 # HANDOFF
 
-給接手的 Claude Code session。最後更新：2026-10-08。目前版本：**1.0.39+120**。
+給接手的 Claude Code session。最後更新：2026-10-08。目前版本：**1.0.40+121**。
 
 ## 專案概況
 
@@ -15,7 +15,7 @@
 
 在 `mobile/` 底下執行：
 
-1. `set -o pipefail; tool/verify.sh`，包含 calendar/toolchain/分層/DOM 檢查、`dart format`、`flutter analyze`、`flutter test`，目前 438 項測試。
+1. `set -o pipefail; tool/verify.sh`，包含 calendar/toolchain/分層/DOM 檢查、`dart format`、`flutter analyze`、`flutter test`，目前 439 項測試。
 2. 把 `pubspec.yaml` 的 patch 版號和 build number 各加一。
 3. commit 到 `main`，**push 到 origin main**。
 4. `flutter build appbundle --release`，上傳到 Play internal 軌道（步驟見下節）。**每個新版本都要推。**
@@ -29,9 +29,9 @@
 - Upload key 的 SHA-256 指紋：`95:04:DD:13:D3:38:D6:E5:7C:83:89:42:9F:B0:A0:AB:25:4E:F1:1F:95:CE:AB:DC:5E:4B:B4:04:46:C8:4B:FA`。已經請使用者另外備份。
 - 已啟用 Play 應用程式簽署：發布用的金鑰由 Google 保管，這把只是 upload key。
 - Play 各軌道現況（2026-10-08 用 MCP 查過）：
-  - **正式版：1.0.17 (98)**，2026-10-08 審核通過上線（使用者確認）。下一個正式版建議用 1.0.39 (120)，由使用者在 Play Console 升級。注意：審查中的正式版在 API 的 track 裡也會顯示 `status: completed`，不能拿來判斷已上線。
+  - **正式版：1.0.17 (98)**，2026-10-08 審核通過上線（使用者確認）。下一個正式版建議用 1.0.40 (121)（1.0.30～1.0.39 的課程「出缺席」頁是黑畫面，不要推這些版本），由使用者在 Play Console 升級。注意：審查中的正式版在 API 的 track 裡也會顯示 `status: completed`，不能拿來判斷已上線。
   - 公開測試（beta）：1.0.0 (81)。
-  - internal：**1.0.39 (120)**（2026-10-08 推送）。
+  - internal：**1.0.40 (121)**（2026-10-08 推送）。
 - 正式版由使用者在 Play Console 升級（Claude 推 production 會被權限擋下，屬正常）。
 - **正式版不用每版都推**，只要 versionCode 比上一個正式版大就行。建議 internal 每版都推；等使用者在手機上測過、累積一批改動或有重要修正時，再挑一版推正式版。**版本說明的寫法（使用者 2026-10-05 要求）**：
   - internal：只寫**這一版**改了什麼，讓使用者知道要測哪裡。沒有使用者看得到的改動時寫「內部調整，功能沒有變化」。不要再沿用累計說明，否則每版看起來都一樣。
@@ -181,6 +181,7 @@
 | 1.0.37 | `e22be71` | 依 iOS `564eaa4`：**測驗改為原生作答流程**。`moodleQuestionInstall` 原封同步 iOS 新版（快照多 `stage`（overview/attempt/summary/confirm/review/activity）、`navigation`（答案卡，含其他頁）、`questions`、`timer`／`timerSeconds`；欄位多 `context`／`questionID`／`part`、選項 `blank`、動作 `role`；配合、下拉克漏字、綜合克漏字、拖放文字（用 Moodle 鍵盤操作）、排序（按校方移動鈕）、申論（TinyMCE API）可原生作答；圖片拖放、要上傳附件的申論仍交校方頁面）。`stage`／`perform` 變成 async，Android 改用 `callAsyncJavaScript`（`moodleQuestionPerform`／`moodleQuestionStage` 是 function body，參數 `revision`／`actionID`／`answers`）。畫面（`moodle_question_screen.dart`＋新的 `moodle_question_widgets.dart`）：`isQuizFlow` 時依步驟顯示首頁／作答（題目卡、已作答標記）／交卷前檢查／確認／複習，上方答案卡列（已作答 n／m、計時、點題號：本頁捲動、他頁經 Moodle 自己的按鈕先存檔）、下方固定主要／次要按鈕（下一頁、上一頁、檢查並交卷、交卷、返回作答、完成複習）；測驗步驟不再跳 App 的確認視窗（靠 Moodle 自己的確認），其他活動維持。單選選項把「a.」放進圓圈、配對與空格用可展開的選擇列、排序用上下移按鈕；答案變更以當下值計算（連點兩下都算）。**計時測驗每次改答案都立刻 `stage` 寫回校方表單**，送出前先等草稿寫完。示範模式的測驗改成 4 題兩頁、10 分鐘計時，走完首頁→作答→交卷前檢查→確認→複習。`tool/check_question_page.js` 用 jsdom 跑 iOS repo 的 `scripts/check-moodle-question-page.py` 測試頁面（18/18 通過；需另裝 jsdom，見檔頭） |
 | 1.0.38 | `e02139b` | 使用者回報：在首頁登入後，切到課表或 M 園區有時仍顯示登入頁。原因：兩個分頁 `preload: true`，未登入時就建好，`AuthGate` 一顯示自己的 `LoginScreen` 就把 `completingLogin` 設成 true，只有那個登入頁呼叫 `onSignedIn` 才清掉；在首頁登入時永遠不會清，所以一直卡在登入頁。改成 `LoginScreen.onCompleting(true/false)`：只有這個登入頁開始接受 token（或進示範模式）時才擋住內容，等 M 園區等連線建立完再放行，失敗就放開；在別處登入則直接顯示內容。`AuthGate` 加 `session` 參數供測試（`test/app/auth_gate_test.dart`） |
 | 1.0.39 | `ced23b7` | Play Console 對 1.0.17 (98) 回報「使用已淘汰的無邊框 API」：`Window.setStatusBarColor`／`setNavigationBarColor`，起點 `MainActivity.onCreate`。來源是 `WindowCompat.enableEdgeToEdge`（androidx core 1.17 無條件呼叫這兩個）；Flutter 的 `FlutterActivity` 與 `PlatformPlugin` 都已用 `SDK_INT < 35` 擋住（javap 確認過）。改成只在 Android 14 以下呼叫 `enableEdgeToEdge`，15 以上（系統強制無邊框）改設 `window.isNavigationBarContrastEnforced = false` 維持原本外觀。同時回報的「可能不會向所有使用者顯示無邊框畫面」是建議 14 以下也呼叫 `enableEdgeToEdge`，本來就有做（1.0.17 起）。使用者看不到差異 |
+| 1.0.40 | （待補） | 使用者回報：M 園區課程點進「出缺席」是黑畫面（1.0.30 改版課程頁起）。`CourseDestinationScreen` 把 `AttendanceRecords`（讀完後是 `RefreshIndicator`＋`ListView`）放進 `NiuScrollPage` 的 `SliverList`，`Vertical viewport was given unbounded height`，release 版畫成黑／灰色；讀取中只有轉圈所以先正常、資料到就變黑。把紀錄清單抽成不自己捲動的 `AttendanceSectionList`（`AttendanceRecords` 與課程頁共用），課程頁「出缺席」改用總覽已讀的 `overview.attendance`，載入／錯誤與其他頁一致，下拉重新整理會重讀。補 GA：`load_error` page=`course_attendance`，reason `timeout`／`format`／`other`，有區塊讀不到時記 `section`。測試 `test/features/moodle/course_attendance_test.dart`（舊版面會失敗） |
 
 另外：
 
@@ -469,7 +470,7 @@
 
 ## 可以接著做的事
 
-1. **1.0.17 已上線（2026-10-08）**。使用者在 Play Console 把 1.0.39 (120) 升級為正式版，貼上精簡版說明；送審後到審核結束前不要再提交新的正式版。
+1. **1.0.17 已上線（2026-10-08）**。使用者在 Play Console 把 1.0.40 (121) 升級為正式版，貼上精簡版說明；送審後到審核結束前不要再提交新的正式版。
 2. 在實機上驗證三種通知和點通知後的跳轉，必要時調整文案或時間。
 3. 等使用者把測試人員加進 internal 名單，再推版本號更大的 build，在實機上測 In-App Updates。
 4. 用 release 版上 Play 內部測試軌道，驗證 In-App Updates。
