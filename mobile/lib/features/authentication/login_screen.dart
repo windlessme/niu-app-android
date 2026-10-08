@@ -22,9 +22,20 @@ import '../settings/privacy_screen.dart';
 /// the page is filled and submitted out of sight, and shown only when the
 /// school asks for human verification (after 8 s or on request).
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key, this.session, this.onSignedIn});
+  const LoginScreen({
+    super.key,
+    this.session,
+    this.onSignedIn,
+    this.onCompleting,
+  });
   final CampusSession? session;
   final VoidCallback? onSignedIn;
+
+  /// True once this screen starts signing the session in (the school token
+  /// or the demo is about to be accepted), false if that then fails. While
+  /// true the session may already be signed in, but the M 園區, library and
+  /// mail sign-ins are still being set up here.
+  final ValueChanged<bool>? onCompleting;
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
@@ -161,9 +172,11 @@ class _LoginScreenState extends State<LoginScreen> {
   /// The review account never reaches the school login page.
   Future<void> enterDemo() async {
     setState(() => phase = _Phase.connecting);
+    widget.onCompleting?.call(true);
     try {
       await session.enterDemo();
     } catch (error) {
+      widget.onCompleting?.call(false);
       if (!mounted) return;
       setState(() => phase = _Phase.form);
       await showRejection(
@@ -189,6 +202,7 @@ class _LoginScreenState extends State<LoginScreen> {
     // If the student signed in on the visible page, the account comes from
     // the school, not from the form.
     final typed = !showPage;
+    widget.onCompleting?.call(true);
     try {
       session.coordinator.requireCurrent(epoch);
       final revision = remembered.revision;
@@ -235,6 +249,7 @@ class _LoginScreenState extends State<LoginScreen> {
         Navigator.of(context).pop(true);
       }
     } catch (error) {
+      widget.onCompleting?.call(false);
       if (!mounted) return;
       setState(() {
         phase = _Phase.form;
