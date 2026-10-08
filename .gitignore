@@ -19,3 +19,4 @@
 **/coverage/
 **/test_driver/*.json
 **/google-services.json
+.opencode/
