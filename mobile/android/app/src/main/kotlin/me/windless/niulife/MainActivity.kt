@@ -132,7 +132,14 @@ class MainActivity : FlutterActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         // Android 15+ draws edge to edge for apps targeting 35; older
         // versions get the same layout, which the Flutter UI already pads.
-        WindowCompat.enableEdgeToEdge(window)
+        // enableEdgeToEdge sets the bar colours, deprecated on 15+, so it
+        // only runs before it; Play flags those calls (as Flutter guards its own).
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.VANILLA_ICE_CREAM) {
+            WindowCompat.enableEdgeToEdge(window)
+        } else {
+            // What enableEdgeToEdge did here: no scrim behind 3-button navigation.
+            window.isNavigationBarContrastEnforced = false
+        }
         super.onCreate(savedInstanceState)
     }
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
