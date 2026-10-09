@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 
 import '../core/analytics/app_analytics.dart';
+import '../core/analytics/usage_heartbeat.dart';
 import '../core/platform/play_update.dart';
 import '../core/platform/schedule_gateway.dart';
 import '../core/session/cached_schedule.dart';
@@ -331,6 +332,8 @@ class _NiuAppState extends State<NiuApp> {
     return repo;
   }
 
+  late final heartbeat = UsageHeartbeatTrigger(session);
+
   String? _notifiedAccount;
   CachedSchedule? _notifiedSchedule;
 
@@ -379,6 +382,7 @@ class _NiuAppState extends State<NiuApp> {
     session.registerCleanup(_clearMoodle);
     session.addListener(_syncNotifications);
     CustomCourseStore.instance.addListener(_customCoursesChanged);
+    heartbeat.start();
     _restorePreferences();
     session.restore().catchError((Object _) {});
     notifications.saveCalendarWidget().catchError((Object _) {});
@@ -428,6 +432,7 @@ class _NiuAppState extends State<NiuApp> {
   void dispose() {
     session.unregisterCleanup(_clearMoodle);
     session.removeListener(_syncNotifications);
+    heartbeat.dispose();
     router.dispose();
     appearance.dispose();
     super.dispose();
