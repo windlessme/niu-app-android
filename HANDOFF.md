@@ -187,7 +187,7 @@
 | 1.0.38 | `e02139b` | 使用者回報：在首頁登入後，切到課表或 M 園區有時仍顯示登入頁。原因：兩個分頁 `preload: true`，未登入時就建好，`AuthGate` 一顯示自己的 `LoginScreen` 就把 `completingLogin` 設成 true，只有那個登入頁呼叫 `onSignedIn` 才清掉；在首頁登入時永遠不會清，所以一直卡在登入頁。改成 `LoginScreen.onCompleting(true/false)`：只有這個登入頁開始接受 token（或進示範模式）時才擋住內容，等 M 園區等連線建立完再放行，失敗就放開；在別處登入則直接顯示內容。`AuthGate` 加 `session` 參數供測試（`test/app/auth_gate_test.dart`） |
 | 1.0.39 | `ced23b7` | Play Console 對 1.0.17 (98) 回報「使用已淘汰的無邊框 API」：`Window.setStatusBarColor`／`setNavigationBarColor`，起點 `MainActivity.onCreate`。來源是 `WindowCompat.enableEdgeToEdge`（androidx core 1.17 無條件呼叫這兩個）；Flutter 的 `FlutterActivity` 與 `PlatformPlugin` 都已用 `SDK_INT < 35` 擋住（javap 確認過）。改成只在 Android 14 以下呼叫 `enableEdgeToEdge`，15 以上（系統強制無邊框）改設 `window.isNavigationBarContrastEnforced = false` 維持原本外觀。同時回報的「可能不會向所有使用者顯示無邊框畫面」是建議 14 以下也呼叫 `enableEdgeToEdge`，本來就有做（1.0.17 起）。使用者看不到差異 |
 | 1.0.40 | `88ef01f` | 使用者回報：M 園區課程點進「出缺席」是黑畫面（1.0.30 改版課程頁起）。`CourseDestinationScreen` 把 `AttendanceRecords`（讀完後是 `RefreshIndicator`＋`ListView`）放進 `NiuScrollPage` 的 `SliverList`，`Vertical viewport was given unbounded height`，release 版畫成黑／灰色；讀取中只有轉圈所以先正常、資料到就變黑。把紀錄清單抽成不自己捲動的 `AttendanceSectionList`（`AttendanceRecords` 與課程頁共用），課程頁「出缺席」改用總覽已讀的 `overview.attendance`，載入／錯誤與其他頁一致，下拉重新整理會重讀。補 GA：`load_error` page=`course_attendance`，reason `timeout`／`format`／`other`，有區塊讀不到時記 `section`。測試 `test/features/moodle/course_attendance_test.dart`（舊版面會失敗） |
-| 1.2.0 | （待補） | 內部調整（使用者看不到差異）。版本號依使用者要求從 1.0.40 跳到 1.2.0 |
+| 1.2.0 | `0adaa06` | 內部調整（使用者看不到差異）。版本號依使用者要求從 1.0.40 跳到 1.2.0 |
 
 另外：
 
