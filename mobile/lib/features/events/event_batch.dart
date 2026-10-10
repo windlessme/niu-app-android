@@ -374,11 +374,10 @@ class _EventBatchScreenState extends State<EventBatchScreen> {
         appBar: NiuAppBar(title: '批次報名', showBack: !submitting),
         bottomNavigationBar: bar(context),
         body: ListView(
-          padding: const EdgeInsets.fromLTRB(
-            NiuSpacing.gutter,
-            NiuSpacing.md,
-            NiuSpacing.gutter,
-            NiuSpacing.huge,
+          padding: NiuLayout.page(
+            context,
+            top: NiuSpacing.md,
+            bottom: NiuSpacing.huge,
           ),
           children: [
             ...switch (phase) {

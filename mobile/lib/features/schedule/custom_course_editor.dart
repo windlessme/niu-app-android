@@ -196,11 +196,10 @@ class _CustomCourseEditorScreenState extends State<CustomCourseEditorScreen> {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(
-          NiuSpacing.gutter,
-          NiuSpacing.md,
-          NiuSpacing.gutter,
-          NiuSpacing.huge,
+        padding: NiuLayout.page(
+          context,
+          top: NiuSpacing.md,
+          bottom: NiuSpacing.huge,
         ),
         children: [
           NiuCard(
@@ -533,12 +532,7 @@ class _ColourSheetState extends State<_ColourSheet> {
     final result = colour.toColor();
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          NiuSpacing.gutter,
-          0,
-          NiuSpacing.gutter,
-          NiuSpacing.xl,
-        ),
+        padding: NiuLayout.page(context, bottom: NiuSpacing.xl),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,

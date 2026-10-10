@@ -498,11 +498,10 @@ class _ScheduleWallpaperScreenState extends State<ScheduleWallpaperScreen> {
     return Scaffold(
       appBar: const NiuAppBar(title: '課表桌布'),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(
-          NiuSpacing.gutter,
-          NiuSpacing.md,
-          NiuSpacing.gutter,
-          NiuSpacing.huge,
+        padding: NiuLayout.page(
+          context,
+          top: NiuSpacing.md,
+          bottom: NiuSpacing.huge,
         ),
         children: [
           Center(

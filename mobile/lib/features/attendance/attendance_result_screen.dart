@@ -393,11 +393,10 @@ class _AttendanceResultScreenState extends State<AttendanceResultScreen> {
     final theme = Theme.of(context);
     final canVerify = success && error == null;
     return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        NiuSpacing.gutter,
-        NiuSpacing.xxl,
-        NiuSpacing.gutter,
-        NiuSpacing.huge,
+      padding: NiuLayout.page(
+        context,
+        top: NiuSpacing.xxl,
+        bottom: NiuSpacing.huge,
       ),
       children: [
         Center(

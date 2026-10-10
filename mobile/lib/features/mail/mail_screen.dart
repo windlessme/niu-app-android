@@ -533,11 +533,10 @@ class _MailScreenState extends State<MailScreen> {
               ),
         slivers: [
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(
-              NiuSpacing.gutter,
-              NiuSpacing.xs,
-              NiuSpacing.gutter,
-              NiuSpacing.sm,
+            padding: NiuLayout.page(
+              context,
+              top: NiuSpacing.xs,
+              bottom: NiuSpacing.sm,
             ),
             sliver: SliverList.list(
               children: [

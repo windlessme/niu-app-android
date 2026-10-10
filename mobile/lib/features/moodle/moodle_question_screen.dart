@@ -667,11 +667,10 @@ class _MoodleQuestionScreenState extends State<MoodleQuestionScreen>
         Expanded(
           child: ListView(
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-            padding: const EdgeInsets.fromLTRB(
-              NiuSpacing.gutter,
-              NiuSpacing.md,
-              NiuSpacing.gutter,
-              NiuSpacing.huge,
+            padding: NiuLayout.page(
+              context,
+              top: NiuSpacing.md,
+              bottom: NiuSpacing.huge,
             ),
             children: [
               if (error case final message?) ...[
@@ -1120,11 +1119,10 @@ class _MoodleQuestionScreenState extends State<MoodleQuestionScreen>
       color: colors.canvas,
       shape: Border(bottom: BorderSide(color: colors.hairline)),
       child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          NiuSpacing.gutter,
-          NiuSpacing.sm,
-          NiuSpacing.gutter,
-          items.isEmpty ? NiuSpacing.sm : 0,
+        padding: NiuLayout.page(
+          context,
+          top: NiuSpacing.sm,
+          bottom: items.isEmpty ? NiuSpacing.sm : 0,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

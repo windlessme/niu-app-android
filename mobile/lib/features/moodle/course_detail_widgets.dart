@@ -52,11 +52,10 @@ class _CourseDetailListState extends State<CourseDetailList> {
         onRefresh: reload,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(
-            NiuSpacing.gutter,
-            NiuSpacing.lg,
-            NiuSpacing.gutter,
-            NiuSpacing.huge,
+          padding: NiuLayout.page(
+            context,
+            top: NiuSpacing.lg,
+            bottom: NiuSpacing.huge,
           ),
           children: [
             if (widget.header != null) widget.header!,

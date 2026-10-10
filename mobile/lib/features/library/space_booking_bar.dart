@@ -179,12 +179,7 @@ class _SpaceConfirmSheetState extends State<SpaceConfirmSheet> {
       canPop: !sending,
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            NiuSpacing.gutter,
-            0,
-            NiuSpacing.gutter,
-            NiuSpacing.lg,
-          ),
+          padding: NiuLayout.page(context, bottom: NiuSpacing.lg),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,

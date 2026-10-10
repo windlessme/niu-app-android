@@ -26,6 +26,11 @@ void main() {
   testWidgets('tapping a lesson in the timetable opens it in M 園區', (
     tester,
   ) async {
+    // A phone shows one day, where a lesson opens its course directly.
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     final opened = <String>[];
     await tester.pumpWidget(
       MaterialApp(

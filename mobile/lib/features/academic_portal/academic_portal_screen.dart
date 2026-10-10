@@ -644,11 +644,10 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen>
           children: [
             if (widget.header != null)
               Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  NiuSpacing.gutter,
-                  NiuSpacing.xs,
-                  NiuSpacing.gutter,
-                  NiuSpacing.md,
+                padding: NiuLayout.page(
+                  context,
+                  top: NiuSpacing.xs,
+                  bottom: NiuSpacing.md,
                 ),
                 child: widget.header,
               ),
@@ -840,11 +839,10 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen>
                           children: [
                             if (widget.cacheKey != null)
                               Padding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  NiuSpacing.gutter,
-                                  NiuSpacing.xs,
-                                  NiuSpacing.gutter,
-                                  NiuSpacing.xs,
+                                padding: NiuLayout.page(
+                                  context,
+                                  top: NiuSpacing.xs,
+                                  bottom: NiuSpacing.xs,
                                 ),
                                 child: NiuSyncStatus(
                                   updatedAt: stale
@@ -946,11 +944,10 @@ class _AcademicPortalScreenState extends State<AcademicPortalScreen>
 
   Widget banner(Widget child) => Flexible(
     child: SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(
-        NiuSpacing.gutter,
-        NiuSpacing.xs,
-        NiuSpacing.gutter,
-        NiuSpacing.md,
+      padding: NiuLayout.page(
+        context,
+        top: NiuSpacing.xs,
+        bottom: NiuSpacing.md,
       ),
       child: child,
     ),

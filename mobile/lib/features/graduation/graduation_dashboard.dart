@@ -128,11 +128,10 @@ class GraduationDashboard extends StatelessWidget {
       );
     }
     final list = ListView(
-      padding: const EdgeInsets.fromLTRB(
-        NiuSpacing.gutter,
-        NiuSpacing.sm,
-        NiuSpacing.gutter,
-        NiuSpacing.huge,
+      padding: NiuLayout.page(
+        context,
+        top: NiuSpacing.sm,
+        bottom: NiuSpacing.huge,
       ),
       children: children,
     );

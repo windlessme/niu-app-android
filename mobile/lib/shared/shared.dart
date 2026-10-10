@@ -3,6 +3,7 @@ export 'niu_badges.dart';
 export 'niu_colors.dart';
 export 'niu_data.dart';
 export 'niu_icons.dart';
+export 'niu_layout.dart';
 export 'niu_links.dart';
 export 'niu_motion.dart';
 export 'niu_page.dart';

@@ -315,8 +315,9 @@ class _ScheduleViewState extends State<ScheduleView> {
           DateTime.now().toUtc().add(const Duration(hours: 8)).weekday) -
       1;
 
-  /// 整週 or 單日; remembered on this device across visits.
-  bool week = false;
+  /// 整週 or 單日; remembered on this device across visits. Until the
+  /// student picks one, tablets show the whole week and phones one day.
+  bool? week;
   static const _weekKey = 'scheduleWeekView';
 
   @override
@@ -343,6 +344,7 @@ class _ScheduleViewState extends State<ScheduleView> {
 
   @override
   Widget build(BuildContext context) {
+    final week = this.week ?? NiuLayout.isWide(context);
     final theme = Theme.of(context);
     final now = DateTime.now().toUtc().add(const Duration(hours: 8));
     final today = now.weekday - 1;
@@ -464,11 +466,12 @@ class _ScheduleViewState extends State<ScheduleView> {
       );
     }
     return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        NiuSpacing.gutter,
-        NiuSpacing.lg,
-        NiuSpacing.gutter,
-        NiuSpacing.huge,
+      padding: NiuLayout.page(
+        context,
+        top: NiuSpacing.lg,
+        bottom: NiuSpacing.huge,
+        // The week grid uses a tablet's width; one day stays readable.
+        maxWidth: week ? NiuLayout.spacious : NiuLayout.readable,
       ),
       children: children,
     );

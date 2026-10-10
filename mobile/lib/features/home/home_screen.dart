@@ -70,6 +70,58 @@ class CampusHomeScreen extends StatelessWidget {
     final colors = NiuColors.of(context);
     final now = DateTime.now().toUtc().add(const Duration(hours: 8));
     final date = '${now.month} 月 ${now.day} 日　星期${'一二三四五六日'[now.weekday - 1]}';
+    // Two columns need more room than one readable column.
+    final wide = NiuLayout.isWide(context);
+    final gutter = NiuLayout.gutter(
+      context,
+      maxWidth: wide ? NiuLayout.spacious : NiuLayout.readable,
+    );
+    final today = <Widget>[
+      NiuSection(
+        title: '今天',
+        action: name == null
+            ? null
+            : TextButton(
+                onPressed: () => context.go('/schedule'),
+                child: const Text('完整課表'),
+              ),
+        child: _TodayCard(
+          signedIn: name != null,
+          courses: courses,
+          hasSchedule: hasSchedule,
+          onOpenCourse: onOpenCourse,
+        ),
+      ),
+      const SizedBox(height: NiuSpacing.md),
+      NiuCard(
+        semanticLabel: 'M 園區快速點名，掃描課堂 QR Code 簽到',
+        onTap: () => context.push('/attendance'),
+        child: Row(
+          children: [
+            const NiuIconTile(
+              icon: NiuIcons.attendance,
+              size: NiuSize.iconTileLarge,
+            ),
+            const SizedBox(width: NiuSpacing.lg),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('M 園區快速點名', style: theme.textTheme.titleMedium),
+                  const SizedBox(height: 2),
+                  Text('掃描課堂 QR Code 簽到', style: theme.textTheme.bodySmall),
+                ],
+              ),
+            ),
+            Icon(NiuIcons.forward, color: colors.inkTertiary),
+          ],
+        ),
+      ),
+    ];
+    final services = NiuSection(
+      title: '校園服務',
+      child: const _ServiceGrid(services: CampusServices.home),
+    );
     return Scaffold(
       body: SafeArea(
         bottom: false,
@@ -85,10 +137,10 @@ class CampusHomeScreen extends StatelessWidget {
           },
           child: ListView(
             physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(
-              NiuSpacing.gutter,
+            padding: EdgeInsets.fromLTRB(
+              gutter,
               NiuSpacing.md,
-              NiuSpacing.gutter,
+              gutter,
               NiuSpacing.huge,
             ),
             children: [
@@ -144,53 +196,25 @@ class CampusHomeScreen extends StatelessWidget {
                   message: '目前離線，顯示上次同步的課表。下拉即可重新連線。',
                 ),
               ],
-              NiuSection(
-                title: '今天',
-                action: name == null
-                    ? null
-                    : TextButton(
-                        onPressed: () => context.go('/schedule'),
-                        child: const Text('完整課表'),
-                      ),
-                child: _TodayCard(
-                  signedIn: name != null,
-                  courses: courses,
-                  hasSchedule: hasSchedule,
-                  onOpenCourse: onOpenCourse,
-                ),
-              ),
-              const SizedBox(height: NiuSpacing.md),
-              NiuCard(
-                semanticLabel: 'M 園區快速點名，掃描課堂 QR Code 簽到',
-                onTap: () => context.push('/attendance'),
-                child: Row(
+              // Tablets: today on the left, the services beside it.
+              if (wide)
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const NiuIconTile(
-                      icon: NiuIcons.attendance,
-                      size: NiuSize.iconTileLarge,
-                    ),
-                    const SizedBox(width: NiuSpacing.lg),
                     Expanded(
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('M 園區快速點名', style: theme.textTheme.titleMedium),
-                          const SizedBox(height: 2),
-                          Text(
-                            '掃描課堂 QR Code 簽到',
-                            style: theme.textTheme.bodySmall,
-                          ),
-                        ],
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: today,
                       ),
                     ),
-                    Icon(NiuIcons.forward, color: colors.inkTertiary),
+                    const SizedBox(width: NiuSpacing.xxl),
+                    Expanded(child: services),
                   ],
-                ),
-              ),
-              NiuSection(
-                title: '校園服務',
-                child: const _ServiceGrid(services: CampusServices.home),
-              ),
+                )
+              else ...[
+                ...today,
+                services,
+              ],
               const SizedBox(height: NiuSpacing.xxxl),
               Text(
                 '非官方工具，校務資訊以學校系統為準。',
@@ -452,9 +476,11 @@ class _ServiceGrid extends StatelessWidget {
           MediaQuery.textScalerOf(context).scale(16) > 26 ||
           constraints.maxWidth < 300;
       const gap = NiuSpacing.md;
-      final width = single
-          ? constraints.maxWidth
-          : (constraints.maxWidth - gap) / 2;
+      // Two per row on phones; more where tiles stay at least 200 wide.
+      final columns = single
+          ? 1
+          : ((constraints.maxWidth + gap) / (200 + gap)).floor().clamp(2, 4);
+      final width = (constraints.maxWidth - gap * (columns - 1)) / columns;
       return Wrap(
         spacing: gap,
         runSpacing: gap,
