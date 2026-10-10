@@ -557,12 +557,7 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen>
       builder: (context) => SafeArea(
         top: false,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(
-            NiuSpacing.gutter,
-            0,
-            NiuSpacing.gutter,
-            NiuSpacing.xl,
-          ),
+          padding: NiuLayout.page(context, bottom: NiuSpacing.xl),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             mainAxisSize: MainAxisSize.min,
@@ -941,11 +936,10 @@ class _LeaveApplicationScreenState extends State<LeaveApplicationScreen>
             // The notice stays readable while the school page loads.
             absorbing: busy && accepted,
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(
-                NiuSpacing.gutter,
-                NiuSpacing.md,
-                NiuSpacing.gutter,
-                NiuSpacing.huge,
+              padding: NiuLayout.page(
+                context,
+                top: NiuSpacing.md,
+                bottom: NiuSpacing.huge,
               ),
               children: [...banners, ...content],
             ),

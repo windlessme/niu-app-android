@@ -237,11 +237,10 @@ class _GradesScreenState extends State<GradesScreen> {
     extractScript: gradeExtractScript(mode),
     demoSnapshot: () => DemoData.grades(mode.name),
     snapshotBuilder: (context, value) => ListView(
-      padding: const EdgeInsets.fromLTRB(
-        NiuSpacing.gutter,
-        NiuSpacing.xs,
-        NiuSpacing.gutter,
-        NiuSpacing.huge,
+      padding: NiuLayout.page(
+        context,
+        top: NiuSpacing.xs,
+        bottom: NiuSpacing.huge,
       ),
       children: [
         ...(mode == GradeMode.history ? history : term)(context, value as Map),

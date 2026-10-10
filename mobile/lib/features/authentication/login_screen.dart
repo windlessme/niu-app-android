@@ -414,11 +414,10 @@ class _LoginScreenState extends State<LoginScreen> {
     return SafeArea(
       top: false,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(
-          NiuSpacing.gutter,
-          NiuSpacing.xxl,
-          NiuSpacing.gutter,
-          NiuSpacing.huge,
+        padding: NiuLayout.page(
+          context,
+          top: NiuSpacing.xxl,
+          bottom: NiuSpacing.huge,
         ),
         children: [
           Center(

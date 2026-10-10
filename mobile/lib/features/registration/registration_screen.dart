@@ -125,11 +125,10 @@ class RegistrationDashboard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return ListView(
-      padding: const EdgeInsets.fromLTRB(
-        NiuSpacing.gutter,
-        NiuSpacing.sm,
-        NiuSpacing.gutter,
-        NiuSpacing.huge,
+      padding: NiuLayout.page(
+        context,
+        top: NiuSpacing.sm,
+        bottom: NiuSpacing.huge,
       ),
       children: [
         NiuCard(

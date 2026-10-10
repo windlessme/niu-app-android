@@ -173,11 +173,10 @@ class MailPager extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        NiuSpacing.gutter,
-        NiuSpacing.md,
-        NiuSpacing.gutter,
-        NiuSpacing.huge + NiuSpacing.xl,
+      padding: NiuLayout.page(
+        context,
+        top: NiuSpacing.md,
+        bottom: NiuSpacing.huge + NiuSpacing.xl,
       ),
       child: Column(
         children: [

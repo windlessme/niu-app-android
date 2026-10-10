@@ -70,6 +70,59 @@ class _CampusShellState extends State<CampusShell> {
     initialLocation: index == widget.shell.currentIndex,
   );
 
+  Widget _pages() => PageView(
+    controller: pages,
+    onPageChanged: (i) {
+      if (i != widget.shell.currentIndex) widget.shell.goBranch(i);
+    },
+    children: widget.children,
+  );
+
+  /// Tablets and landscape: the tabs sit in a side rail, and the pages are
+  /// told their real width so they size their readable column from it.
+  Widget _railLayout(BuildContext context, int selected, NiuColors colors) {
+    final media = MediaQuery.of(context);
+    const rail = 88.0;
+    return Scaffold(
+      body: Row(
+        children: [
+          SafeArea(
+            right: false,
+            child: NavigationRail(
+              minWidth: rail,
+              selectedIndex: selected,
+              onDestinationSelected: select,
+              labelType: NavigationRailLabelType.all,
+              groupAlignment: -0.9,
+              destinations: [
+                for (final item in CampusShell.destinations)
+                  NavigationRailDestination(
+                    icon: Icon(item.$2),
+                    selectedIcon: Icon(item.$3),
+                    label: Text(item.$1),
+                  ),
+              ],
+            ),
+          ),
+          VerticalDivider(width: .8, thickness: .8, color: colors.hairline),
+          Expanded(
+            child: MediaQuery(
+              data: media.copyWith(
+                size: Size(
+                  media.size.width - rail - media.padding.left - .8,
+                  media.size.height,
+                ),
+                padding: media.padding.copyWith(left: 0),
+                viewPadding: media.viewPadding.copyWith(left: 0),
+              ),
+              child: _pages(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final selected = widget.shell.currentIndex;
@@ -80,33 +133,31 @@ class _CampusShellState extends State<CampusShell> {
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) select(0);
       },
-      child: Scaffold(
-        body: PageView(
-          controller: pages,
-          onPageChanged: (i) {
-            if (i != widget.shell.currentIndex) widget.shell.goBranch(i);
-          },
-          children: widget.children,
-        ),
-        bottomNavigationBar: DecoratedBox(
-          decoration: BoxDecoration(
-            border: Border(top: BorderSide(color: colors.hairline, width: .8)),
-          ),
-          child: NavigationBar(
-            selectedIndex: selected,
-            onDestinationSelected: select,
-            destinations: [
-              for (final item in CampusShell.destinations)
-                NavigationDestination(
-                  icon: Icon(item.$2),
-                  selectedIcon: Icon(item.$3),
-                  label: item.$1,
-                  tooltip: '',
+      child: NiuLayout.isWide(context)
+          ? _railLayout(context, selected, colors)
+          : Scaffold(
+              body: _pages(),
+              bottomNavigationBar: DecoratedBox(
+                decoration: BoxDecoration(
+                  border: Border(
+                    top: BorderSide(color: colors.hairline, width: .8),
+                  ),
                 ),
-            ],
-          ),
-        ),
-      ),
+                child: NavigationBar(
+                  selectedIndex: selected,
+                  onDestinationSelected: select,
+                  destinations: [
+                    for (final item in CampusShell.destinations)
+                      NavigationDestination(
+                        icon: Icon(item.$2),
+                        selectedIcon: Icon(item.$3),
+                        label: item.$1,
+                        tooltip: '',
+                      ),
+                  ],
+                ),
+              ),
+            ),
     );
   }
 }

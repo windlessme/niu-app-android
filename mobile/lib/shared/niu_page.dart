@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'niu_colors.dart';
 import 'niu_icons.dart';
+import 'niu_layout.dart';
 
 /// Toolbar action. [tonal] adds a quiet filled circle for standalone headers.
 class NiuIconButton extends StatelessWidget {
@@ -158,11 +159,10 @@ class NiuScrollPage extends StatelessWidget {
           SliverPadding(
             padding:
                 padding ??
-                EdgeInsets.fromLTRB(
-                  NiuSpacing.gutter,
-                  NiuSpacing.xs,
-                  NiuSpacing.gutter,
-                  slivers.isEmpty ? bottomInset : 0,
+                NiuLayout.page(
+                  context,
+                  top: NiuSpacing.xs,
+                  bottom: slivers.isEmpty ? bottomInset : 0,
                 ),
             sliver: SliverList.list(children: children),
           ),
@@ -200,11 +200,11 @@ class NiuBottomBar extends StatelessWidget {
     child: SafeArea(
       top: false,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          NiuSpacing.gutter,
-          NiuSpacing.md,
-          NiuSpacing.gutter,
-          NiuSpacing.md,
+        // Lines up with the page's readable column on tablets.
+        padding: NiuLayout.page(
+          context,
+          top: NiuSpacing.md,
+          bottom: NiuSpacing.md,
         ),
         child: child,
       ),

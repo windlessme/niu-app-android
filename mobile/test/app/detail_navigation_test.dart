@@ -9,6 +9,11 @@ void main() {
   testWidgets('Moodle details hide root tabs and back restores the root page', (
     tester,
   ) async {
+    // Phone layout: bottom tabs and the one-day timetable.
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     final router = GoRouter(
       routes: [
         CampusShell.route([

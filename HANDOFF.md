@@ -1,6 +1,6 @@
 # HANDOFF
 
-給接手的 Claude Code session。最後更新：2026-10-08。目前版本：**1.2.0+122**。
+給接手的 Claude Code session。最後更新：2026-10-08。目前版本：**1.2.1+123**。
 
 ## 專案概況
 
@@ -15,7 +15,7 @@
 
 在 `mobile/` 底下執行：
 
-1. `set -o pipefail; tool/verify.sh`，包含 calendar/toolchain/分層/DOM 檢查、`dart format`、`flutter analyze`、`flutter test`，目前 445 項測試。
+1. `set -o pipefail; tool/verify.sh`，包含 calendar/toolchain/分層/DOM 檢查、`dart format`、`flutter analyze`、`flutter test`，目前 448 項測試。
 2. 把 `pubspec.yaml` 的 patch 版號和 build number 各加一。
 3. commit 到 `main`，**push 到 origin main**。
 4. `flutter build appbundle --release`，上傳到 Play internal 軌道（步驟見下節）。**每個新版本都要推。**
@@ -31,7 +31,7 @@
 - Play 各軌道現況（2026-10-08 用 MCP 查過）：
   - **正式版：1.0.40 (121)**，2026-10-08 審核通過（使用者確認）。前一版正式版是 1.0.17 (98)。注意：審查中的正式版在 API 的 track 裡也會顯示 `status: completed`，不能拿來判斷已上線。
   - 公開測試（beta）：1.0.0 (81)。
-  - internal：**1.2.0 (122)**（2026-10-10 推送）。
+  - internal：**1.2.1 (123)**（2026-10-10 推送）。
 - 正式版由使用者在 Play Console 升級（Claude 推 production 會被權限擋下，屬正常）。
 - **正式版不用每版都推**，只要 versionCode 比上一個正式版大就行。建議 internal 每版都推；等使用者在手機上測過、累積一批改動或有重要修正時，再挑一版推正式版。**版本說明的寫法（使用者 2026-10-05 要求）**：
   - internal：只寫**這一版**改了什麼，讓使用者知道要測哪裡。沒有使用者看得到的改動時寫「內部調整，功能沒有變化」。不要再沿用累計說明，否則每版看起來都一樣。
@@ -107,7 +107,7 @@
   ```
 - **下一個正式版的說明草稿**（1.0.40 之後的累計改動）：
   ```
-  （尚無）
+  ・平板與橫向畫面：改用側邊導覽列，內容置中更好閱讀，首頁分成兩欄，課表預設顯示整週
   ```
 - 公開測試的使用者會自動拿到 versionCode 較大的正式版，公開測試軌道不用特別處理。release 名稱用 `X.Y.Z (versionCode)`，附一句 zh-TW 版本說明。
 - 上傳流程（每個新版本都要做）：`flutter build appbundle --release`，然後用 MCP 依序 `edits_insert` → `bundles_upload` → `tracks_update`（internal，status `completed`）→ `edits_commit`。
@@ -188,6 +188,7 @@
 | 1.0.39 | `ced23b7` | Play Console 對 1.0.17 (98) 回報「使用已淘汰的無邊框 API」：`Window.setStatusBarColor`／`setNavigationBarColor`，起點 `MainActivity.onCreate`。來源是 `WindowCompat.enableEdgeToEdge`（androidx core 1.17 無條件呼叫這兩個）；Flutter 的 `FlutterActivity` 與 `PlatformPlugin` 都已用 `SDK_INT < 35` 擋住（javap 確認過）。改成只在 Android 14 以下呼叫 `enableEdgeToEdge`，15 以上（系統強制無邊框）改設 `window.isNavigationBarContrastEnforced = false` 維持原本外觀。同時回報的「可能不會向所有使用者顯示無邊框畫面」是建議 14 以下也呼叫 `enableEdgeToEdge`，本來就有做（1.0.17 起）。使用者看不到差異 |
 | 1.0.40 | `88ef01f` | 使用者回報：M 園區課程點進「出缺席」是黑畫面（1.0.30 改版課程頁起）。`CourseDestinationScreen` 把 `AttendanceRecords`（讀完後是 `RefreshIndicator`＋`ListView`）放進 `NiuScrollPage` 的 `SliverList`，`Vertical viewport was given unbounded height`，release 版畫成黑／灰色；讀取中只有轉圈所以先正常、資料到就變黑。把紀錄清單抽成不自己捲動的 `AttendanceSectionList`（`AttendanceRecords` 與課程頁共用），課程頁「出缺席」改用總覽已讀的 `overview.attendance`，載入／錯誤與其他頁一致，下拉重新整理會重讀。補 GA：`load_error` page=`course_attendance`，reason `timeout`／`format`／`other`，有區塊讀不到時記 `section`。測試 `test/features/moodle/course_attendance_test.dart`（舊版面會失敗） |
 | 1.2.0 | `0adaa06` | 內部調整（使用者看不到差異）。版本號依使用者要求從 1.0.40 跳到 1.2.0 |
+| 1.2.1 | （待補） | **平板第一階段**（見「平板」一節）：`NiuLayout`（`lib/shared/niu_layout.dart`）；寬度 ≥600dp 改左側 `NavigationRail`；頁面左右留白依寬度變大，內容最寬 720dp（首頁兩欄與整週課表 1040dp）；首頁寬螢幕兩欄；未選過檢視模式時寬螢幕預設整週課表。測試預設畫面 800×600 會被當成寬螢幕，測手機版面的測試要自己設 400×800 |
 
 另外：
 
@@ -424,10 +425,15 @@
 - `smoke_android.py` 會自動按掉公告彈窗。
 - 2026-10-05 發過一則測試公告（id `2026-10-05-test`，revision 2），同一天已刪除（revision 3，清單是空的）。下一則公告的 revision 從 4 開始。
 
-## 平板（尚未優化，2026-10-05 檢查）
+## 平板（第一階段 1.2.1 完成）
 
-- 在 210 密度（約 820×1830dp，接近 10 吋平板）和橫向下看過：功能正常，但內容整排拉滿寬度；橫向時首頁很矮、校園服務要捲動；仍是底部導覽列；Play 沒有平板截圖。整週課表在平板上表現最好。
-- 使用者 2026-10-05 決定**列為待處理事項，先不做**（見「可以接著做的事」）。
+- **`NiuLayout`**（`lib/shared/niu_layout.dart`）：`wide = 600`（以內容區寬度判斷，導覽列已扣掉）、`readable = 720`、`spacious = 1040`。`NiuLayout.gutter(context)` 回傳 `max(20, (寬度 - 上限) / 2)`，`NiuLayout.page(context, top:, bottom:, maxWidth:)` 產生頁面 padding。新頁面的列表 padding 用它，不要直接寫 `NiuSpacing.gutter`；底部面板、相機畫面、網頁內容維持固定留白。
+- **導覽**：`CampusShell` 寬度 ≥600 改 `NavigationRail`（88dp），內容區用 `MediaQuery` 告知扣掉導覽列後的真實寬度，所以各頁的 `MediaQuery.sizeOf` 是可用寬度。手機橫向（寬 ≥600）也會用側邊導覽列。從分頁推出去的詳情頁（成績、課程等）是全螢幕、沒有導覽列。
+- `NiuScrollPage` 與 `NiuBottomBar` 已套用；其他自己排版的頁面（首頁、課表、成績、M 園區列表與課程、作業、問答、請假、在學證明、信箱、活動批次、時數、自訂課程、桌布、登入、點名結果）也已改用 `NiuLayout.page`。
+- **首頁**：寬螢幕左欄「今天＋快速點名」、右欄「校園服務」，內容最寬 1040；服務格子每列依寬度 2～4 個（每格至少 200dp）。
+- **課表**：使用者沒選過單日／整週時，寬螢幕預設整週；整週時最寬 1040，單日 720。
+- **檢查方式**：不建 debug APK，用 widget test 渲染成圖片：測試裡用 `FontLoader` 載入 `/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc`（覆蓋 Roboto 等字族）與 `/opt/flutter/bin/cache/artifacts/material_fonts/MaterialIcons-Regular.otf`，`FlutterSecureStorage.setMockInitialValues({})` 後 `CampusSession.instance.enterDemo()`，pump `NiuApp`，再用 `matchesGoldenFile` 加 `--update-goldens` 輸出 PNG（820×1180、1180×820、400×860，devicePixelRatio 2）。部分按鈕字型沒載入會顯示方塊，屬測試環境問題。預覽檔不要 commit。
+- **第二階段（未做）**：校園信箱、M 園區、請假紀錄改左右分欄（列表＋內容）；製作 7 吋與 10 吋平板商店截圖上傳 Play。
 
 ## 官網（2026-10-05）
 
@@ -483,7 +489,4 @@
 5. 在實機上測試校園信箱：登入時驗證碼的辨識率、寄信（先寄給自己）、附件上傳和下載、搬移和刪除。
 6. 在實機上用真實帳密測試圖書館登入，包含登入學校時順便建立 session，以及在畫面上手動輸入密碼。
 7. 決定行事曆資料來源要不要改成本 repo。
-8. **平板優化**（使用者 2026-10-05 列為待處理）：
-   - 第一階段：所有列表與詳情頁內容最寬約 720dp 置中；寬螢幕（≥600dp）把底部導覽列換成左側導覽列；首頁寬螢幕改兩欄（左：今天與快速點名，右：校園服務）；平板預設整週課表。
-   - 第二階段：校園信箱、M 園區、請假紀錄改左右分欄（列表＋內容）；製作 7 吋與 10 吋平板商店截圖上傳 Play。
-   - 檢查方式：模擬器 `wm density 210`（約 820dp 寬）並切橫向（`settings put system user_rotation 1`）。
+8. **平板優化第二階段**：校園信箱、M 園區、請假紀錄改左右分欄（列表＋內容）；製作 7 吋與 10 吋平板商店截圖上傳 Play。第一階段已在 1.2.1 完成（見「平板」一節）。

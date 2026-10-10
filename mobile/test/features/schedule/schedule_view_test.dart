@@ -7,6 +7,11 @@ void main() {
   testWidgets(
     'parsed school schedule fills bounded content after WebView handoff',
     (tester) async {
+      // Phone layout: bottom tabs and the one-day timetable.
+      tester.view.physicalSize = const Size(400, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
       final schedule = ClassSchedule.fromRows([
         ['節次', '時間', '星期一', '星期二', '星期三', '星期四', '星期五'],
         [

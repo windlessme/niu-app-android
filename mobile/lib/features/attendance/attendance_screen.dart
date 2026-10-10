@@ -579,11 +579,10 @@ class _AttendanceRecordsState extends State<AttendanceRecords> {
         onRefresh: retry,
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(
-            NiuSpacing.gutter,
-            NiuSpacing.lg,
-            NiuSpacing.gutter,
-            NiuSpacing.huge,
+          padding: NiuLayout.page(
+            context,
+            top: NiuSpacing.lg,
+            bottom: NiuSpacing.huge,
           ),
           children: [
             AttendanceSectionList(

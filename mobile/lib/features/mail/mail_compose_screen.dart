@@ -399,12 +399,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
                 ),
                 if (uploading > 0 || files.isNotEmpty)
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      NiuSpacing.gutter,
-                      NiuSpacing.md,
-                      NiuSpacing.gutter,
-                      0,
-                    ),
+                    padding: NiuLayout.page(context, top: NiuSpacing.md),
                     child: Wrap(
                       spacing: NiuSpacing.sm,
                       runSpacing: NiuSpacing.sm,
@@ -432,12 +427,7 @@ class _MailComposeScreenState extends State<MailComposeScreen> {
                   ),
                 if (widget.initial.quote.isNotEmpty)
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      NiuSpacing.gutter,
-                      NiuSpacing.lg,
-                      NiuSpacing.gutter,
-                      0,
-                    ),
+                    padding: NiuLayout.page(context, top: NiuSpacing.lg),
                     child: NiuWell(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,

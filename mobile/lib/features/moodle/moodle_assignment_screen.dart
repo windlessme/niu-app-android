@@ -109,11 +109,10 @@ class _MoodleAssignmentScreenState extends State<MoodleAssignmentScreen> {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(
-          NiuSpacing.gutter,
-          NiuSpacing.md,
-          NiuSpacing.gutter,
-          NiuSpacing.huge,
+        padding: NiuLayout.page(
+          context,
+          top: NiuSpacing.md,
+          bottom: NiuSpacing.huge,
         ),
         children: [
           Text(

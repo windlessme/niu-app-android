@@ -271,11 +271,10 @@ class _MoodleListState extends State<MoodleList> {
           snapshot.hasData) {
         retained = snapshot.data;
       }
-      const padding = EdgeInsets.fromLTRB(
-        NiuSpacing.gutter,
-        NiuSpacing.lg,
-        NiuSpacing.gutter,
-        NiuSpacing.huge,
+      final padding = NiuLayout.page(
+        context,
+        top: NiuSpacing.lg,
+        bottom: NiuSpacing.huge,
       );
       if (snapshot.hasError && retained == null) {
         return ListView(
