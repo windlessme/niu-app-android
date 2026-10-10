@@ -188,7 +188,7 @@
 | 1.0.39 | `ced23b7` | Play Console 對 1.0.17 (98) 回報「使用已淘汰的無邊框 API」：`Window.setStatusBarColor`／`setNavigationBarColor`，起點 `MainActivity.onCreate`。來源是 `WindowCompat.enableEdgeToEdge`（androidx core 1.17 無條件呼叫這兩個）；Flutter 的 `FlutterActivity` 與 `PlatformPlugin` 都已用 `SDK_INT < 35` 擋住（javap 確認過）。改成只在 Android 14 以下呼叫 `enableEdgeToEdge`，15 以上（系統強制無邊框）改設 `window.isNavigationBarContrastEnforced = false` 維持原本外觀。同時回報的「可能不會向所有使用者顯示無邊框畫面」是建議 14 以下也呼叫 `enableEdgeToEdge`，本來就有做（1.0.17 起）。使用者看不到差異 |
 | 1.0.40 | `88ef01f` | 使用者回報：M 園區課程點進「出缺席」是黑畫面（1.0.30 改版課程頁起）。`CourseDestinationScreen` 把 `AttendanceRecords`（讀完後是 `RefreshIndicator`＋`ListView`）放進 `NiuScrollPage` 的 `SliverList`，`Vertical viewport was given unbounded height`，release 版畫成黑／灰色；讀取中只有轉圈所以先正常、資料到就變黑。把紀錄清單抽成不自己捲動的 `AttendanceSectionList`（`AttendanceRecords` 與課程頁共用），課程頁「出缺席」改用總覽已讀的 `overview.attendance`，載入／錯誤與其他頁一致，下拉重新整理會重讀。補 GA：`load_error` page=`course_attendance`，reason `timeout`／`format`／`other`，有區塊讀不到時記 `section`。測試 `test/features/moodle/course_attendance_test.dart`（舊版面會失敗） |
 | 1.2.0 | `0adaa06` | 內部調整（使用者看不到差異）。版本號依使用者要求從 1.0.40 跳到 1.2.0 |
-| 1.2.1 | （待補） | **平板第一階段**（見「平板」一節）：`NiuLayout`（`lib/shared/niu_layout.dart`）；寬度 ≥600dp 改左側 `NavigationRail`；頁面左右留白依寬度變大，內容最寬 720dp（首頁兩欄與整週課表 1040dp）；首頁寬螢幕兩欄；未選過檢視模式時寬螢幕預設整週課表。測試預設畫面 800×600 會被當成寬螢幕，測手機版面的測試要自己設 400×800 |
+| 1.2.1 | `5efb6c6` | **平板第一階段**（見「平板」一節）：`NiuLayout`（`lib/shared/niu_layout.dart`）；寬度 ≥600dp 改左側 `NavigationRail`；頁面左右留白依寬度變大，內容最寬 720dp（首頁兩欄與整週課表 1040dp）；首頁寬螢幕兩欄；未選過檢視模式時寬螢幕預設整週課表。測試預設畫面 800×600 會被當成寬螢幕，測手機版面的測試要自己設 400×800 |
 
 另外：
 
