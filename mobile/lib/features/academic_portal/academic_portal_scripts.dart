@@ -21,6 +21,17 @@ String academicNavigationScript(Uri? target) =>
     const url = new URL(doc.location.href);
     if (target && url.origin === new URL(target).origin && url.pathname.toLowerCase() === new URL(target).pathname.toLowerCase()) return doc.readyState === 'complete' ? 'ready' : null;
   }
+  // Some menus (歷年成績) land on MenuRedirect.aspx, whose script opens the
+  // real page with window.open. Android's onCreateWindow only reports the
+  // last tapped link, not a scripted URL, so read it from the page instead.
+  for (const doc of docs) {
+    const url = new URL(doc.location.href);
+    if (url.hostname !== 'acade.niu.edu.tw' || !/\\/menuredirect\\.aspx\$/i.test(url.pathname)) continue;
+    for (const script of Array.from(doc.scripts || [])) {
+      const opened = /window\\.open\\(\\s*(['"])([^'"]+)\\1/.exec(script.textContent || '');
+      if (opened) return new URL(opened[2], url).href;
+    }
+  }
   for (const doc of docs) {
     const url = new URL(doc.location.href);
     if (/\\/std002\\.aspx\$/i.test(url.pathname)) {
