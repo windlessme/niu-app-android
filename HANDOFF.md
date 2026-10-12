@@ -190,7 +190,7 @@
 | 1.0.40 | `88ef01f` | 使用者回報：M 園區課程點進「出缺席」是黑畫面（1.0.30 改版課程頁起）。`CourseDestinationScreen` 把 `AttendanceRecords`（讀完後是 `RefreshIndicator`＋`ListView`）放進 `NiuScrollPage` 的 `SliverList`，`Vertical viewport was given unbounded height`，release 版畫成黑／灰色；讀取中只有轉圈所以先正常、資料到就變黑。把紀錄清單抽成不自己捲動的 `AttendanceSectionList`（`AttendanceRecords` 與課程頁共用），課程頁「出缺席」改用總覽已讀的 `overview.attendance`，載入／錯誤與其他頁一致，下拉重新整理會重讀。補 GA：`load_error` page=`course_attendance`，reason `timeout`／`format`／`other`，有區塊讀不到時記 `section`。測試 `test/features/moodle/course_attendance_test.dart`（舊版面會失敗） |
 | 1.2.0 | `0adaa06` | 內部調整（使用者看不到差異）。版本號依使用者要求從 1.0.40 跳到 1.2.0 |
 | 1.2.1 | `5efb6c6` | **平板第一階段**（見「平板」一節）：`NiuLayout`（`lib/shared/niu_layout.dart`）；寬度 ≥600dp 改左側 `NavigationRail`；頁面左右留白依寬度變大，內容最寬 720dp（首頁兩欄與整週課表 1040dp）；首頁寬螢幕兩欄；未選過檢視模式時寬螢幕預設整週課表。測試預設畫面 800×600 會被當成寬螢幕，測手機版面的測試要自己設 400×800 |
-| 1.2.2 | （待補） | 使用者回報：Android 開歷年成績停在空白的「學生歷年學期成績及排名」頁，最後顯示逾時。校務系統用 `MenuRedirect.aspx` 的腳本 `window.open` 開成績頁，Android 的 `onCreateWindow` 拿不到這種網址（見「校務系統成績」）。`academicNavigationScript` 改從 MenuRedirect 頁讀出網址再導覽。測試在 `academic_portal_host_test.dart` |
+| 1.2.2 | `dbf3bb6` | 使用者回報：Android 開歷年成績停在空白的「學生歷年學期成績及排名」頁，最後顯示逾時。校務系統用 `MenuRedirect.aspx` 的腳本 `window.open` 開成績頁，Android 的 `onCreateWindow` 拿不到這種網址（見「校務系統成績」）。`academicNavigationScript` 改從 MenuRedirect 頁讀出網址再導覽。測試在 `academic_portal_host_test.dart` |
 
 另外：
 
