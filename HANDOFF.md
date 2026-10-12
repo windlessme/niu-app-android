@@ -15,7 +15,7 @@
 
 在 `mobile/` 底下執行：
 
-1. `set -o pipefail; tool/verify.sh`，包含 calendar/toolchain/分層/DOM 檢查、`dart format`、`flutter analyze`、`flutter test`，目前 448 項測試。
+1. `set -o pipefail; tool/verify.sh`，包含 calendar/toolchain/分層/DOM 檢查、`dart format`、`flutter analyze`、`flutter test`，目前 449 項測試。
 2. 把 `pubspec.yaml` 的 patch 版號和 build number 各加一。
 3. commit 到 `main`，**push 到 origin main**。
 4. `flutter build appbundle --release`，上傳到 Play internal 軌道（步驟見下節）。**每個新版本都要推。**
@@ -108,6 +108,7 @@
 - **下一個正式版的說明草稿**（1.0.40 之後的累計改動）：
   ```
   ・平板與橫向畫面：改用側邊導覽列，內容置中更好閱讀，首頁分成兩欄，課表預設顯示整週
+  ・修正歷年成績停在學校頁面、最後顯示逾時
   ```
 - 公開測試的使用者會自動拿到 versionCode 較大的正式版，公開測試軌道不用特別處理。release 名稱用 `X.Y.Z (versionCode)`，附一句 zh-TW 版本說明。
 - 上傳流程（每個新版本都要做）：`flutter build appbundle --release`，然後用 MCP 依序 `edits_insert` → `bundles_upload` → `tracks_update`（internal，status `completed`）→ `edits_commit`。
@@ -189,6 +190,7 @@
 | 1.0.40 | `88ef01f` | 使用者回報：M 園區課程點進「出缺席」是黑畫面（1.0.30 改版課程頁起）。`CourseDestinationScreen` 把 `AttendanceRecords`（讀完後是 `RefreshIndicator`＋`ListView`）放進 `NiuScrollPage` 的 `SliverList`，`Vertical viewport was given unbounded height`，release 版畫成黑／灰色；讀取中只有轉圈所以先正常、資料到就變黑。把紀錄清單抽成不自己捲動的 `AttendanceSectionList`（`AttendanceRecords` 與課程頁共用），課程頁「出缺席」改用總覽已讀的 `overview.attendance`，載入／錯誤與其他頁一致，下拉重新整理會重讀。補 GA：`load_error` page=`course_attendance`，reason `timeout`／`format`／`other`，有區塊讀不到時記 `section`。測試 `test/features/moodle/course_attendance_test.dart`（舊版面會失敗） |
 | 1.2.0 | `0adaa06` | 內部調整（使用者看不到差異）。版本號依使用者要求從 1.0.40 跳到 1.2.0 |
 | 1.2.1 | `5efb6c6` | **平板第一階段**（見「平板」一節）：`NiuLayout`（`lib/shared/niu_layout.dart`）；寬度 ≥600dp 改左側 `NavigationRail`；頁面左右留白依寬度變大，內容最寬 720dp（首頁兩欄與整週課表 1040dp）；首頁寬螢幕兩欄；未選過檢視模式時寬螢幕預設整週課表。測試預設畫面 800×600 會被當成寬螢幕，測手機版面的測試要自己設 400×800 |
+| 1.2.2 | （待補） | 使用者回報：Android 開歷年成績停在空白的「學生歷年學期成績及排名」頁，最後顯示逾時。校務系統用 `MenuRedirect.aspx` 的腳本 `window.open` 開成績頁，Android 的 `onCreateWindow` 拿不到這種網址（見「校務系統成績」）。`academicNavigationScript` 改從 MenuRedirect 頁讀出網址再導覽。測試在 `academic_portal_host_test.dart` |
 
 另外：
 
@@ -314,7 +316,7 @@
   - `viewFrame` 是 `_02`，結果頁，欄位是 序號／學年度／學期／選別／中文課名／成績。
   - 擷取時要挑表頭有「成績」的那頁，而且要等 `readyState === 'complete'`。結果頁沒有「xxx 學年度第 x 學期」字樣，學期名稱改從每列的學年度和學期組出來（`GradeCourse.semesterLabel`）。
   - 成績還沒上傳時是「未上傳」；排名還沒出來時頁面寫「第 名」，App 會當成沒有排名。
-- 歷年成績的選單會導到 `MenuRedirect.aspx`，再用 `window.open` 開 `ccsys.niu.edu.tw/MvcTeam/Tutor/StudentCourseScoreSso?GUID=…`（App 的 `onCreateWindow` 會在同一個 WebView 載入），最後落在 `StudentCourseScore`，讀 `#accordion修課紀錄`。一年級上學期的帳號，這頁本來就是空的。
+- 歷年成績的選單會導到 `MenuRedirect.aspx`，再用 `window.open` 開 `ccsys.niu.edu.tw/MvcTeam/Tutor/StudentCourseScoreSso?GUID=…`，最後落在 `StudentCourseScore`，讀 `#accordion修課紀錄`。**Android 的 `onCreateWindow` 拿不到腳本開的網址**（flutter_inappwebview 用 `getHitTestResult()`，只有最後點的連結），以前會停在空白的 MenuRedirect 頁直到逾時；現在 `academicNavigationScript` 直接從 `MenuRedirect.aspx` 的 `window.open('…')` 讀出網址，交給一般導覽載入（2026-10-13，用使用者的 cookie 在 headless Chrome 停用 `window.open` 重現 App 流程，約 5 秒讀到頁面）。一年級上學期的帳號，這頁本來就是空的。
 - 驗證方式：用使用者提供的 acade cookie，以 headless Chrome 透過 DevTools Protocol 重現 App 的輪詢流程（導覽、檢查、點選單、擷取），三個分頁都能在 2 到 5 秒內讀到資料。**還沒在 App 裡用真實帳號實測過**；App 是用 SSO 換 GUID 登入，沒辦法直接帶 cookie 進去。
 
 ## 成績與在學證明快取（0.13.17）

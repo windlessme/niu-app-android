@@ -74,6 +74,30 @@ assert.equal(eval(script), 'session-expired');
     expect(result.exitCode, 0, reason: '${result.stderr}');
   });
 
+  test('navigation follows the page MenuRedirect opens with window.open', () {
+    // Android reports no URL for a scripted window.open (歷年成績), so the
+    // script reads it from MenuRedirect.aspx inside mainFrame.
+    final script = academicNavigationScript(null);
+    final result = Process.runSync('node', [
+      '-e',
+      '''
+const assert = require('node:assert/strict');
+const script = ${jsonEncode(script)};
+function doc(url, scripts = []) { return {location: {href: url}, readyState: 'complete', scripts: scripts.map(textContent => ({textContent})), getElementById: () => null}; }
+const redirect = 'https://acade.niu.edu.tw/NIU/MenuRedirect.aspx?url=abc';
+global.window = {document: doc('https://acade.niu.edu.tw/NIU/MainFrame.aspx'), frames: [{document: doc(redirect), frames: []}]};
+assert.equal(eval(script), 'ready');
+window.frames[0].document = doc(redirect, ["window.open('https://ccsys.niu.edu.tw/MvcTeam/Tutor/StudentCourseScoreSso?GUID=g-1');"]);
+assert.equal(eval(script), 'https://ccsys.niu.edu.tw/MvcTeam/Tutor/StudentCourseScoreSso?GUID=g-1');
+window.frames[0].document = doc(redirect, ['window.open("Other.aspx");']);
+assert.equal(eval(script), 'https://acade.niu.edu.tw/NIU/Other.aspx');
+window.frames[0].document = doc('https://acade.niu.edu.tw/NIU/portal.aspx', ["window.open('https://ccsys.niu.edu.tw/x');"]);
+assert.equal(eval(script), 'ready');
+''',
+    ]);
+    expect(result.exitCode, 0, reason: '${result.stderr}');
+  });
+
   test(
     'read envelope rejects replaced frames and gates pending preparation',
     () {
