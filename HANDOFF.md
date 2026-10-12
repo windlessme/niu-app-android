@@ -28,7 +28,7 @@
 - Firebase 設定檔（`google-services.json`，專案 `niu-life-ac16e`）也放在 repo 外：`/root/.config/niulife-firebase/google-services.json`，可以用 `NIULIFE_GOOGLE_SERVICES` 改路徑。建置時 Gradle 會把它複製到 `android/app/`（已加進 gitignore）並套用 Google Services 外掛；找不到檔案時照常建置，但 Analytics 會停用。
 - Upload key 的 SHA-256 指紋：`95:04:DD:13:D3:38:D6:E5:7C:83:89:42:9F:B0:A0:AB:25:4E:F1:1F:95:CE:AB:DC:5E:4B:B4:04:46:C8:4B:FA`。已經請使用者另外備份。
 - 已啟用 Play 應用程式簽署：發布用的金鑰由 Google 保管，這把只是 upload key。
-- Play 各軌道現況（2026-10-08 用 MCP 查過）：
+- Play 各軌道現況（2026-10-13 用 MCP 查過）：
   - **正式版：1.2.0 (122)**（2026-10-13 使用者確認已上線，Play 上的版本說明是「我們又抓到幾隻蟲蟲」）。前兩版正式版是 1.0.40 (121)、1.0.17 (98)。注意：審查中的正式版在 API 的 track 裡也會顯示 `status: completed`，不能拿來判斷已上線。
   - 公開測試（beta）：1.0.0 (81)。
   - internal：**1.2.2 (124)**（2026-10-13 推送）。
