@@ -27,6 +27,9 @@ void main() {
     expect(jiaose.name, '教穡大樓');
     expect(identical(overview.buildingAt(jiaose.centre), jiaose), isTrue);
     expect(overview.searchBuildings('綜合').single.name, '綜合教學大樓');
+    // 復興國中 next door is not ours.
+    expect(overview.searchBuildings('群育館'), isEmpty);
+    expect(overview.searchBuildings('體育館'), isNotEmpty);
     expect(
       overview.places.where((p) => p.kind == CampusPlaceKind.toilets),
       isNotEmpty,
