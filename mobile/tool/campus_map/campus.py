@@ -22,7 +22,7 @@ MX = 111_320 * math.cos(math.radians(LAT0))
 MY = 110_574
 
 # Buildings with floor plans, by OSM way id.
-PLANS = {256119621: "jiaose", 256119616: "gongxue"}
+PLANS = {256119621: "jiaose", 256119616: "gongxue", 256119615: "shixi", 547390740: "dianzi"}
 
 
 def project(lat, lon):

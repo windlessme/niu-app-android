@@ -108,7 +108,7 @@ void main() {
     expect(b.defaultFloorId, '1F');
     expect(map.locate('工B07')!.space.name, '單元操作實驗室');
     expect(map.locate('工 423')!.floor.id, '4F');
-    expect(map.search('結構').single.space.code, '工228');
+    expect(map.search('結構工程').single.space.code, '工228');
     expect(b.floor('5F')!.unit, '環境工程學系');
     expect(map.search('環工').map((r) => r.space.code), [
       '工513',
@@ -126,8 +126,21 @@ void main() {
     expect(overview.withPlan('gongxue')!.name, '工學院大樓');
   });
 
+  test('時習大樓 and 電資二館 have their own codes', () {
+    expect(map.building('shixi')!.levels, '地上 5 層');
+    expect(map.building('dianzi')!.levels, '地上 4 層');
+    expect(map.locate('資 204')!.space.name, '電腦教室');
+    expect(map.locate('時507')!.floor.id, '5F');
+    expect(overview.withPlan('dianzi')!.name, '電資二館');
+    expect(overview.withPlan('shixi')!.name, '時習大樓');
+  });
+
   test('search matches codes, bare numbers and notes', () {
-    expect(map.search('305').map((r) => r.space.code), ['教305', '工305']);
+    expect(map.search('305').map((r) => r.space.code), [
+      '教305',
+      '工305',
+      '資305',
+    ]);
     expect(map.search('外語').map((r) => r.space.code), ['教401', '教412']);
     expect(map.search(' '), isEmpty);
   });
