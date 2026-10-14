@@ -12,3 +12,8 @@ owners' rights. This repository does not imply affiliation or school approval.
 Historical development documents may reference the original combined iOS repository
 and local development paths. Those references are provenance, not files or server
 configuration bundled with this repository.
+
+The campus overview (`app-content/campus-map/campus.json` and its copy under
+`mobile/assets/campus_map/`) is derived from OpenStreetMap data,
+© OpenStreetMap contributors, available under the Open Database License (ODbL):
+https://www.openstreetmap.org/copyright. The app shows this credit on the map.
