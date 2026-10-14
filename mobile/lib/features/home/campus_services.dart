@@ -90,6 +90,24 @@ abstract final class CampusServices {
     '/postal',
   );
 
+  static const floorPlans = CampusService(
+    '大樓平面圖',
+    '教室位置與樓層配置',
+    Icons.apartment_rounded,
+    NiuHue.indigo,
+    '/tools/floor-plans',
+  );
+
+  static const tools = CampusService(
+    '小工具',
+    '大樓平面圖',
+    Icons.widgets_rounded,
+    NiuHue.purple,
+    '/tools',
+  );
+
+  static const toolbox = [floorPlans];
+
   static const home = [
     mail,
     grades,
@@ -100,6 +118,7 @@ abstract final class CampusServices {
     events,
     registration,
     postal,
+    tools,
   ];
 }
 
@@ -110,3 +129,63 @@ void openCampusService(BuildContext context, CampusService service) =>
     _tabRoutes.contains(service.route)
     ? GoRouter.of(context).go(service.route)
     : GoRouter.of(context).push(service.route);
+
+/// Service tiles, two per row on phones; used by home and 小工具.
+class CampusServiceGrid extends StatelessWidget {
+  const CampusServiceGrid({super.key, required this.services});
+  final List<CampusService> services;
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final single =
+          MediaQuery.textScalerOf(context).scale(16) > 26 ||
+          constraints.maxWidth < 300;
+      const gap = NiuSpacing.md;
+      // Two per row on phones; more where tiles stay at least 200 wide.
+      final columns = single
+          ? 1
+          : ((constraints.maxWidth + gap) / (200 + gap)).floor().clamp(2, 4);
+      final width = (constraints.maxWidth - gap * (columns - 1)) / columns;
+      return Wrap(
+        spacing: gap,
+        runSpacing: gap,
+        children: [
+          for (final service in services)
+            SizedBox(
+              width: width,
+              child: _ServiceTile(service: service),
+            ),
+        ],
+      );
+    },
+  );
+}
+
+class _ServiceTile extends StatelessWidget {
+  const _ServiceTile({required this.service});
+  final CampusService service;
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return NiuCard(
+      semanticLabel: '${service.title}，${service.subtitle}',
+      onTap: () => openCampusService(context, service),
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          NiuIconTile(icon: service.icon, hue: service.hue),
+          const SizedBox(height: NiuSpacing.md),
+          Text(service.title, style: theme.textTheme.titleMedium),
+          const SizedBox(height: 2),
+          Text(
+            service.subtitle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.labelMedium,
+          ),
+        ],
+      ),
+    );
+  }
+}

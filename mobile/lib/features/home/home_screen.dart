@@ -120,7 +120,7 @@ class CampusHomeScreen extends StatelessWidget {
     ];
     final services = NiuSection(
       title: '校園服務',
-      child: const _ServiceGrid(services: CampusServices.home),
+      child: const CampusServiceGrid(services: CampusServices.home),
     );
     return Scaffold(
       body: SafeArea(
@@ -461,65 +461,6 @@ class _CourseRow extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _ServiceGrid extends StatelessWidget {
-  const _ServiceGrid({required this.services});
-  final List<CampusService> services;
-  @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, constraints) {
-      final single =
-          MediaQuery.textScalerOf(context).scale(16) > 26 ||
-          constraints.maxWidth < 300;
-      const gap = NiuSpacing.md;
-      // Two per row on phones; more where tiles stay at least 200 wide.
-      final columns = single
-          ? 1
-          : ((constraints.maxWidth + gap) / (200 + gap)).floor().clamp(2, 4);
-      final width = (constraints.maxWidth - gap * (columns - 1)) / columns;
-      return Wrap(
-        spacing: gap,
-        runSpacing: gap,
-        children: [
-          for (final service in services)
-            SizedBox(
-              width: width,
-              child: _ServiceTile(service: service),
-            ),
-        ],
-      );
-    },
-  );
-}
-
-class _ServiceTile extends StatelessWidget {
-  const _ServiceTile({required this.service});
-  final CampusService service;
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return NiuCard(
-      semanticLabel: '${service.title}，${service.subtitle}',
-      onTap: () => openCampusService(context, service),
-      padding: const EdgeInsets.all(14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          NiuIconTile(icon: service.icon, hue: service.hue),
-          const SizedBox(height: NiuSpacing.md),
-          Text(service.title, style: theme.textTheme.titleMedium),
-          const SizedBox(height: 2),
-          Text(
-            service.subtitle,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.labelMedium,
-          ),
-        ],
       ),
     );
   }

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../shared/shared.dart';
+import '../tools/floor_plan_data.dart';
 import 'course_colors.dart';
 import 'schedule_models.dart';
 import 'schedule_presentation.dart';
@@ -223,6 +225,7 @@ class ScheduleWeekView extends StatelessWidget {
       builder: (sheet) {
         final text = Theme.of(sheet).textTheme;
         final hue = lessonTint(lesson.name, lesson.colorId);
+        final onMap = CampusBuildingCatalog.locate(lesson.room) != null;
         return SafeArea(
           top: false,
           child: Padding(
@@ -260,8 +263,24 @@ class ScheduleWeekView extends StatelessWidget {
                   NiuKeyValue(label: '教室', value: lesson.room),
                 if (lesson.teacher.isNotEmpty)
                   NiuKeyValue(label: '老師', value: lesson.teacher),
-                if (onOpenCourse != null) ...[
+                if (onMap) ...[
                   const SizedBox(height: NiuSpacing.lg),
+                  FilledButton.tonalIcon(
+                    onPressed: () {
+                      Navigator.pop(sheet);
+                      GoRouter.of(context).push(
+                        Uri(
+                          path: '/tools/floor-plans',
+                          queryParameters: {'room': lesson.room},
+                        ).toString(),
+                      );
+                    },
+                    icon: const Icon(Icons.apartment_rounded),
+                    label: const Text('在平面圖上查看教室'),
+                  ),
+                ],
+                if (onOpenCourse != null) ...[
+                  SizedBox(height: onMap ? NiuSpacing.sm : NiuSpacing.lg),
                   FilledButton.tonalIcon(
                     onPressed: () {
                       Navigator.pop(sheet);
