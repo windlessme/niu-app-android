@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:niu_mobile/features/tools/building_map_screen.dart';
 import 'package:niu_mobile/features/tools/campus_map_data.dart';
 import 'package:niu_mobile/features/tools/campus_map_screen.dart';
@@ -14,6 +15,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   late CampusMap map;
   late CampusOverview overview;
+  setUp(() => SharedPreferences.setMockInitialValues({}));
   setUpAll(() async {
     map = await CampusMap.load(rootBundle);
     overview = await CampusOverview.load(rootBundle);
@@ -197,6 +199,40 @@ void main() {
     );
     final centre = padding.deflateRect(Offset.zero & size).center;
     expect((onScreen - centre).distance, lessThan(1));
+  });
+
+  testWidgets('the overview switches to a list and back', (tester) async {
+    tester.view.physicalSize = const Size(390 * 3, 844 * 3);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      app(
+        CampusMapScreen(
+          overview: SynchronousFuture(overview),
+          map: SynchronousFuture(map),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('以清單顯示'));
+    await tester.pumpAndSettle();
+    expect(find.text('有樓層平面圖'), findsOneWidget);
+    expect(find.text('教穡大樓'), findsOneWidget);
+    expect(find.text('地上 8 層'), findsWidgets);
+    expect(
+      (await SharedPreferences.getInstance()).getBool('campusMapListed'),
+      isTrue,
+    );
+    await tester.scrollUntilVisible(find.text('綜合教學大樓'), 200);
+    await Scrollable.ensureVisible(
+      tester.element(find.text('綜合教學大樓')),
+      alignment: .5,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('綜合教學大樓'));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('以清單顯示'), findsOneWidget);
+    expect(find.text('地上 4 層・尚無樓層平面圖'), findsOneWidget);
   });
 
   testWidgets('the overview finds buildings and rooms and opens plans', (
