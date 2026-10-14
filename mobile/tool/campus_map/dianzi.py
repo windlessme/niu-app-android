@@ -3,8 +3,9 @@
 
 Measured from the evacuation maps on each floor, matched floor to floor by
 the structural columns (four lines along the building, about 10 m apart)
-and scaled to the 47.2 m OpenStreetMap outline. North is up: the toilets
-and stairs are at the east end, the lift and main stairs on the south side.
+and scaled to the 47.2 m OpenStreetMap outline. The signs face south, so
+each floor is drawn as the sign shows it and then turned half round: north
+up, the toilets at the west end, the lift and 2F bridge to 格致大樓 north.
 The 3F and 4F signs hang a quarter turn round, so they were turned to
 match. Room numbers on 1F and 2F were written on the photos by the user;
 3F and 4F names come from the door signs.
@@ -13,6 +14,27 @@ import json
 from pathlib import Path
 
 W = 47.2
+D = 19.0  # deepest point of any floor, where the 2F bridge leaves
+GEZHI = "格致大樓（電資學院）"
+
+
+def flipped(floor):
+    """Turns a floor drawn as the signs show it half round, north up: the
+    signs face south, and the 2F bridge to 格致大樓 leaves northwards."""
+    def pt(p):
+        return [round(W - p[0], 2), round(D - p[1], 2)]
+
+    for s in floor["spaces"]:
+        if "rect" in s:
+            x, y, w, h = s["rect"]
+            s["rect"] = [round(W - x - w, 2), round(D - y - h, 2), w, h]
+        else:
+            s["polygon"] = [pt(p) for p in s["polygon"]]
+    floor["outline"] = [pt(p) for p in floor["outline"]]
+    for link in floor.get("links", []):
+        link["at"] = pt(link["at"])
+        link["toward"] = [-link["toward"][0], -link["toward"][1]]
+    return floor
 
 
 def rect(kind, x0, y0, x1, y1, code=None, name=None, note=None):
@@ -69,10 +91,12 @@ def floor_2f():
         rect("elevator", 21.8, 14.4, 24.3, 17.2),
         rect("stairs", 11.5, 14.3, 17.7, 16.2),
         rect("stairs", 44.1, 8.7, 47.2, 12.6),
-        rect("stairs", 29.5, 13.8, 33.0, 18.9),
-        room(0, 0.9, 4.6, 4.9, name="系主任辦公室"),
-        room(0, 6.7, 4.1, 14.4, "205", "系辦公室"),
-        room(4.6, 0.9, 9.7, 11.4, name="會議室"),
+        # The walkway past 201 and 202 is the bridge to 格致大樓.
+        rect("corridor", 29.5, 13.5, 33.0, 19.0),
+        # The department's three rooms share one number, 資205.
+        room(0, 0.9, 4.6, 4.9, "205", "系主任辦公室"),
+        room(0, 6.7, 4.1, 14.4, "205", "會議室"),
+        room(4.6, 0.9, 9.7, 11.4, "205", "系辦公室"),
         room(9.7, 0, 30.5, 11.6, "204", "電腦教室"),
         room(30.5, 0, 42.3, 11.6, "203", "邏輯設計實驗室"),
         room(33.1, 13.6, 38.5, 15.3, "202", "儲藏室"),
@@ -81,7 +105,8 @@ def floor_2f():
     ]
     outline = [[0, 0.5], [9.7, 0.5], [9.7, 0], [42.8, 0], [42.8, 1.2], [47.2, 1.2], [47.2, 13.5],
                [38.7, 13.5], [38.7, 19.0], [29.4, 19.0], [29.4, 14.8], [9.7, 14.8], [9.7, 14.4], [0, 14.4]]
-    return {"id": "2F", "outline": outline, "spaces": spaces}
+    link = [{"to": "gezhi", "name": GEZHI, "at": [31.25, 19.0], "toward": [0, 1]}]
+    return {"id": "2F", "outline": outline, "spaces": spaces, "links": link}
 
 
 def upper(level, rooms_n, rooms_s, toilet_rows, east_stairs, south):
@@ -140,10 +165,10 @@ def main():
         "id": "dianzi",
         "name": "電資二館",
         "unit": "m",
-        "floors": [f() for f in (floor_1f, floor_2f, floor_3f, floor_4f)],
+        "floors": [flipped(f()) for f in (floor_1f, floor_2f, floor_3f, floor_4f)],
     }
     for floor in building["floors"]:
-        codes = [s["code"] for s in floor["spaces"] if "code" in s]
+        codes = [s["code"] for s in floor["spaces"] if "code" in s and s["code"] != "資205"]
         assert len(codes) == len(set(codes)), (floor["id"], codes)
     text = json.dumps(building, ensure_ascii=False, separators=(",", ":")) + "\n"
     root = Path(__file__).resolve().parents[3]

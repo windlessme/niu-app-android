@@ -128,28 +128,33 @@ class FloorMapPainter extends CustomPainter {
       final width = (frame.rotated ? box.height : box.width) * frame.scale;
       final height = (frame.rotated ? box.width : box.height) * frame.scale;
       final on = identical(s, selected);
-      TextPainter layout(String text, double size) => TextPainter(
-        text: TextSpan(
-          text: text,
-          style: textStyle.copyWith(
-            fontSize: size,
-            color: on
-                ? colors.onAccent
-                : s.isRoom
-                ? colors.ink
-                : colors.inkSecondary,
-            fontWeight: on || s.code != null
-                ? FontWeight.w600
-                : FontWeight.w400,
-          ),
-        ),
-        textDirection: TextDirection.ltr,
-        maxLines: 1,
-      )..layout();
+      TextPainter layout(String text, double size, {int lines = 1}) =>
+          TextPainter(
+            text: TextSpan(
+              text: text,
+              style: textStyle.copyWith(
+                fontSize: size,
+                color: on
+                    ? colors.onAccent
+                    : s.isRoom
+                    ? colors.ink
+                    : colors.inkSecondary,
+                fontWeight: on || s.code != null
+                    ? FontWeight.w600
+                    : FontWeight.w400,
+              ),
+            ),
+            textDirection: TextDirection.ltr,
+            textAlign: TextAlign.center,
+            maxLines: lines,
+          )..layout(maxWidth: lines == 1 ? double.infinity : width - 4 / z);
       bool fits(TextPainter t) =>
-          t.width <= width - 4 / z && t.height <= height - 2 / z;
-      // The full code, then without the building's character, then a
-      // little smaller; long names stay in the drawer and never spill over.
+          !t.didExceedMaxLines &&
+          t.width <= width - 4 / z &&
+          t.height <= height - 2 / z;
+      // The full code, then without the building's character, then smaller
+      // down to 7 px on screen, so even a cupboard-sized room keeps its
+      // number in the whole-floor view; long names stay in the drawer.
       final options = [label, if (s.code != null) label.substring(1)];
       TextPainter? shown;
       for (final text in options) {
@@ -158,10 +163,24 @@ class FloorMapPainter extends CustomPainter {
           shown = t;
           break;
         }
-        final shrink = (width - 4 / z) / t.width;
-        if (identical(text, options.last) && shrink >= .65) {
-          final small = layout(text, base * shrink);
+        final shrink = math.min(
+          (width - 4 / z) / t.width,
+          (height - 2 / z) / t.height,
+        );
+        if (identical(text, options.last) && base * shrink * z >= 7) {
+          final small = layout(text, base * shrink * .98);
           if (fits(small)) shown = small;
+        }
+      }
+      // A room known only by its name, like 理論與計算流力實驗室, wraps onto
+      // up to three lines before it gives up.
+      if (shown == null && s.code == null && width > 4 / z) {
+        for (var size = base; size * z >= 7; size *= .9) {
+          final t = layout(label, size, lines: 3);
+          if (fits(t)) {
+            shown = t;
+            break;
+          }
         }
       }
       if (shown == null) continue;

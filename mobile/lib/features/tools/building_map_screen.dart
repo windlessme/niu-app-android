@@ -534,18 +534,13 @@ class _FloorSheet extends StatelessWidget {
       for (final r in floor.rooms)
         if (r.label != null) r,
     ]..sort((a, b) => a.label!.compareTo(b.label!));
-    final coded = numbered.where((r) => r.code != null).length;
     final room = selected;
     final summary = room == null
         ? _SheetHeader(
             icon: Icons.layers_rounded,
             hue: NiuHue.indigo,
             title: floor.title,
-            subtitle: [
-              ?floor.unit,
-              '${floor.rooms.length} 個空間',
-              if (coded > 0) '$coded 間有編號',
-            ].join('・'),
+            subtitle: floor.unit,
           )
         : _SheetHeader(
             icon: Icons.meeting_room_outlined,
@@ -645,12 +640,13 @@ class _SheetHeader extends StatelessWidget {
     required this.icon,
     required this.hue,
     required this.title,
-    required this.subtitle,
+    this.subtitle,
     this.trailing,
   });
   final IconData icon;
   final NiuHue hue;
-  final String title, subtitle;
+  final String title;
+  final String? subtitle;
   final Widget? trailing;
   @override
   Widget build(BuildContext context) {
@@ -667,12 +663,13 @@ class _SheetHeader extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(title, style: theme.textTheme.titleMedium),
-                Text(
-                  subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodySmall,
-                ),
+                if (subtitle case final subtitle?)
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall,
+                  ),
               ],
             ),
           ),

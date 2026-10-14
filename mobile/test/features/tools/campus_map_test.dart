@@ -132,7 +132,19 @@ void main() {
     expect(map.locate('資 204')!.space.name, '電腦教室');
     expect(map.locate('時507')!.floor.id, '5F');
     expect(overview.withPlan('dianzi')!.name, '電資二館');
+    expect(overview.searchBuildings('電資學院').single.name, '格致大樓（電資學院）');
+    final bridge = map.building('dianzi')!.floor('2F')!.links.single;
+    expect(bridge.toward, const Offset(0, -1)); // north, to 格致大樓
     expect(overview.withPlan('shixi')!.name, '時習大樓');
+    // 時化學舍: room numbers as the dorm's directory gives them.
+    expect(map.locate('3C17')!.floor.id, '3F');
+    expect(map.locate('1C17'), isNull);
+    expect(map.locate('資205')!.space.name, '系主任辦公室');
+    expect(map.search('資205').map((r) => r.space.name), [
+      '系主任辦公室',
+      '會議室',
+      '系辦公室',
+    ]);
   });
 
   test('search matches codes, bare numbers and notes', () {
@@ -188,7 +200,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.bySemanticsLabel('樓層，目前8 樓'), findsOneWidget);
     expect(find.byTooltip('取消標示'), findsNothing);
-    expect(find.textContaining('4 間有編號'), findsOneWidget);
+    expect(find.textContaining('間有編號'), findsNothing);
   });
 
   testWidgets('picking a room in the drawer marks it', (tester) async {

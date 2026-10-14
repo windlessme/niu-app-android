@@ -21,8 +21,12 @@ LAT0, LON0 = (SOUTH + NORTH) / 2, (WEST + EAST) / 2
 MX = 111_320 * math.cos(math.radians(LAT0))
 MY = 110_574
 
+# Names people use alongside OpenStreetMap's, by OSM way id: new students
+# know 格致大樓 as 電資學院.
+NAMES = {256119614: "格致大樓（電資學院）"}
+
 # Buildings with floor plans, by OSM way id.
-PLANS = {256119621: "jiaose", 256119616: "gongxue", 256119615: "shixi", 547390740: "dianzi"}
+PLANS = {256119621: "jiaose", 256119616: "gongxue", 256119615: "shixi", 547390740: "dianzi", 256119618: "shihua"}
 
 
 def project(lat, lon):
@@ -144,8 +148,8 @@ def main():
             # Inside the campus line, whatever the tag: 復興國中 next door is
             # tagged school too.
             building = {"id": way["id"], "polygon": points[:-1], "campus": inside(centre(points[:-1]), boundary)}
-            if tags.get("name"):
-                building["name"] = tags["name"]
+            if way["id"] in NAMES or tags.get("name"):
+                building["name"] = NAMES.get(way["id"], tags.get("name"))
             if tags.get("building:levels", "").isdigit():
                 building["levels"] = int(tags["building:levels"])
             if way["id"] in PLANS:
