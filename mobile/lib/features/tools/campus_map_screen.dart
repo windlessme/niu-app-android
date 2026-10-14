@@ -65,7 +65,6 @@ class _CampusViewState extends State<_CampusView>
   Animation<Matrix4>? _flight;
   OverviewFrame? frame;
   CampusBuilding? selected;
-  Set<CampusPlaceKind> places = const {};
 
   /// Buildings as a list instead of the map; remembered between visits.
   bool listed = false;
@@ -255,7 +254,6 @@ class _CampusViewState extends State<_CampusView>
                             ),
                             textStyle:
                                 theme.textTheme.labelSmall ?? const TextStyle(),
-                            places: places,
                             padding: padding,
                             selected: selected,
                             zoom: zoom,
@@ -338,13 +336,7 @@ class _CampusViewState extends State<_CampusView>
                     child: selected == null
                         ? _Controls(
                             key: const ValueKey('controls'),
-                            places: places,
                             attribution: widget.overview.attribution,
-                            onToggle: (kind) => setState(() {
-                              places = places.contains(kind)
-                                  ? ({...places}..remove(kind))
-                                  : {...places, kind};
-                            }),
                             onFit: () => fly(Matrix4.identity()),
                           )
                         : Padding(
@@ -450,18 +442,10 @@ class _BuildingList extends StatelessWidget {
   }
 }
 
-/// Filters on the left, whole-campus and the map credit on the right.
+/// Whole-campus and the map credit on the right.
 class _Controls extends StatelessWidget {
-  const _Controls({
-    super.key,
-    required this.places,
-    required this.attribution,
-    required this.onToggle,
-    required this.onFit,
-  });
-  final Set<CampusPlaceKind> places;
+  const _Controls({super.key, required this.attribution, required this.onFit});
   final String attribution;
-  final ValueChanged<CampusPlaceKind> onToggle;
   final VoidCallback onFit;
   @override
   Widget build(BuildContext context) {
@@ -482,56 +466,6 @@ class _Controls extends StatelessWidget {
                 onPressed: onFit,
               ),
             ),
-          ),
-        ),
-        const SizedBox(height: NiuSpacing.sm),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: NiuSpacing.md),
-          child: Row(
-            children: [
-              for (final kind in CampusPlaceKind.values) ...[
-                MapFloating(
-                  child: Semantics(
-                    button: true,
-                    selected: places.contains(kind),
-                    child: InkWell(
-                      onTap: () => onToggle(kind),
-                      child: AnimatedContainer(
-                        duration: NiuMotion.duration(context),
-                        color: places.contains(kind) ? colors.accent : null,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 10,
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              CampusOverviewPainter.icon(kind),
-                              size: 18,
-                              color: places.contains(kind)
-                                  ? colors.onAccent
-                                  : colors.ink,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              kind.title,
-                              style: theme.textTheme.labelLarge?.copyWith(
-                                color: places.contains(kind)
-                                    ? colors.onAccent
-                                    : colors.ink,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: NiuSpacing.sm),
-              ],
-            ],
           ),
         ),
         const SizedBox(height: NiuSpacing.xs),
