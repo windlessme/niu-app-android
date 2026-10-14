@@ -251,6 +251,8 @@ class CampusMap {
     'assets/campus_map/shihua.json',
     'assets/campus_map/gezhi.json',
     'assets/campus_map/zonghe.json',
+    'assets/campus_map/tuzi.json',
+    'assets/campus_map/dongwu.json',
   ];
 
   final List<MapBuilding> buildings;
