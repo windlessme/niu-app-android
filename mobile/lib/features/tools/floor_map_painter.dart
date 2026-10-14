@@ -155,7 +155,7 @@ class FloorMapPainter extends CustomPainter {
       // The full code, then without the building's character, then smaller
       // down to 7 px on screen, so even a cupboard-sized room keeps its
       // number in the whole-floor view; long names stay in the drawer.
-      final options = [label, if (s.code != null) label.substring(1)];
+      final options = [label, ?s.shortCode];
       TextPainter? shown;
       for (final text in options) {
         final t = layout(text, base);

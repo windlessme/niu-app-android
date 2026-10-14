@@ -93,7 +93,7 @@ void main() {
     expect(hit.floor.id, '3F');
     expect(hit.space.code, '教305');
     expect(map.locate('教３１１')!.space.note, '職涯教育專業教室');
-    expect(map.locate('綜203'), isNull);
+    expect(map.locate('綜503'), isNull);
     expect(map.locate(''), isNull);
   });
 
@@ -151,11 +151,41 @@ void main() {
     ]);
   });
 
+  test('格致大樓 shows 電 codes and finds the signs\' E and 格 codes', () {
+    expect(map.building('gezhi')!.levels, '地上 6 層');
+    final e505 = map.locate('電516')!;
+    expect(e505.space.name, '系辦公室');
+    expect(e505.space.details, ['系辦公室', '電子工程學系']);
+    // The sign's code finds it too, and the shown label stays 電516.
+    expect(map.search('E505').map((r) => r.space.label), contains('電516'));
+    expect(map.locate('E411')!.space.label, '電402');
+    expect(map.locate('格106')!.space.label, '電111');
+    // A room the user didn't number shows the sign's code, kept whole.
+    final e607 = map.locate('E607')!.space;
+    expect(e607.label, 'E607');
+    expect(e607.shortCode, isNull);
+    expect(map.locate('電205')!.space.shortCode, '205');
+    expect(map.search('電機系').map((r) => r.space.label), contains('電205'));
+    final bridge = map.building('gezhi')!.floor('2F')!.links.single;
+    expect(bridge.to, 'dianzi');
+  });
+
+  test('綜合教學大樓 has its 綜 classrooms and the 3F corridor', () {
+    final b = map.building('zonghe')!;
+    expect(b.levels, '地上 4 層');
+    expect(map.locate('綜303-1')!.floor.id, '3F');
+    expect(map.locate('綜 101（教室）')!.space.code, '綜101');
+    expect(overview.withPlan('zonghe')!.name, '綜合教學大樓');
+  });
+
   test('search matches codes, bare numbers and notes', () {
     expect(map.search('305').map((r) => r.space.code), [
       '教305',
       '工305',
       '資305',
+      '電317', // E305 on the sign
+      '電305',
+      '綜305',
     ]);
     expect(map.search('外語').map((r) => r.space.code), ['教401', '教412']);
     expect(map.search(' '), isEmpty);
@@ -351,17 +381,17 @@ void main() {
       (await SharedPreferences.getInstance()).getBool('campusMapListed'),
       isTrue,
     );
-    await tester.scrollUntilVisible(find.text('綜合教學大樓'), 200);
+    await tester.scrollUntilVisible(find.text('行政大樓'), 200);
     expect(find.text('司令台'), findsNothing);
     await Scrollable.ensureVisible(
-      tester.element(find.text('綜合教學大樓')),
+      tester.element(find.text('行政大樓')),
       alignment: .5,
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('綜合教學大樓'));
+    await tester.tap(find.text('行政大樓'));
     await tester.pumpAndSettle();
     expect(find.byTooltip('以清單顯示'), findsOneWidget);
-    expect(find.text('地上 4 層・尚無樓層平面圖'), findsOneWidget);
+    expect(find.text('地上 5 層・尚無樓層平面圖'), findsOneWidget);
   });
 
   testWidgets('the overview finds buildings and rooms and opens plans', (
