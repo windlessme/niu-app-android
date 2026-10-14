@@ -109,6 +109,20 @@ void main() {
     expect(map.locate('工B07')!.space.name, '單元操作實驗室');
     expect(map.locate('工 423')!.floor.id, '4F');
     expect(map.search('結構').single.space.code, '工228');
+    expect(b.floor('5F')!.unit, '環境工程學系');
+    expect(map.search('環工').map((r) => r.space.code), [
+      '工513',
+      '工515',
+      '工516',
+      '工516-1',
+    ]);
+    expect(map.search('機械系').map((r) => r.space.code), contains('工301'));
+    expect(map.search('化學工程').map((r) => r.space.code), [
+      '工605',
+      '工603',
+      '工601',
+    ]);
+    expect(map.locate('工513')!.space.details, ['系辦公室', '環境工程學系']);
     expect(overview.withPlan('gongxue')!.name, '工學院大樓');
   });
 
