@@ -170,6 +170,28 @@ def main():
                     road["name"] = tags["name"]
                 out["roads"].append(road)
     # Sports areas under buildings first; larger areas under smaller ones.
+    # Buildings mapped as multipolygons (宜大紅樓): the outer ring, tagged on
+    # the relation.
+    by_id = {w["id"]: w for w in ways}
+    for rel in data["elements"]:
+        tags = rel.get("tags", {})
+        if rel["type"] != "relation" or tags.get("type") != "multipolygon" or "building" not in tags:
+            continue
+        outer = [by_id[m["ref"]] for m in rel["members"]
+                 if m["type"] == "way" and m.get("role") == "outer" and m["ref"] in by_id]
+        if len(outer) != 1 or outer[0]["nodes"][0] != outer[0]["nodes"][-1]:
+            continue  # rings split over several ways aren't needed yet
+        points = line(outer[0])
+        if not within(points):
+            continue
+        building = {"id": rel["id"], "polygon": points[:-1], "campus": inside(centre(points[:-1]), boundary)}
+        if tags.get("name"):
+            building["name"] = NAMES.get(rel["id"], tags["name"])
+        if tags.get("building:levels", "").isdigit():
+            building["levels"] = int(tags["building:levels"])
+        if building.get("name") in UNLISTED:
+            building["listed"] = False
+        out["buildings"].append(building)
     out["areas"].sort(key=lambda a: -abs(sum(
         x0 * y1 - x1 * y0 for (x0, y0), (x1, y1) in zip(a["polygon"], a["polygon"][1:] + a["polygon"][:1]))))
     out["buildings"].sort(key=lambda b: b["id"])

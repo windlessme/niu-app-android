@@ -30,6 +30,8 @@ void main() {
     // 復興國中 next door is not ours.
     expect(overview.searchBuildings('群育館'), isEmpty);
     expect(overview.searchBuildings('體育館'), isNotEmpty);
+    // Mapped as a multipolygon in OpenStreetMap.
+    expect(overview.searchBuildings('紅樓').single.onCampus, isTrue);
     // 司令台 stays on the map and in search, out of the list.
     expect(overview.searchBuildings('司令台').single.listed, isFalse);
     expect(CampusOverviewPainter.mapName('格致大樓（電資學院）'), '格致大樓\n電資學院');
