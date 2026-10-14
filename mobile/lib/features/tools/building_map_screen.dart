@@ -4,8 +4,8 @@ import '../../shared/shared.dart';
 import 'campus_map_data.dart';
 import 'floor_map_painter.dart';
 
-/// One building, a floor at a time: the plan fills the page, floors stack on
-/// the right as in the building, and tapping a room marks it.
+/// One building, a floor at a time: the plan fills the screen, controls
+/// float over it, and a drawer at the bottom holds the floor's rooms.
 class BuildingMapScreen extends StatelessWidget {
   const BuildingMapScreen({
     super.key,
@@ -23,8 +23,9 @@ class BuildingMapScreen extends StatelessWidget {
   Widget build(BuildContext context) => FutureBuilder<CampusMap>(
     future: map ?? CampusMap.load(),
     builder: (context, snapshot) {
-      final building = snapshot.data?.building(buildingId);
-      if (building == null) {
+      final data = snapshot.data;
+      final building = data?.building(buildingId);
+      if (data == null || building == null) {
         return Scaffold(
           appBar: const NiuAppBar(title: '校園地圖'),
           body: snapshot.connectionState == ConnectionState.done
@@ -32,8 +33,9 @@ class BuildingMapScreen extends StatelessWidget {
               : const SizedBox.shrink(),
         );
       }
-      final found = room == null ? null : snapshot.data!.locate(room!);
+      final found = room == null ? null : data.locate(room!);
       return _BuildingView(
+        map: data,
         building: building,
         initial: found?.building == building ? found : null,
       );
@@ -42,195 +44,331 @@ class BuildingMapScreen extends StatelessWidget {
 }
 
 class _BuildingView extends StatefulWidget {
-  const _BuildingView({required this.building, this.initial});
+  const _BuildingView({
+    required this.map,
+    required this.building,
+    this.initial,
+  });
+  final CampusMap map;
   final MapBuilding building;
   final RoomLocation? initial;
   @override
   State<_BuildingView> createState() => _BuildingViewState();
 }
 
-class _BuildingViewState extends State<_BuildingView> {
+class _BuildingViewState extends State<_BuildingView>
+    with SingleTickerProviderStateMixin {
   late MapFloor floor =
       widget.initial?.floor ??
       widget.building.floor(widget.building.defaultFloorId)!;
   late MapSpace? selected = widget.initial?.space;
   final zoom = TransformationController();
+  final sheet = DraggableScrollableController();
+  late final flight = AnimationController(
+    vsync: this,
+    duration: NiuMotion.standard,
+  );
+  Animation<Matrix4>? _flight;
+  FloorFrame? frame;
+
+  /// Drawer height when collapsed, and the top bar's, safe areas excluded.
+  static const _peek = 112.0, _top = 64.0;
+
+  @override
+  void initState() {
+    super.initState();
+    flight.addListener(() {
+      final a = _flight;
+      if (a != null) zoom.value = a.value;
+    });
+    if (selected != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => focus(selected!));
+    }
+  }
 
   @override
   void dispose() {
+    flight.dispose();
     zoom.dispose();
+    sheet.dispose();
     super.dispose();
   }
 
-  void selectFloor(MapFloor next) {
-    if (identical(next, floor)) return;
-    setState(() {
-      floor = next;
-      selected = null;
-      zoom.value = Matrix4.identity();
-    });
+  double get _peekPixels => _peek + MediaQuery.paddingOf(context).bottom;
+
+  /// Animates the view to [target], or jumps when motion is reduced.
+  void fly(Matrix4 target) {
+    if (!mounted) return;
+    if (MediaQuery.disableAnimationsOf(context)) {
+      zoom.value = target;
+      return;
+    }
+    _flight = Matrix4Tween(
+      begin: zoom.value,
+      end: target,
+    ).animate(CurvedAnimation(parent: flight, curve: Curves.easeInOutCubic));
+    flight.forward(from: 0);
   }
 
-  void tap(Offset canvas, Size size) {
-    final point = FloorFrame(widget.building, size).toMetres(canvas);
-    final room = floor.roomAt(point);
-    setState(() => selected = identical(room, selected) ? null : room);
+  /// Centres [space] in the clear area at a readable zoom.
+  void focus(MapSpace space) {
+    final f = frame;
+    if (f == null) return;
+    final area = f.padding.deflateRect(Offset.zero & f.size);
+    final at = f.toCanvas(space.bounds.center);
+    const scale = 2.4;
+    fly(
+      Matrix4.identity()
+        ..translateByDouble(
+          area.center.dx - at.dx * scale,
+          area.center.dy - at.dy * scale,
+          0,
+          1,
+        )
+        ..scaleByDouble(scale, scale, 1, 1),
+    );
+  }
+
+  void collapseSheet() {
+    if (!sheet.isAttached) return;
+    final size = sheet.pixelsToSize(_peekPixels);
+    if (MediaQuery.disableAnimationsOf(context)) {
+      sheet.jumpTo(size);
+    } else {
+      sheet.animateTo(
+        size,
+        duration: NiuMotion.standard,
+        curve: NiuMotion.curve,
+      );
+    }
+  }
+
+  void selectFloor(MapFloor next, {MapSpace? room}) {
+    setState(() {
+      floor = next;
+      selected = room;
+    });
+    if (room == null) {
+      fly(Matrix4.identity());
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) => focus(room));
+    }
+  }
+
+  void selectRoom(MapSpace? room, {bool focusOn = false}) {
+    setState(() => selected = room);
+    if (room != null && focusOn) focus(room);
+  }
+
+  void tap(Offset canvas) {
+    final f = frame;
+    if (f == null) return;
+    final room = floor.roomAt(f.toMetres(canvas));
+    selectRoom(identical(room, selected) ? null : room);
+  }
+
+  Future<void> search() async {
+    final found = await showModalBottomSheet<RoomLocation>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (_) =>
+          _RoomSearchSheet(map: widget.map, building: widget.building),
+    );
+    if (found == null || !mounted) return;
+    collapseSheet();
+    selectFloor(found.floor, room: found.space);
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final colors = NiuColors.of(context);
-    final building = widget.building;
-    final gutter = NiuLayout.gutter(context);
+    final media = MediaQuery.of(context);
+    final top = media.padding.top + NiuSpacing.sm;
+    final padding = EdgeInsets.fromLTRB(
+      NiuSpacing.lg,
+      top + _top,
+      NiuSpacing.lg,
+      _peekPixels + NiuSpacing.lg,
+    );
     return Scaffold(
       backgroundColor: colors.canvas,
-      appBar: NiuAppBar(title: building.name),
-      body: SafeArea(
-        top: false,
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(gutter, 0, gutter, NiuSpacing.lg),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final size = constraints.biggest;
+          frame = FloorFrame(widget.building, size, padding: padding);
+          return Stack(
             children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.layers_outlined,
-                    size: 16,
-                    color: colors.inkTertiary,
-                  ),
-                  const SizedBox(width: NiuSpacing.xs),
-                  Text(building.levels, style: theme.textTheme.bodySmall),
-                ],
+              Positioned.fill(child: _plan(context, size, padding)),
+              Positioned(
+                left: NiuSpacing.md,
+                right: NiuSpacing.md,
+                top: top,
+                child: _TopBar(building: widget.building, onSearch: search),
               ),
-              const SizedBox(height: NiuSpacing.md),
-              Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(child: _plan(context)),
-                    const SizedBox(width: NiuSpacing.sm),
-                    Center(
-                      child: _FloorRail(
-                        floors: building.floors,
-                        selected: floor,
-                        onSelect: selectFloor,
-                      ),
-                    ),
-                  ],
+              Positioned(
+                right: NiuSpacing.md,
+                top: top + _top,
+                child: _FloorPicker(
+                  floors: widget.building.floors,
+                  selected: floor,
+                  onSelect: (f) {
+                    if (!identical(f, floor)) selectFloor(f);
+                  },
                 ),
               ),
-              AnimatedSize(
-                duration: NiuMotion.duration(context),
-                curve: NiuMotion.curve,
-                alignment: Alignment.topCenter,
-                child: selected == null
-                    ? const SizedBox(width: double.infinity)
-                    : Padding(
-                        padding: const EdgeInsets.only(top: NiuSpacing.md),
-                        child: _RoomCard(
-                          space: selected!,
-                          floor: floor,
-                          onClose: () => setState(() => selected = null),
-                        ),
-                      ),
+              Positioned(
+                right: NiuSpacing.md,
+                bottom: _peekPixels + NiuSpacing.md,
+                child: _Floating(
+                  child: NiuIconButton(
+                    icon: Icons.fit_screen_rounded,
+                    tooltip: '顯示整層',
+                    onPressed: () => fly(Matrix4.identity()),
+                  ),
+                ),
+              ),
+              DraggableScrollableSheet(
+                controller: sheet,
+                initialChildSize: _peekPixels / size.height,
+                minChildSize: _peekPixels / size.height,
+                maxChildSize: .6,
+                snap: true,
+                builder: (context, scroll) => _FloorSheet(
+                  scroll: scroll,
+                  floor: floor,
+                  selected: selected,
+                  onClear: () => selectRoom(null),
+                  onPick: (room) {
+                    collapseSheet();
+                    selectRoom(room, focusOn: true);
+                  },
+                ),
               ),
             ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _plan(BuildContext context, Size size, EdgeInsets padding) {
+    final theme = Theme.of(context);
+    final colors = NiuColors.of(context);
+    return InteractiveViewer(
+      transformationController: zoom,
+      minScale: 1,
+      maxScale: 6,
+      onInteractionStart: (_) => flight.stop(),
+      child: GestureDetector(
+        onTapUp: (d) => tap(d.localPosition),
+        child: Semantics(
+          label: '${widget.building.name}${floor.title}平面圖',
+          child: CustomPaint(
+            size: size,
+            painter: FloorMapPainter(
+              building: widget.building,
+              floor: floor,
+              colors: colors,
+              hues: (
+                restroom: NiuHue.teal.background(context),
+                restroomEdge: NiuHue.teal
+                    .foreground(context)
+                    .withValues(alpha: .25),
+                terrace: NiuHue.green.background(context),
+              ),
+              textStyle: theme.textTheme.labelSmall ?? const TextStyle(),
+              padding: padding,
+              selected: selected,
+            ),
           ),
         ),
       ),
     );
   }
-
-  Widget _plan(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = NiuColors.of(context);
-    final dark = theme.brightness == Brightness.dark;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(NiuRadius.card),
-      child: ColoredBox(
-        color: dark ? colors.surface : colors.fill,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final size = constraints.biggest;
-            return Stack(
-              children: [
-                InteractiveViewer(
-                  transformationController: zoom,
-                  minScale: 1,
-                  maxScale: 6,
-                  child: GestureDetector(
-                    onTapUp: (d) => tap(d.localPosition, size),
-                    child: Semantics(
-                      label: '${widget.building.name}${floor.title}平面圖',
-                      child: CustomPaint(
-                        size: size,
-                        painter: FloorMapPainter(
-                          building: widget.building,
-                          floor: floor,
-                          colors: colors,
-                          hues: (
-                            restroom: NiuHue.teal.background(context),
-                            restroomEdge: NiuHue.teal
-                                .foreground(context)
-                                .withValues(alpha: .25),
-                            terrace: NiuHue.green.background(context),
-                          ),
-                          textStyle:
-                              theme.textTheme.labelSmall ?? const TextStyle(),
-                          selected: selected,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: NiuSpacing.md,
-                  top: NiuSpacing.md,
-                  child: _FloorBadge(floor: floor),
-                ),
-              ],
-            );
-          },
-        ),
-      ),
-    );
-  }
 }
 
-class _FloorBadge extends StatelessWidget {
-  const _FloorBadge({required this.floor});
-  final MapFloor floor;
+/// A raised capsule for controls floating over the plan.
+class _Floating extends StatelessWidget {
+  const _Floating({required this.child, this.radius = NiuRadius.pill});
+  final Widget child;
+  final double radius;
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: BoxDecoration(
+      color: NiuColors.of(context).raised,
+      borderRadius: BorderRadius.circular(radius),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: .12),
+          blurRadius: 12,
+          offset: const Offset(0, 2),
+        ),
+      ],
+    ),
+    child: Material(
+      type: MaterialType.transparency,
+      borderRadius: BorderRadius.circular(radius),
+      clipBehavior: Clip.antiAlias,
+      child: child,
+    ),
+  );
+}
+
+class _TopBar extends StatelessWidget {
+  const _TopBar({required this.building, required this.onSearch});
+  final MapBuilding building;
+  final VoidCallback onSearch;
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colors = NiuColors.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: NiuSpacing.md,
-        vertical: NiuSpacing.sm,
-      ),
-      decoration: BoxDecoration(
-        color: colors.raised,
-        borderRadius: BorderRadius.circular(NiuRadius.md),
-        boxShadow: NiuShadow.card(context),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(floor.id, style: theme.textTheme.titleLarge),
-          Text('${floor.rooms.length} 個空間', style: theme.textTheme.labelSmall),
-        ],
-      ),
+    return Row(
+      children: [
+        const _Floating(child: NiuBackButton()),
+        const SizedBox(width: NiuSpacing.sm),
+        Expanded(
+          child: _Floating(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: NiuSpacing.lg,
+                vertical: 6,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Semantics(
+                    header: true,
+                    child: Text(
+                      building.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleMedium,
+                    ),
+                  ),
+                  Text(building.levels, style: theme.textTheme.labelSmall),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: NiuSpacing.sm),
+        _Floating(
+          child: NiuIconButton(
+            icon: NiuIcons.search,
+            tooltip: '搜尋教室',
+            onPressed: onSearch,
+          ),
+        ),
+      ],
     );
   }
 }
 
-/// Floors top to bottom as in the building.
-class _FloorRail extends StatelessWidget {
-  const _FloorRail({
+/// Shows only the current floor until tapped; then every floor, top floor
+/// first, closing again after a pick or a tap elsewhere.
+class _FloorPicker extends StatefulWidget {
+  const _FloorPicker({
     required this.floors,
     required this.selected,
     required this.onSelect,
@@ -239,100 +377,306 @@ class _FloorRail extends StatelessWidget {
   final MapFloor selected;
   final ValueChanged<MapFloor> onSelect;
   @override
+  State<_FloorPicker> createState() => _FloorPickerState();
+}
+
+class _FloorPickerState extends State<_FloorPicker> {
+  bool open = false;
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = NiuColors.of(context);
-    return Container(
-      width: 52,
-      padding: const EdgeInsets.all(NiuSpacing.xs),
-      decoration: BoxDecoration(
-        color: colors.surface,
-        borderRadius: BorderRadius.circular(NiuRadius.pill),
-        boxShadow: NiuShadow.card(context),
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            for (final f in floors.reversed)
-              Semantics(
-                button: true,
-                selected: identical(f, selected),
-                label: f.title,
-                excludeSemantics: true,
-                child: InkWell(
-                  customBorder: const CircleBorder(),
-                  onTap: () => onSelect(f),
-                  child: AnimatedContainer(
-                    duration: NiuMotion.duration(context),
-                    width: 44,
-                    height: 44,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: identical(f, selected) ? colors.accent : null,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Text(
-                      f.id,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        color: identical(f, selected)
-                            ? colors.onAccent
-                            : colors.inkSecondary,
+    Widget item(MapFloor f) {
+      final on = identical(f, widget.selected);
+      return Semantics(
+        button: true,
+        selected: on,
+        label: f.title,
+        excludeSemantics: true,
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: () {
+            setState(() => open = false);
+            widget.onSelect(f);
+          },
+          child: Container(
+            width: 44,
+            height: 44,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: on ? colors.accent : null,
+              shape: BoxShape.circle,
+            ),
+            child: Text(
+              f.id,
+              style: theme.textTheme.titleSmall?.copyWith(
+                color: on ? colors.onAccent : colors.inkSecondary,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return TapRegion(
+      onTapOutside: (_) {
+        if (open) setState(() => open = false);
+      },
+      child: _Floating(
+        radius: NiuRadius.xl,
+        child: AnimatedSize(
+          duration: NiuMotion.duration(context),
+          curve: NiuMotion.curve,
+          alignment: Alignment.topCenter,
+          child: open
+              ? Padding(
+                  padding: const EdgeInsets.all(NiuSpacing.xs),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [for (final f in widget.floors.reversed) item(f)],
+                  ),
+                )
+              : Semantics(
+                  button: true,
+                  expanded: false,
+                  label: '樓層，目前${widget.selected.title}',
+                  excludeSemantics: true,
+                  child: InkWell(
+                    onTap: () => setState(() => open = true),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            widget.selected.id,
+                            style: theme.textTheme.titleMedium,
+                          ),
+                          Icon(
+                            Icons.expand_more_rounded,
+                            color: colors.inkSecondary,
+                          ),
+                        ],
                       ),
                     ),
                   ),
                 ),
-              ),
-          ],
         ),
       ),
     );
   }
 }
 
-class _RoomCard extends StatelessWidget {
-  const _RoomCard({
-    required this.space,
+/// The drawer: the marked room or the floor at a glance, and the floor's
+/// numbered rooms when pulled up.
+class _FloorSheet extends StatelessWidget {
+  const _FloorSheet({
+    required this.scroll,
     required this.floor,
-    required this.onClose,
+    required this.selected,
+    required this.onClear,
+    required this.onPick,
   });
-  final MapSpace space;
+  final ScrollController scroll;
   final MapFloor floor;
-  final VoidCallback onClose;
+  final MapSpace? selected;
+  final VoidCallback onClear;
+  final ValueChanged<MapSpace> onPick;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return NiuCard(
-      padding: const EdgeInsets.fromLTRB(
-        NiuSpacing.lg,
-        NiuSpacing.md,
-        NiuSpacing.xs,
-        NiuSpacing.md,
-      ),
-      child: Row(
-        children: [
-          const NiuIconTile(
+    final colors = NiuColors.of(context);
+    final numbered = [
+      for (final r in floor.rooms)
+        if (r.code != null) r,
+    ]..sort((a, b) => a.code!.compareTo(b.code!));
+    final room = selected;
+    final summary = room == null
+        ? _SheetHeader(
+            icon: Icons.layers_rounded,
+            hue: NiuHue.indigo,
+            title: floor.title,
+            subtitle: numbered.isEmpty
+                ? '${floor.rooms.length} 個空間'
+                : '${floor.rooms.length} 個空間・${numbered.length} 間有編號',
+          )
+        : _SheetHeader(
             icon: Icons.meeting_room_outlined,
             hue: NiuHue.blue,
+            title: room.code ?? '未編號空間',
+            subtitle: [floor.title, ?room.note].join('・'),
+            trailing: NiuIconButton(
+              icon: NiuIcons.close,
+              tooltip: '取消標示',
+              onPressed: onClear,
+            ),
+          );
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colors.surface,
+        borderRadius: const BorderRadius.vertical(
+          top: Radius.circular(NiuRadius.sheet),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: .1),
+            blurRadius: 16,
+            offset: const Offset(0, -2),
           ),
+        ],
+      ),
+      child: ListView(
+        controller: scroll,
+        padding: EdgeInsets.fromLTRB(
+          NiuSpacing.gutter,
+          0,
+          NiuSpacing.gutter,
+          MediaQuery.paddingOf(context).bottom + NiuSpacing.lg,
+        ),
+        children: [
+          Center(
+            child: Container(
+              margin: const EdgeInsets.symmetric(vertical: NiuSpacing.sm),
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: colors.fillStrong,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          summary,
+          const SizedBox(height: NiuSpacing.xl),
+          const NiuEyebrow('本層教室'),
+          const SizedBox(height: NiuSpacing.sm),
+          if (numbered.isEmpty)
+            Text('這一層還沒有教室編號。', style: theme.textTheme.bodySmall)
+          else
+            NiuGroup(
+              insetDividers: NiuSpacing.lg,
+              children: [
+                for (final r in numbered)
+                  NiuRow(
+                    title: r.code!,
+                    subtitle: r.note,
+                    chevron: false,
+                    trailing: identical(r, room)
+                        ? Icon(Icons.place_rounded, color: colors.accent)
+                        : null,
+                    onTap: () => onPick(r),
+                  ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SheetHeader extends StatelessWidget {
+  const _SheetHeader({
+    required this.icon,
+    required this.hue,
+    required this.title,
+    required this.subtitle,
+    this.trailing,
+  });
+  final IconData icon;
+  final NiuHue hue;
+  final String title, subtitle;
+  final Widget? trailing;
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SizedBox(
+      height: 56,
+      child: Row(
+        children: [
+          NiuIconTile(icon: icon, hue: hue),
           const SizedBox(width: NiuSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(space.code ?? '未編號空間', style: theme.textTheme.titleMedium),
-                const SizedBox(height: 2),
+                Text(title, style: theme.textTheme.titleMedium),
                 Text(
-                  [floor.title, ?space.note].join('・'),
+                  subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.bodySmall,
                 ),
               ],
             ),
           ),
-          NiuIconButton(
-            icon: NiuIcons.close,
-            tooltip: '取消標示',
-            onPressed: onClose,
+          ?trailing,
+        ],
+      ),
+    );
+  }
+}
+
+/// Classroom search within the building; returns the picked room.
+class _RoomSearchSheet extends StatefulWidget {
+  const _RoomSearchSheet({required this.map, required this.building});
+  final CampusMap map;
+  final MapBuilding building;
+  @override
+  State<_RoomSearchSheet> createState() => _RoomSearchSheetState();
+}
+
+class _RoomSearchSheetState extends State<_RoomSearchSheet> {
+  String query = '';
+  @override
+  Widget build(BuildContext context) {
+    final results = [
+      for (final r in widget.map.search(query))
+        if (identical(r.building, widget.building)) r,
+    ];
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              NiuSpacing.gutter,
+              NiuSpacing.lg,
+              NiuSpacing.gutter,
+              NiuSpacing.sm,
+            ),
+            child: NiuSearchField(
+              hint: '搜尋${widget.building.name}的教室',
+              onChanged: (v) => setState(() => query = v),
+            ),
+          ),
+          Flexible(
+            child: ListView(
+              shrinkWrap: true,
+              padding: const EdgeInsets.fromLTRB(
+                NiuSpacing.gutter,
+                0,
+                NiuSpacing.gutter,
+                NiuSpacing.xl,
+              ),
+              children: [
+                if (query.trim().isNotEmpty && results.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: NiuSpacing.lg),
+                    child: Text('找不到符合的教室。'),
+                  ),
+                for (final r in results.take(30))
+                  NiuRow(
+                    icon: Icons.meeting_room_outlined,
+                    title: r.space.code!,
+                    subtitle: [r.floor.title, ?r.space.note].join('・'),
+                    onTap: () => Navigator.pop(context, r),
+                  ),
+              ],
+            ),
           ),
         ],
       ),

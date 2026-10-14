@@ -67,7 +67,7 @@ void main() {
 
   Widget app(Widget child) => MaterialApp(theme: NiuTheme.light, home: child);
 
-  testWidgets('opens on a timetable room and switches floors', (tester) async {
+  testWidgets('opens on a timetable room; floors fold away', (tester) async {
     tester.view.physicalSize = const Size(390 * 3, 844 * 3);
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
@@ -82,14 +82,35 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('教穡大樓'), findsOneWidget);
-    expect(find.text('3F'), findsNWidgets(2)); // badge and rail
-    expect(find.text('教305'), findsOneWidget); // room card
-    expect(find.text('3 樓'), findsOneWidget);
+    expect(find.bySemanticsLabel('樓層，目前3 樓'), findsOneWidget);
+    expect(find.bySemanticsLabel('8 樓'), findsNothing);
+    expect(find.text('3 樓・普通教室'), findsNothing);
+    expect(find.text('教305'), findsWidgets);
+    expect(find.byTooltip('取消標示'), findsOneWidget);
 
+    await tester.tap(find.bySemanticsLabel('樓層，目前3 樓'));
+    await tester.pumpAndSettle();
     await tester.tap(find.bySemanticsLabel('8 樓'));
     await tester.pumpAndSettle();
-    expect(find.text('8F'), findsNWidgets(2));
-    expect(find.text('教305'), findsNothing);
+    expect(find.bySemanticsLabel('樓層，目前8 樓'), findsOneWidget);
+    expect(find.byTooltip('取消標示'), findsNothing);
+    expect(find.textContaining('間有編號'), findsNothing);
+  });
+
+  testWidgets('picking a room in the drawer marks it', (tester) async {
+    tester.view.physicalSize = const Size(390 * 3, 844 * 3);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      app(BuildingMapScreen(buildingId: 'jiaose', map: SynchronousFuture(map))),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('1 樓'), findsOneWidget);
+    await tester.drag(find.text('1 樓'), const Offset(0, -400));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('學生休息室'));
+    await tester.pumpAndSettle();
+    expect(find.text('1 樓・學生休息室'), findsOneWidget);
   });
 
   testWidgets('searching a room lists where it is', (tester) async {
