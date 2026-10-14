@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../shared/shared.dart';
 import 'campus_map_data.dart';
@@ -66,11 +67,36 @@ class _CampusViewState extends State<_CampusView>
   CampusBuilding? selected;
   Set<CampusPlaceKind> places = const {};
 
+  /// Buildings as a list instead of the map; remembered between visits.
+  bool listed = false;
+  static const _listedKey = 'campusMapListed';
+
+  Future<void> _restoreMode() async {
+    try {
+      final saved = (await SharedPreferences.getInstance()).getBool(_listedKey);
+      if (mounted && saved != null && saved != listed) {
+        setState(() => listed = saved);
+      }
+    } catch (_) {}
+  }
+
+  void toggleMode() {
+    setState(() {
+      listed = !listed;
+      if (listed) selected = null;
+    });
+    final value = listed;
+    SharedPreferences.getInstance()
+        .then((p) => p.setBool(_listedKey, value))
+        .ignore();
+  }
+
   static const _top = 64.0, _bottom = 64.0;
 
   @override
   void initState() {
     super.initState();
+    _restoreMode();
     flight.addListener(() {
       final a = _flight;
       if (a != null) zoom.value = a.value;
@@ -173,52 +199,80 @@ class _CampusViewState extends State<_CampusView>
           frame = OverviewFrame(widget.overview, size, padding: padding);
           return Stack(
             children: [
-              Positioned.fill(
-                child: InteractiveViewer(
-                  transformationController: zoom,
-                  minScale: .8,
-                  maxScale: 12,
-                  boundaryMargin: const EdgeInsets.all(400),
-                  onInteractionStart: (_) => flight.stop(),
-                  child: GestureDetector(
-                    onTapUp: (d) => tap(d.localPosition),
-                    child: Semantics(
-                      label: '國立宜蘭大學校園地圖',
-                      child: CustomPaint(
-                        size: size,
-                        painter: CampusOverviewPainter(
-                          map: widget.overview,
-                          colors: colors,
-                          hues: (
-                            green: NiuHue.green.background(context),
-                            sport: NiuHue.green
-                                .foreground(context)
-                                .withValues(alpha: dark ? .26 : .18),
-                            water: NiuHue.cyan.background(context),
-                            campus: dark
-                                ? colors.surface
-                                : Color.lerp(
-                                    colors.surface,
-                                    colors.canvas,
-                                    .3,
-                                  )!,
-                            plan: NiuHue.indigo
-                                .foreground(context)
-                                .withValues(alpha: dark ? .45 : .3),
-                            planEdge: NiuHue.indigo.foreground(context),
+              if (listed)
+                Positioned.fill(
+                  child: _BuildingList(
+                    overview: widget.overview,
+                    rooms: widget.rooms,
+                    top: top + _top,
+                    onOpen: (b) {
+                      final plan = b.plan;
+                      if (plan != null) {
+                        openPlan(plan);
+                      } else {
+                        setState(() => listed = false);
+                        WidgetsBinding.instance.addPostFrameCallback(
+                          (_) => select(b, focusOn: true),
+                        );
+                      }
+                    },
+                  ),
+                )
+              else
+                Positioned.fill(
+                  child: InteractiveViewer(
+                    transformationController: zoom,
+                    minScale: .8,
+                    maxScale: 12,
+                    boundaryMargin: const EdgeInsets.all(400),
+                    onInteractionStart: (_) => flight.stop(),
+                    child: GestureDetector(
+                      onTapUp: (d) => tap(d.localPosition),
+                      child: Semantics(
+                        label: '國立宜蘭大學校園地圖',
+                        child: CustomPaint(
+                          size: size,
+                          painter: CampusOverviewPainter(
+                            map: widget.overview,
+                            colors: colors,
+                            hues: (
+                              green: NiuHue.green.background(context),
+                              sport: NiuHue.green
+                                  .foreground(context)
+                                  .withValues(alpha: dark ? .26 : .18),
+                              water: NiuHue.cyan.background(context),
+                              campus: dark
+                                  ? colors.surface
+                                  : Color.lerp(
+                                      colors.surface,
+                                      colors.canvas,
+                                      .3,
+                                    )!,
+                              plan: NiuHue.indigo
+                                  .foreground(context)
+                                  .withValues(alpha: dark ? .45 : .3),
+                              planEdge: NiuHue.indigo.foreground(context),
+                            ),
+                            textStyle:
+                                theme.textTheme.labelSmall ?? const TextStyle(),
+                            places: places,
+                            padding: padding,
+                            selected: selected,
+                            zoom: zoom,
                           ),
-                          textStyle:
-                              theme.textTheme.labelSmall ?? const TextStyle(),
-                          places: places,
-                          padding: padding,
-                          selected: selected,
-                          zoom: zoom,
                         ),
                       ),
                     ),
                   ),
                 ),
-              ),
+              if (listed)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: 0,
+                  height: top + _top - NiuSpacing.sm,
+                  child: ColoredBox(color: colors.canvas),
+                ),
               Positioned(
                 left: NiuSpacing.md,
                 right: NiuSpacing.md,
@@ -261,51 +315,137 @@ class _CampusViewState extends State<_CampusView>
                         ),
                       ),
                     ),
+                    const SizedBox(width: NiuSpacing.sm),
+                    MapFloating(
+                      child: NiuIconButton(
+                        icon: listed
+                            ? Icons.map_rounded
+                            : Icons.view_list_rounded,
+                        tooltip: listed ? '以地圖顯示' : '以清單顯示',
+                        onPressed: toggleMode,
+                      ),
+                    ),
                   ],
                 ),
               ),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: bottom,
-                child: AnimatedSwitcher(
-                  duration: NiuMotion.duration(context),
-                  child: selected == null
-                      ? _Controls(
-                          key: const ValueKey('controls'),
-                          places: places,
-                          attribution: widget.overview.attribution,
-                          onToggle: (kind) => setState(() {
-                            places = places.contains(kind)
-                                ? ({...places}..remove(kind))
-                                : {...places, kind};
-                          }),
-                          onFit: () => fly(Matrix4.identity()),
-                        )
-                      : Padding(
-                          key: ValueKey(selected!.id),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: NiuSpacing.md,
+              if (!listed)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: bottom,
+                  child: AnimatedSwitcher(
+                    duration: NiuMotion.duration(context),
+                    child: selected == null
+                        ? _Controls(
+                            key: const ValueKey('controls'),
+                            places: places,
+                            attribution: widget.overview.attribution,
+                            onToggle: (kind) => setState(() {
+                              places = places.contains(kind)
+                                  ? ({...places}..remove(kind))
+                                  : {...places, kind};
+                            }),
+                            onFit: () => fly(Matrix4.identity()),
+                          )
+                        : Padding(
+                            key: ValueKey(selected!.id),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: NiuSpacing.md,
+                            ),
+                            child: _BuildingCard(
+                              building: selected!,
+                              levels: selected!.plan == null
+                                  ? null
+                                  : widget.rooms
+                                        .building(selected!.plan!)
+                                        ?.levels,
+                              onClose: () => select(null),
+                              onPlan: selected!.plan == null
+                                  ? null
+                                  : () => openPlan(selected!.plan!),
+                            ),
                           ),
-                          child: _BuildingCard(
-                            building: selected!,
-                            levels: selected!.plan == null
-                                ? null
-                                : widget.rooms
-                                      .building(selected!.plan!)
-                                      ?.levels,
-                            onClose: () => select(null),
-                            onPlan: selected!.plan == null
-                                ? null
-                                : () => openPlan(selected!.plan!),
-                          ),
-                        ),
+                  ),
                 ),
-              ),
             ],
           );
         },
       ),
+    );
+  }
+}
+
+/// The campus buildings by name: those with floor plans first.
+class _BuildingList extends StatelessWidget {
+  const _BuildingList({
+    required this.overview,
+    required this.rooms,
+    required this.top,
+    required this.onOpen,
+  });
+  final CampusOverview overview;
+  final CampusMap rooms;
+  final double top;
+  final ValueChanged<CampusBuilding> onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    // One row per name; the map has two 看台, for one.
+    final seen = <String>{};
+    final named = [
+      for (final b in overview.buildings)
+        if (b.onCampus && b.name != null && seen.add(b.name!)) b,
+    ]..sort((a, b) => a.name!.compareTo(b.name!));
+    final planned = [
+      for (final b in named)
+        if (b.plan != null) b,
+    ];
+    final others = [
+      for (final b in named)
+        if (b.plan == null) b,
+    ];
+    String? levels(CampusBuilding b) {
+      final plan = b.plan == null ? null : rooms.building(b.plan!);
+      return plan?.levels ?? (b.levels == null ? null : '地上 ${b.levels} 層');
+    }
+
+    Widget group(List<CampusBuilding> list) => NiuGroup(
+      children: [
+        for (final b in list)
+          NiuRow(
+            icon: Icons.apartment_rounded,
+            hue: b.plan == null ? NiuHue.gray : NiuHue.indigo,
+            title: b.name!,
+            subtitle: levels(b),
+            onTap: () => onOpen(b),
+          ),
+      ],
+    );
+
+    return ListView(
+      padding: NiuLayout.page(
+        context,
+        top: top + NiuSpacing.md,
+        bottom: MediaQuery.viewPaddingOf(context).bottom + NiuSpacing.xxl,
+      ),
+      children: [
+        if (planned.isNotEmpty)
+          NiuSection(first: true, title: '有樓層平面圖', child: group(planned)),
+        if (others.isNotEmpty)
+          NiuSection(
+            first: planned.isEmpty,
+            title: '其他建築',
+            child: group(others),
+          ),
+        const SizedBox(height: NiuSpacing.lg),
+        Text(
+          overview.attribution,
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: NiuColors.of(context).inkTertiary,
+          ),
+        ),
+      ],
     );
   }
 }
