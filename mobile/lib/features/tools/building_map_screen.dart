@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../shared/shared.dart';
 import 'campus_map_data.dart';
 import 'floor_map_painter.dart';
+import 'map_controls.dart';
 
 /// One building, a floor at a time: the plan fills the screen, controls
 /// float over it, and a drawer at the bottom holds the floor's rooms.
@@ -240,7 +241,7 @@ class _BuildingViewState extends State<_BuildingView>
               Positioned(
                 right: NiuSpacing.md,
                 bottom: _peekPixels + NiuSpacing.md,
-                child: _Floating(
+                child: MapFloating(
                   child: NiuIconButton(
                     icon: Icons.fit_screen_rounded,
                     tooltip: '顯示整層',
@@ -314,33 +315,6 @@ class _BuildingViewState extends State<_BuildingView>
   }
 }
 
-/// A raised capsule for controls floating over the plan.
-class _Floating extends StatelessWidget {
-  const _Floating({required this.child, this.radius = NiuRadius.pill});
-  final Widget child;
-  final double radius;
-  @override
-  Widget build(BuildContext context) => DecoratedBox(
-    decoration: BoxDecoration(
-      color: NiuColors.of(context).raised,
-      borderRadius: BorderRadius.circular(radius),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: .12),
-          blurRadius: 12,
-          offset: const Offset(0, 2),
-        ),
-      ],
-    ),
-    child: Material(
-      type: MaterialType.transparency,
-      borderRadius: BorderRadius.circular(radius),
-      clipBehavior: Clip.antiAlias,
-      child: child,
-    ),
-  );
-}
-
 class _TopBar extends StatelessWidget {
   const _TopBar({required this.building, required this.onSearch});
   final MapBuilding building;
@@ -350,10 +324,10 @@ class _TopBar extends StatelessWidget {
     final theme = Theme.of(context);
     return Row(
       children: [
-        const _Floating(child: NiuBackButton()),
+        const MapFloating(child: NiuBackButton()),
         const SizedBox(width: NiuSpacing.sm),
         Expanded(
-          child: _Floating(
+          child: MapFloating(
             child: Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: NiuSpacing.lg,
@@ -379,7 +353,7 @@ class _TopBar extends StatelessWidget {
           ),
         ),
         const SizedBox(width: NiuSpacing.sm),
-        _Floating(
+        MapFloating(
           child: NiuIconButton(
             icon: NiuIcons.search,
             tooltip: '搜尋教室',
@@ -449,7 +423,7 @@ class _FloorPickerState extends State<_FloorPicker> {
       onTapOutside: (_) {
         if (open) setState(() => open = false);
       },
-      child: _Floating(
+      child: MapFloating(
         radius: NiuRadius.xl,
         child: AnimatedSize(
           duration: NiuMotion.duration(context),

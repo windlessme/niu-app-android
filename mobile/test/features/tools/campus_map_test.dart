@@ -5,13 +5,34 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:niu_mobile/features/tools/building_map_screen.dart';
 import 'package:niu_mobile/features/tools/campus_map_data.dart';
 import 'package:niu_mobile/features/tools/campus_map_screen.dart';
+import 'package:niu_mobile/features/tools/campus_overview_data.dart';
+import 'package:niu_mobile/features/tools/campus_overview_painter.dart';
 import 'package:niu_mobile/features/tools/floor_map_painter.dart';
 import 'package:niu_mobile/shared/shared.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   late CampusMap map;
-  setUpAll(() async => map = await CampusMap.load(rootBundle));
+  late CampusOverview overview;
+  setUpAll(() async {
+    map = await CampusMap.load(rootBundle);
+    overview = await CampusOverview.load(rootBundle);
+  });
+
+  test('the overview holds the campus and its buildings', () {
+    expect(overview.boundary, isNotEmpty);
+    final jiaose = overview.withPlan('jiaose')!;
+    expect(jiaose.name, '教穡大樓');
+    expect(identical(overview.buildingAt(jiaose.centre), jiaose), isTrue);
+    expect(overview.searchBuildings('綜合').single.name, '綜合教學大樓');
+    expect(
+      overview.places.where((p) => p.kind == CampusPlaceKind.toilets),
+      isNotEmpty,
+    );
+    final frame = OverviewFrame(overview, const Size(390, 700));
+    final at = frame.toCanvas(jiaose.centre);
+    expect((frame.toMetres(at) - jiaose.centre).distance, lessThan(1e-6));
+  });
 
   test('教穡大樓 has eight floors with the office codes on 1F–4F', () {
     final b = map.building('jiaose')!;
@@ -178,13 +199,35 @@ void main() {
     expect((onScreen - centre).distance, lessThan(1));
   });
 
-  testWidgets('searching a room lists where it is', (tester) async {
-    await tester.pumpWidget(app(CampusMapScreen(map: SynchronousFuture(map))));
+  testWidgets('the overview finds buildings and rooms and opens plans', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390 * 3, 844 * 3);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      app(
+        CampusMapScreen(
+          overview: SynchronousFuture(overview),
+          map: SynchronousFuture(map),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
-    expect(find.text('教穡大樓'), findsOneWidget);
+    expect(find.text('© OpenStreetMap 貢獻者'), findsOneWidget);
+
+    await tester.tap(find.bySemanticsLabel('搜尋建築或教室'));
+    await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), '412');
     await tester.pumpAndSettle();
     expect(find.text('教412'), findsOneWidget);
     expect(find.text('教穡大樓 4 樓・外語學系優先排課'), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), '教穡');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('教穡大樓'));
+    await tester.pumpAndSettle();
+    expect(find.text('地上 8 層・有樓層平面圖'), findsOneWidget);
+    expect(find.text('查看樓層平面圖'), findsOneWidget);
   });
 }
