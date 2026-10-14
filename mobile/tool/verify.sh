@@ -14,6 +14,8 @@ cmp assets/campus_map/dianzi.json ../app-content/campus-map/dianzi.json
 cmp assets/campus_map/shihua.json ../app-content/campus-map/shihua.json
 cmp assets/campus_map/gezhi.json ../app-content/campus-map/gezhi.json
 cmp assets/campus_map/zonghe.json ../app-content/campus-map/zonghe.json
+cmp assets/campus_map/tuzi.json ../app-content/campus-map/tuzi.json
+cmp assets/campus_map/dongwu.json ../app-content/campus-map/dongwu.json
 cmp assets/campus_map/campus.json ../app-content/campus-map/campus.json
 dart format --output=none --set-exit-if-changed lib test integration_test
 flutter analyze
