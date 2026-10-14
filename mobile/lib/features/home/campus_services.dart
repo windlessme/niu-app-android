@@ -90,23 +90,23 @@ abstract final class CampusServices {
     '/postal',
   );
 
-  static const floorPlans = CampusService(
-    '大樓平面圖',
-    '教室位置與樓層配置',
-    Icons.apartment_rounded,
+  static const campusMap = CampusService(
+    '校園地圖',
+    '大樓樓層與教室位置',
+    Icons.map_rounded,
     NiuHue.indigo,
-    '/tools/floor-plans',
+    '/tools/campus-map',
   );
 
   static const tools = CampusService(
     '小工具',
-    '大樓平面圖',
+    '校園地圖',
     Icons.widgets_rounded,
     NiuHue.purple,
     '/tools',
   );
 
-  static const toolbox = [floorPlans];
+  static const toolbox = [campusMap];
 
   static const home = [
     mail,

@@ -88,6 +88,44 @@ def west_rooms(split=18.6):
     return [rect("room", 0, MID[0], WEST_ROOMS, split), rect("room", 0, split, WEST_ROOMS, MID[1])]
 
 
+# 教務處「教穡大樓教室編號及位置圖」(2024/05/23): north row runs n10…n06 from
+# west to east, south row n01…n05, and 3F/4F add n11 (north) and n12 (south)
+# in the west band. Notes are the office's own remarks.
+NOTES = {
+    101: "學生休息室", 104: "通識選修優先排課", 105: "通識選修優先排課",
+    106: "通識選修優先排課", 107: "通識選修優先排課",
+    206: "PBL 問題行動導向優先", 207: "PBL 問題行動導向優先", 208: "環境與永續發展優先",
+    209: "人文經典閱讀優先", 210: "人文經典閱讀優先",
+    311: "職涯教育專業教室", 401: "外語學系優先排課", 412: "外語學系優先排課",
+}
+
+
+def number(level, spaces):
+    def tag(space, n):
+        space["code"] = f"教{n}"
+        if n in NOTES:
+            space["note"] = NOTES[n]
+
+    def rooms(y0, y1, x1):
+        found = [s for s in spaces if s["kind"] == "room" and "rect" in s
+                 and s["rect"][1] == y0 and round(s["rect"][1] + s["rect"][3], 2) == y1
+                 and s["rect"][0] + s["rect"][2] <= x1]
+        return sorted(found, key=lambda s: s["rect"][0])
+
+    north, south = rooms(*TOP, EAST), rooms(*BOT, EAST)
+    assert len(north) == len(south) == 5, level
+    for i, space in enumerate(north):
+        tag(space, level * 100 + 10 - i)
+    for i, space in enumerate(south):
+        tag(space, level * 100 + 1 + i)
+    if level >= 3:
+        west = sorted((s for s in spaces if s["kind"] == "room" and "rect" in s
+                       and s["rect"][0] == 0 and s["rect"][1] >= MID[0]), key=lambda s: s["rect"][1])
+        tag(west[0], level * 100 + 11)
+        tag(west[1], level * 100 + 12)
+    return spaces
+
+
 def floor_1f():
     facade = ellipse(W, 18.65, 3.4, 11.35, -90, 90)
     outline = [[0, 0], [W, 0], [W, TOP[1]], *[[x, y] for x, y in facade[1:-1]], [W, BOT[0]], [W, D], [0, D]]
@@ -96,7 +134,7 @@ def floor_1f():
     return {
         "id": "1F",
         "outline": outline,
-        "spaces": [
+        "spaces": number(1, [
             *shell(),
             rect("corridor", 0, MID[0], WEST_ROOMS, MID[1]),
             rect("corridor", VC[0], TOP[1], W, BOT[0]),
@@ -109,7 +147,7 @@ def floor_1f():
             rect("room", 34.25, 22.7, 37.0, 24.75),
             rect("room", 37.0, 22.7, 40.1, 24.75),
             rect("restroom", 34.25, 24.75, 37.0, MID[1]),
-        ],
+        ]),
     }
 
 
@@ -118,14 +156,14 @@ def floor_2f():
     return {
         "id": "2F",
         "outline": notched(),
-        "spaces": [
+        "spaces": number(2, [
             *shell(),
             rect("void", 0.4, MID[0], WEST_ROOMS, MID[1]),
             poly("room", [*arc, (31.6, MID[1]), (31.6, MID[0])]),
             rect("room", 31.6, MID[0], 40.1, 22.4),
             rect("room", 31.6, 22.4, 35.6, 25.6),
             rect("room", 35.6, 22.4, 40.1, MID[1]),
-        ],
+        ]),
     }
 
 
@@ -136,7 +174,7 @@ def floor_3f():
     return {
         "id": "3F",
         "outline": notched(),
-        "spaces": [
+        "spaces": number(3, [
             *shell(),
             *west_rooms(18.8),
             band(MID[0], 15.1),
@@ -144,7 +182,7 @@ def floor_3f():
             band(22.5, MID[1]),
             rect("room", 31.6, MID[0], 40.1, 22.5),
             rect("room", 31.6, 22.5, 40.1, MID[1]),
-        ],
+        ]),
     }
 
 
@@ -152,7 +190,7 @@ def floor_4f():
     return {
         "id": "4F",
         "outline": notched(),
-        "spaces": [
+        "spaces": number(4, [
             *shell(),
             *west_rooms(18.5),
             rect("room", BLOCK, MID[0], 31.6, 18.5),
@@ -161,7 +199,7 @@ def floor_4f():
             rect("room", 31.6, 14.75, 40.1, 18.5),
             rect("room", 31.6, 18.5, 40.1, 22.3),
             rect("room", 31.6, 22.3, 40.1, MID[1]),
-        ],
+        ]),
     }
 
 
@@ -298,9 +336,13 @@ def main():
         "unit": "m",
         "floors": [f() for f in (floor_1f, floor_2f, floor_3f, floor_4f, floor_5f, floor_6f, floor_7f, floor_8f)],
     }
-    out = Path(__file__).resolve().parents[3] / "app-content" / "campus-map" / "jiaose.json"
-    out.write_text(json.dumps(building, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
-    print(out)
+    text = json.dumps(building, ensure_ascii=False, separators=(",", ":")) + "\n"
+    root = Path(__file__).resolve().parents[3]
+    # app-content is the copy iOS and others read; the app bundles its own.
+    for out in (root / "app-content/campus-map/jiaose.json", root / "mobile/assets/campus_map/jiaose.json"):
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(text, encoding="utf-8")
+        print(out)
 
 
 if __name__ == "__main__":

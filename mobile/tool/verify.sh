@@ -7,6 +7,7 @@ python3 tool/check_architecture.py
 node tool/check_academic_dom.js
 node tool/check_schedule_lifecycle.js
 cmp assets/LICENSE ../LICENSE
+cmp assets/campus_map/jiaose.json ../app-content/campus-map/jiaose.json
 dart format --output=none --set-exit-if-changed lib test integration_test
 flutter analyze
 flutter test

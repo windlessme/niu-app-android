@@ -1,7 +1,7 @@
 name: niu_mobile
 description: NIU-Life Android campus companion.
 publish_to: none
-version: 1.2.3+125
+version: 1.2.4+126
 
 environment:
   sdk: '>=3.10.0 <4.0.0'
@@ -45,4 +45,5 @@ flutter:
     - assets/academic_calendar/index.json
     - assets/academic_calendar/years/
     - assets/LICENSE
+    - assets/campus_map/
     - assets/demo/

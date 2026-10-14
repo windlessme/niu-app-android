@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../shared/shared.dart';
-import '../tools/floor_plan_data.dart';
+import '../tools/campus_map_data.dart';
+import '../tools/campus_map_screen.dart';
 import 'course_colors.dart';
 import 'schedule_models.dart';
 import 'schedule_presentation.dart';
@@ -219,13 +220,17 @@ class ScheduleWeekView extends StatelessWidget {
     return start != null && end != null && start <= minute && minute < end;
   }
 
-  void _showLesson(BuildContext context, ScheduleLesson lesson) {
-    showModalBottomSheet<void>(
+  Future<void> _showLesson(BuildContext context, ScheduleLesson lesson) async {
+    final place = lesson.room.isEmpty
+        ? null
+        : (await CampusMap.load()).locate(lesson.room);
+    if (!context.mounted) return;
+    await showModalBottomSheet<void>(
       context: context,
       builder: (sheet) {
         final text = Theme.of(sheet).textTheme;
         final hue = lessonTint(lesson.name, lesson.colorId);
-        final onMap = CampusBuildingCatalog.locate(lesson.room) != null;
+        final onMap = place != null;
         return SafeArea(
           top: false,
           child: Padding(
@@ -269,14 +274,14 @@ class ScheduleWeekView extends StatelessWidget {
                     onPressed: () {
                       Navigator.pop(sheet);
                       GoRouter.of(context).push(
-                        Uri(
-                          path: '/tools/floor-plans',
-                          queryParameters: {'room': lesson.room},
-                        ).toString(),
+                        campusMapRoute(
+                          place.building.id,
+                          room: place.space.code,
+                        ),
                       );
                     },
-                    icon: const Icon(Icons.apartment_rounded),
-                    label: const Text('在平面圖上查看教室'),
+                    icon: const Icon(Icons.map_rounded),
+                    label: const Text('在校園地圖上查看教室'),
                   ),
                 ],
                 if (onOpenCourse != null) ...[
