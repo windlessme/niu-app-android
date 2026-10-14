@@ -190,17 +190,19 @@ class FloorMapPainter extends CustomPainter {
     final arrow = 10 / z, pad = 6 / z, gap = 4 / z;
     final w = text.width + arrow + gap + pad * 2;
     final h = math.max(text.height, arrow) + pad;
-    final centre = frame.toCanvas(link.at);
+    // The arrow turns with the plan.
+    var d = link.toward;
+    if (frame.rotated) d = Offset(-d.dy, d.dx);
+    d = d / d.distance;
+    // The pill stays inside, its arrow end at the doorway, so a link on an
+    // outside wall is never cut off by the screen edge.
+    final centre = frame.toCanvas(link.at) - Offset(d.dx * w, d.dy * h) / 2;
     final pill = Rect.fromCenter(center: centre, width: w, height: h);
     canvas.drawRRect(
       RRect.fromRectAndRadius(pill, Radius.circular(h / 2)),
       Paint()..color = hues.linkFill,
     );
     text.paint(canvas, Offset(pill.left + pad, centre.dy - text.height / 2));
-    // The arrow turns with the plan.
-    var d = link.toward;
-    if (frame.rotated) d = Offset(-d.dy, d.dx);
-    d = d / d.distance;
     final tip = Offset(pill.right - pad - arrow / 2, centre.dy) + d * arrow / 2;
     final back = tip - d * arrow;
     final side = Offset(-d.dy, d.dx) * arrow * .45;

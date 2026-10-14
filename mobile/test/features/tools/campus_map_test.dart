@@ -194,6 +194,73 @@ void main() {
     expect(find.text('1 樓・學生休息室'), findsOneWidget);
   });
 
+  testWidgets('a room picked low in the list never pins the drawer', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390 * 3, 844 * 3);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      app(
+        BuildingMapScreen(buildingId: 'gongxue', map: SynchronousFuture(map)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final sheet = find.byType(DraggableScrollableSheet);
+    // How far the drawer reaches up from the bottom of the screen.
+    double height() =>
+        844 -
+        tester
+            .getTopLeft(
+              find
+                  .descendant(of: sheet, matching: find.byType(DecoratedBox))
+                  .first,
+            )
+            .dy;
+    final closed = height();
+
+    // Open the drawer, scroll the list well down, pick a room there.
+    await tester.drag(find.text('1 樓'), const Offset(0, -400));
+    await tester.pumpAndSettle();
+    final open = height();
+    expect(open, greaterThan(closed + 200));
+    await tester.scrollUntilVisible(
+      find.text('工115'),
+      200,
+      scrollable: find
+          .descendant(of: sheet, matching: find.byType(Scrollable))
+          .first,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('工113'));
+    await tester.pumpAndSettle();
+    expect(height(), closed);
+    expect(find.text('1 樓・碩專班研討室一'), findsOneWidget);
+
+    // The header still opens and closes it by drag or tap.
+    await tester.drag(find.text('工113').first, const Offset(0, -400));
+    await tester.pumpAndSettle();
+    expect(height(), open);
+    await tester.drag(find.text('1 樓・碩專班研討室一'), const Offset(0, 400));
+    await tester.pumpAndSettle();
+    expect(height(), closed);
+    await tester.tap(find.text('1 樓・碩專班研討室一'));
+    await tester.pumpAndSettle();
+    expect(height(), open);
+  });
+
+  testWidgets('a link on an outside wall stays on screen', (tester) async {
+    final b = map.building('gongxue')!;
+    const size = Size(390, 844);
+    final frame = FloorFrame(b, size, padding: const EdgeInsets.all(16));
+    final link = b.floor('4F')!.links.single;
+    // The pill grows inwards from the doorway on the east wall.
+    expect(
+      frame.toCanvas(link.at).dx,
+      lessThanOrEqualTo(size.width - 16 + .01),
+    );
+  });
+
   testWidgets('a room opened as the keyboard closes is still centred', (
     tester,
   ) async {
