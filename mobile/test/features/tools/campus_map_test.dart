@@ -176,6 +176,9 @@ void main() {
     final b = map.building('zonghe')!;
     expect(b.levels, '地上 4 層');
     expect(map.locate('綜303-1')!.floor.id, '3F');
+    // The wings are separate rings; 3F's corridor makes one.
+    expect(b.floor('2F')!.outlines, hasLength(2));
+    expect(b.floor('3F')!.outlines, hasLength(1));
     expect(map.locate('綜 101（教室）')!.space.code, '綜101');
     expect(overview.withPlan('zonghe')!.name, '綜合教學大樓');
   });

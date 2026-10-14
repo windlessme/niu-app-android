@@ -110,7 +110,8 @@ def label(d, floor, pt):
 def render(floor, out, portrait, labels=False):
     global PAD
     PAD = 7.0 if labels else 3.0
-    allpts = [tuple(p) for p in floor["outline"]] + [p for s in floor["spaces"] for p in points(s)]
+    rings = floor.get("outlines") or [floor["outline"]]
+    allpts = [tuple(p) for r in rings for p in r] + [p for s in floor["spaces"] for p in points(s)]
     minx, miny = min(p[0] for p in allpts), min(p[1] for p in allpts)
     maxx, maxy = max(p[0] for p in allpts), max(p[1] for p in allpts)
     w = int((maxx - minx + PAD * 2) * PX * SS)
@@ -120,13 +121,15 @@ def render(floor, out, portrait, labels=False):
         return ((x - minx + PAD) * PX * SS, (y - miny + PAD) * PX * SS)
 
     img = Image.new("RGB", (w, h), CANVAS)
-    outline = [pt(*p) for p in floor["outline"]]
+    outlines = [[pt(*p) for p in r] for r in rings]
     shadow = Image.new("L", img.size, 0)
-    ImageDraw.Draw(shadow).polygon([(a, b + 6 * SS) for a, b in outline], fill=60)
+    for outline in outlines:
+        ImageDraw.Draw(shadow).polygon([(a, b + 6 * SS) for a, b in outline], fill=60)
     shadow = shadow.filter(ImageFilter.GaussianBlur(10 * SS))
     img.paste((205, 211, 222), mask=shadow)
     d = ImageDraw.Draw(img)
-    d.polygon(outline, fill=SLAB, outline=SLAB_EDGE, width=2 * SS)
+    for outline in outlines:
+        d.polygon(outline, fill=SLAB, outline=SLAB_EDGE, width=2 * SS)
 
     for kind in ORDER:
         fill, stroke = STYLE[kind]

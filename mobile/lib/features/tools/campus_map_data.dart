@@ -121,6 +121,7 @@ class MapFloor {
     required this.id,
     required this.outline,
     required this.spaces,
+    this.rings = const [],
     this.links = const [],
     this.unit,
     this.aliases = const [],
@@ -129,6 +130,10 @@ class MapFloor {
   factory MapFloor.fromJson(Map<String, dynamic> json) => MapFloor(
     id: json['id'] as String,
     outline: [for (final p in json['outline'] as List) _offset(p)],
+    rings: [
+      for (final r in json['outlines'] as List? ?? const [])
+        [for (final p in r as List) _offset(p)],
+    ],
     spaces: [
       for (final s in json['spaces'] as List)
         MapSpace.fromJson(s as Map<String, dynamic>),
@@ -145,6 +150,12 @@ class MapFloor {
 
   final String id;
   final List<Offset> outline;
+
+  /// Every ring of a floor in separate parts (綜合教學大樓's two wings);
+  /// empty when [outline] is the whole floor.
+  final List<List<Offset>> rings;
+
+  List<List<Offset>> get outlines => rings.isEmpty ? [outline] : rings;
   final List<MapSpace> spaces;
   final List<MapLink> links;
 
@@ -169,7 +180,7 @@ class MapFloor {
   ];
 
   late final Rect bounds = [
-    _bounds(outline),
+    for (final r in outlines) _bounds(r),
     for (final s in spaces) s.bounds,
   ].reduce((a, b) => a.expandToInclude(b));
 

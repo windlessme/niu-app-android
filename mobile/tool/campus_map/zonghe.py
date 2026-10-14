@@ -62,7 +62,7 @@ def outline(connector=False):
 def traced(spaces, cell=0.2, close=0.6):
     """The outline of what the spaces cover: the signs' white margins are
     paper, not floor. Gaps narrower than `close` between neighbouring
-    spaces are bridged; separate wings are joined by a seam of no width."""
+    spaces are bridged; each wing is its own ring, north first."""
     import math
     xs = [v for sp in spaces for v in (sp["rect"][0], sp["rect"][0] + sp["rect"][2])]
     ys = [v for sp in spaces for v in (sp["rect"][1], sp["rect"][1] + sp["rect"][3])]
@@ -115,13 +115,7 @@ def traced(spaces, cell=0.2, close=0.6):
         if area < 0:  # outer rings run this way round; holes the other
             loops.append([[round(x0 + i * cell, 2), round(y0 + j * cell, 2)] for i, j in pts])
     loops.sort(key=lambda l: min(p[1] for p in l))
-    shape = loops[0]
-    for ring in loops[1:]:
-        # Seam from the nearest corners.
-        a, b = min(((a, b) for a in range(len(shape)) for b in range(len(ring))),
-                   key=lambda ab: (shape[ab[0]][0] - ring[ab[1]][0]) ** 2 + (shape[ab[0]][1] - ring[ab[1]][1]) ** 2)
-        shape = shape[:a + 1] + ring[b:] + ring[:b + 1] + shape[a:]
-    return shape
+    return loops
 
 
 def to_admin(y):
@@ -255,7 +249,12 @@ def floor_4f():
 
 
 def tight(plan):
-    plan["outline"] = traced(plan["spaces"])
+    """Outline rings from the spaces: `outline` the first, for readers that
+    know one ring, and `outlines` all of them."""
+    rings = traced(plan["spaces"])
+    plan["outline"] = rings[0]
+    if len(rings) > 1:
+        plan["outlines"] = rings
     return plan
 
 
