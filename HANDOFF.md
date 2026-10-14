@@ -32,7 +32,7 @@
   - **1.2.2 (124) 已提交正式版審核**（2026-10-13，使用者提交，審核中）。
   - **正式版：1.2.0 (122)**（2026-10-13 使用者確認已上線，Play 上的版本說明是「我們又抓到幾隻蟲蟲」）。前兩版正式版是 1.0.40 (121)、1.0.17 (98)。注意：審查中的正式版在 API 的 track 裡也會顯示 `status: completed`，不能拿來判斷已上線。
   - 公開測試（beta）：1.0.0 (81)。
-  - internal：**1.2.2 (124)**（2026-10-13 推送）。
+  - internal：**1.2.3 (125)**（2026-10-14 推送）。
 - 正式版由使用者在 Play Console 升級（Claude 推 production 會被權限擋下，屬正常）。
 - **正式版不用每版都推**，只要 versionCode 比上一個正式版大就行。建議 internal 每版都推；等使用者在手機上測過、累積一批改動或有重要修正時，再挑一版推正式版。**版本說明的寫法（使用者 2026-10-05 要求）**：
   - internal：只寫**這一版**改了什麼，讓使用者知道要測哪裡。沒有使用者看得到的改動時寫「內部調整，功能沒有變化」。不要再沿用累計說明，否則每版看起來都一樣。
@@ -110,6 +110,7 @@
   ```
   ・平板與橫向畫面：改用側邊導覽列，內容置中更好閱讀，首頁分成兩欄，課表預設顯示整週
   ・修正歷年成績停在學校頁面、最後顯示逾時
+  ・新增「小工具」與大樓平面圖：教穡大樓、綜合教學大樓各樓層教室位置，可從課表直接查看教室
   ```
 - 公開測試的使用者會自動拿到 versionCode 較大的正式版，公開測試軌道不用特別處理。release 名稱用 `X.Y.Z (versionCode)`，附一句 zh-TW 版本說明。
 - 上傳流程（每個新版本都要做）：`flutter build appbundle --release`，然後用 MCP 依序 `edits_insert` → `bundles_upload` → `tracks_update`（internal，status `completed`）→ `edits_commit`。
@@ -192,6 +193,7 @@
 | 1.2.0 | `0adaa06` | 內部調整（使用者看不到差異）。版本號依使用者要求從 1.0.40 跳到 1.2.0 |
 | 1.2.1 | `5efb6c6` | **平板第一階段**（見「平板」一節）：`NiuLayout`（`lib/shared/niu_layout.dart`）；寬度 ≥600dp 改左側 `NavigationRail`；頁面左右留白依寬度變大，內容最寬 720dp（首頁兩欄與整週課表 1040dp）；首頁寬螢幕兩欄；未選過檢視模式時寬螢幕預設整週課表。測試預設畫面 800×600 會被當成寬螢幕，測手機版面的測試要自己設 400×800 |
 | 1.2.2 | `dbf3bb6` | 使用者回報：Android 開歷年成績停在空白的「學生歷年學期成績及排名」頁，最後顯示逾時。校務系統用 `MenuRedirect.aspx` 的腳本 `window.open` 開成績頁，Android 的 `onCreateWindow` 拿不到這種網址（見「校務系統成績」）。`academicNavigationScript` 改從 MenuRedirect 頁讀出網址再導覽。測試在 `academic_portal_host_test.dart` |
+| 1.2.3 | `23579c3` | **小工具＋大樓平面圖**，與 iOS 的「大樓平面圖」一致。首頁加「小工具」（`/tools`，`lib/features/tools/tools_screen.dart`），首頁服務格線抽成 `CampusServiceGrid`（`campus_services.dart`），小工具清單是 `CampusServices.toolbox`。平面圖 `/tools/floor-plans?room=教305`（`floor_plan_screen.dart`）；資料 `floor_plan_data.dart` 由 iOS `CampusBuildingModels.swift` 逐格移植（Android 自己維護在 Dart，使用者決定不做共用 JSON），`CampusBuildingCatalog.locate` 從課表教室文字找最長的教室名。整週課表的課程詳情有「在平面圖上查看教室」。學校只公告這兩棟的 PDF；其他大樓要自己收集 |
 
 另外：
 
