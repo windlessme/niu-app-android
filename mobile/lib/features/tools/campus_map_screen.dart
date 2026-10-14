@@ -386,7 +386,7 @@ class _BuildingList extends StatelessWidget {
     final seen = <String>{};
     final named = [
       for (final b in overview.buildings)
-        if (b.onCampus && b.name != null && seen.add(b.name!)) b,
+        if (b.onCampus && b.listed && b.name != null && seen.add(b.name!)) b,
     ]..sort((a, b) => a.name!.compareTo(b.name!));
     final planned = [
       for (final b in named)
