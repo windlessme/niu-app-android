@@ -86,7 +86,10 @@ class FloorMapPainter extends CustomPainter {
     canvas.transform(frame.matrix.storage);
     final px = 1 / frame.scale; // one logical pixel, in metres
 
-    final outline = Path()..addPolygon(floor.outline, true);
+    final outline = Path();
+    for (final ring in floor.outlines) {
+      outline.addPolygon(ring, true);
+    }
     canvas.drawShadow(outline, colors.shadow, 4 * px, false);
     canvas.drawPath(outline, Paint()..color = colors.surface);
     canvas.drawPath(
