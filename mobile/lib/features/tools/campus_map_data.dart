@@ -71,8 +71,36 @@ class MapSpace {
   List<String> get details => [if (code != null) ?name, ?note];
 }
 
+/// A way out of the building towards another one.
+class MapLink {
+  const MapLink({
+    required this.to,
+    required this.name,
+    required this.at,
+    required this.toward,
+  });
+
+  factory MapLink.fromJson(Map<String, dynamic> json) => MapLink(
+    to: json['to'] as String,
+    name: json['name'] as String,
+    at: _offset(json['at']),
+    toward: _offset(json['toward']),
+  );
+
+  /// The other building's id, and its name for the sign.
+  final String to, name;
+
+  /// Where the sign sits and which way it points, in metres.
+  final Offset at, toward;
+}
+
 class MapFloor {
-  MapFloor({required this.id, required this.outline, required this.spaces});
+  MapFloor({
+    required this.id,
+    required this.outline,
+    required this.spaces,
+    this.links = const [],
+  });
 
   factory MapFloor.fromJson(Map<String, dynamic> json) => MapFloor(
     id: json['id'] as String,
@@ -81,11 +109,16 @@ class MapFloor {
       for (final s in json['spaces'] as List)
         MapSpace.fromJson(s as Map<String, dynamic>),
     ],
+    links: [
+      for (final l in json['links'] as List? ?? const [])
+        MapLink.fromJson(l as Map<String, dynamic>),
+    ],
   );
 
   final String id;
   final List<Offset> outline;
   final List<MapSpace> spaces;
+  final List<MapLink> links;
 
   /// 'B1' → '地下 1 樓', '3F' → '3 樓'.
   String get title => id.startsWith('B')

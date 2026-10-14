@@ -55,6 +55,11 @@ void main() {
     expect(map.search('薄膜').single.space.code, '教515東');
     expect(map.search('學程辦公室').single.floor.id, '8F');
     expect(map.locate('教712-1')!.floor.id, '7F');
+    expect(find('8F', '國際會議廳'), isNotNull);
+    expect(find('5F', '教511南')!.name, '模擬及性質分析實驗室');
+    expect(find('6F', '教610'), isNotNull);
+    final link = b.floor('1F')!.links.single;
+    expect((link.to, link.name), ('zonghe', '綜合教學大樓'));
   });
 
   test('locate reads timetable text', () {
