@@ -43,7 +43,6 @@ class CampusOverviewPainter extends CustomPainter {
     required this.colors,
     required this.hues,
     required this.textStyle,
-    required this.places,
     this.padding = EdgeInsets.zero,
     this.selected,
     this.zoom,
@@ -54,15 +53,9 @@ class CampusOverviewPainter extends CustomPainter {
   final OverviewHues hues;
   final TextStyle textStyle;
 
-  /// The place kinds the filters turned on.
-  final Set<CampusPlaceKind> places;
   final EdgeInsets padding;
   final CampusBuilding? selected;
   final TransformationController? zoom;
-
-  static IconData icon(CampusPlaceKind kind) => switch (kind) {
-    CampusPlaceKind.toilets => Icons.wc_rounded,
-  };
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -165,45 +158,6 @@ class CampusOverviewPainter extends CustomPainter {
     }
 
     final fontSize = (textStyle.fontSize ?? 11) / z;
-    for (final kind in places) {
-      for (final p in map.places) {
-        if (p.kind != kind) continue;
-        final at = frame.toCanvas(p.at);
-        final r = 11 / z;
-        canvas.drawCircle(at, r, Paint()..color = colors.raised);
-        canvas.drawCircle(
-          at,
-          r,
-          Paint()
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 1.2 / z
-            ..color = colors.accent,
-        );
-        final glyph = icon(kind);
-        final tp = TextPainter(
-          text: TextSpan(
-            text: String.fromCharCode(glyph.codePoint),
-            style: TextStyle(
-              fontFamily: glyph.fontFamily,
-              package: glyph.fontPackage,
-              fontSize: 13 / z,
-              color: colors.accent,
-            ),
-          ),
-          textDirection: TextDirection.ltr,
-        )..layout();
-        tp.paint(canvas, at - Offset(tp.width / 2, tp.height / 2));
-        place(Rect.fromCircle(center: at, radius: r));
-        final name = p.name;
-        if (name != null && z >= 3) {
-          final label = _text(name, fontSize, colors.inkSecondary);
-          final rect =
-              Offset(at.dx + r + 3 / z, at.dy - label.height / 2) &
-              Size(label.width, label.height);
-          if (place(rect)) label.paint(canvas, rect.topLeft);
-        }
-      }
-    }
 
     final named =
         [
@@ -273,7 +227,6 @@ class CampusOverviewPainter extends CustomPainter {
   bool shouldRepaint(CampusOverviewPainter old) =>
       old.map != map ||
       old.selected != selected ||
-      old.places != places ||
       old.colors != colors ||
       old.padding != padding;
 }

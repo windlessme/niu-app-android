@@ -51,21 +51,6 @@ enum CampusAreaKind { sport, green, water, parking }
 
 enum CampusRoadKind { street, service, path }
 
-/// Points of interest the filters show.
-enum CampusPlaceKind {
-  toilets('廁所');
-
-  const CampusPlaceKind(this.title);
-  final String title;
-}
-
-class CampusPlace {
-  const CampusPlace(this.kind, this.at, this.name);
-  final CampusPlaceKind kind;
-  final Offset at;
-  final String? name;
-}
-
 /// The campus overview from OpenStreetMap, in metres east (x) and south (y)
 /// of the campus centre; north is up. Shared with iOS under app-content.
 class CampusOverview {
@@ -76,7 +61,6 @@ class CampusOverview {
     required this.buildings,
     required this.areas,
     required this.roads,
-    required this.places,
   });
 
   factory CampusOverview.fromJson(Map<String, dynamic> json) {
@@ -103,14 +87,6 @@ class CampusOverview {
             line: _points(e['line']),
           ),
       ],
-      places: [
-        for (final e in json['places'] as List)
-          CampusPlace(
-            CampusPlaceKind.values.byName(e['kind'] as String),
-            _point(e['at']),
-            e['name'] as String?,
-          ),
-      ],
     );
   }
 
@@ -132,7 +108,6 @@ class CampusOverview {
   final List<CampusBuilding> buildings;
   final List<({CampusAreaKind kind, Path path})> areas;
   final List<({CampusRoadKind kind, List<Offset> line})> roads;
-  final List<CampusPlace> places;
 
   late final Path boundaryPath = Path()..addPolygon(boundary, true);
 

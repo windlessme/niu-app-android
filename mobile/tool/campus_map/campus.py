@@ -105,10 +105,6 @@ def road_kind(tags):
     return None
 
 
-def place_kind(tags):
-    return "toilets" if tags.get("amenity") == "toilets" else None
-
-
 def inside(point, polygon):
     x, y = point
     hit = False
@@ -136,7 +132,6 @@ def main():
         "buildings": [],
         "areas": [],
         "roads": [],
-        "places": [],
     }
     boundary = out["boundary"] = next(line(w) for w in ways if w["id"] == CAMPUS_WAY)[:-1]
     for way in ways:
@@ -164,25 +159,10 @@ def main():
                 if tags.get("name"):
                     road["name"] = tags["name"]
                 out["roads"].append(road)
-        if closed and place_kind(tags) and inside(centre(points[:-1]), boundary):
-            place = {"kind": place_kind(tags), "at": centre(points[:-1])}
-            if tags.get("name"):
-                place["name"] = tags["name"]
-            out["places"].append(place)
-    for node in nodes.values():
-        tags = node.get("tags", {})
-        kind = place_kind(tags)
-        at = project(node["lat"], node["lon"]) if kind else None
-        if kind and inside(at, boundary):
-            place = {"kind": kind, "at": at}
-            if tags.get("name"):
-                place["name"] = tags["name"]
-            out["places"].append(place)
     # Sports areas under buildings first; larger areas under smaller ones.
     out["areas"].sort(key=lambda a: -abs(sum(
         x0 * y1 - x1 * y0 for (x0, y0), (x1, y1) in zip(a["polygon"], a["polygon"][1:] + a["polygon"][:1]))))
     out["buildings"].sort(key=lambda b: b["id"])
-    out["places"].sort(key=lambda p: (p["kind"], p["at"]))
     text = json.dumps(out, ensure_ascii=False, separators=(",", ":")) + "\n"
     root = Path(__file__).resolve().parents[3]
     for path in (root / "app-content/campus-map/campus.json", root / "mobile/assets/campus_map/campus.json"):

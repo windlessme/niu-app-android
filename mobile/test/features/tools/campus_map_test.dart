@@ -30,10 +30,6 @@ void main() {
     // 復興國中 next door is not ours.
     expect(overview.searchBuildings('群育館'), isEmpty);
     expect(overview.searchBuildings('體育館'), isNotEmpty);
-    expect(
-      overview.places.where((p) => p.kind == CampusPlaceKind.toilets),
-      isNotEmpty,
-    );
     final frame = OverviewFrame(overview, const Size(390, 700));
     final at = frame.toCanvas(jiaose.centre);
     expect((frame.toMetres(at) - jiaose.centre).distance, lessThan(1e-6));
