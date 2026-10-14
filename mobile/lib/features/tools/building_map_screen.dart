@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../shared/shared.dart';
@@ -71,6 +73,11 @@ class _BuildingViewState extends State<_BuildingView>
   Animation<Matrix4>? _flight;
   FloorFrame? frame;
 
+  /// The room the view was last flown to, and the plan size it was aimed
+  /// for; a later size change (rotation, insets) re-aims at it.
+  MapSpace? _aimed;
+  Size? _aimedSize;
+
   /// Drawer height when collapsed, and the top bar's, safe areas excluded.
   static const _peek = 112.0, _top = 64.0;
 
@@ -94,11 +101,14 @@ class _BuildingViewState extends State<_BuildingView>
     super.dispose();
   }
 
-  double get _peekPixels => _peek + MediaQuery.paddingOf(context).bottom;
+  // viewPadding, not padding: the keyboard must not move the plan's frame.
+  double get _peekPixels => _peek + MediaQuery.viewPaddingOf(context).bottom;
 
   /// Animates the view to [target], or jumps when motion is reduced.
-  void fly(Matrix4 target) {
+  void fly(Matrix4 target, {MapSpace? aim}) {
     if (!mounted) return;
+    _aimed = aim;
+    _aimedSize = aim == null ? null : frame?.size;
     if (MediaQuery.disableAnimationsOf(context)) {
       zoom.value = target;
       return;
@@ -126,6 +136,7 @@ class _BuildingViewState extends State<_BuildingView>
           1,
         )
         ..scaleByDouble(scale, scale, 1, 1),
+      aim: space,
     );
   }
 
@@ -184,7 +195,7 @@ class _BuildingViewState extends State<_BuildingView>
   Widget build(BuildContext context) {
     final colors = NiuColors.of(context);
     final media = MediaQuery.of(context);
-    final top = media.padding.top + NiuSpacing.sm;
+    final top = media.viewPadding.top + NiuSpacing.sm;
     final padding = EdgeInsets.fromLTRB(
       NiuSpacing.lg,
       top + _top,
@@ -193,10 +204,19 @@ class _BuildingViewState extends State<_BuildingView>
     );
     return Scaffold(
       backgroundColor: colors.canvas,
+      // A closing keyboard would resize the plan under a zoom already aimed
+      // at a room; the plan keeps the whole screen instead.
+      resizeToAvoidBottomInset: false,
       body: LayoutBuilder(
         builder: (context, constraints) {
           final size = constraints.biggest;
           frame = FloorFrame(widget.building, size, padding: padding);
+          final aimed = _aimed;
+          if (aimed != null && _aimedSize != null && _aimedSize != size) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (identical(aimed, _aimed)) focus(aimed);
+            });
+          }
           return Stack(
             children: [
               Positioned.fill(child: _plan(context, size, padding)),
@@ -259,7 +279,10 @@ class _BuildingViewState extends State<_BuildingView>
       transformationController: zoom,
       minScale: 1,
       maxScale: 6,
-      onInteractionStart: (_) => flight.stop(),
+      onInteractionStart: (_) {
+        flight.stop();
+        _aimed = null;
+      },
       child: GestureDetector(
         onTapUp: (d) => tap(d.localPosition),
         child: Semantics(
@@ -537,7 +560,7 @@ class _FloorSheet extends StatelessWidget {
           NiuSpacing.gutter,
           0,
           NiuSpacing.gutter,
-          MediaQuery.paddingOf(context).bottom + NiuSpacing.lg,
+          MediaQuery.viewPaddingOf(context).bottom + NiuSpacing.lg,
         ),
         children: [
           Center(
@@ -635,54 +658,65 @@ class _RoomSearchSheetState extends State<_RoomSearchSheet> {
   String query = '';
   @override
   Widget build(BuildContext context) {
+    final media = MediaQuery.of(context);
     final results = [
       for (final r in widget.map.search(query))
         if (identical(r.building, widget.building)) r,
     ];
+    // Fixed height with the field on top: it stays clear of the keyboard
+    // and of the system's navigation buttons, whatever the results.
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              NiuSpacing.gutter,
-              NiuSpacing.lg,
-              NiuSpacing.gutter,
-              NiuSpacing.sm,
-            ),
-            child: NiuSearchField(
-              hint: '搜尋${widget.building.name}的教室',
-              onChanged: (v) => setState(() => query = v),
-            ),
-          ),
-          Flexible(
-            child: ListView(
-              shrinkWrap: true,
+      padding: EdgeInsets.only(
+        bottom: math.max(media.viewInsets.bottom, media.viewPadding.bottom),
+      ),
+      child: SizedBox(
+        height: media.size.height * .6,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
               padding: const EdgeInsets.fromLTRB(
                 NiuSpacing.gutter,
-                0,
+                NiuSpacing.lg,
                 NiuSpacing.gutter,
-                NiuSpacing.xl,
+                NiuSpacing.sm,
               ),
-              children: [
-                if (query.trim().isNotEmpty && results.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: NiuSpacing.lg),
-                    child: Text('找不到符合的教室。'),
-                  ),
-                for (final r in results.take(30))
-                  NiuRow(
-                    icon: Icons.meeting_room_outlined,
-                    title: r.space.label!,
-                    subtitle: [r.floor.title, ...r.space.details].join('・'),
-                    onTap: () => Navigator.pop(context, r),
-                  ),
-              ],
+              child: NiuSearchField(
+                hint: '搜尋${widget.building.name}的教室',
+                onChanged: (v) => setState(() => query = v),
+              ),
             ),
-          ),
-        ],
+            Expanded(
+              child: ListView(
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: const EdgeInsets.fromLTRB(
+                  NiuSpacing.gutter,
+                  0,
+                  NiuSpacing.gutter,
+                  NiuSpacing.lg,
+                ),
+                children: [
+                  if (query.trim().isNotEmpty && results.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: NiuSpacing.lg),
+                      child: Text('找不到符合的教室。'),
+                    ),
+                  for (final r in results.take(30))
+                    NiuRow(
+                      icon: Icons.meeting_room_outlined,
+                      title: r.space.label!,
+                      subtitle: [r.floor.title, ...r.space.details].join('・'),
+                      onTap: () {
+                        FocusManager.instance.primaryFocus?.unfocus();
+                        Navigator.pop(context, r);
+                      },
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
