@@ -53,10 +53,7 @@ enum CampusRoadKind { street, service, path }
 
 /// Points of interest the filters show.
 enum CampusPlaceKind {
-  toilets('廁所'),
-  food('餐廳'),
-  shop('便利商店'),
-  bus('公車站');
+  toilets('廁所');
 
   const CampusPlaceKind(this.title);
   final String title;

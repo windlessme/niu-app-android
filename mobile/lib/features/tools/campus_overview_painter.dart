@@ -62,9 +62,6 @@ class CampusOverviewPainter extends CustomPainter {
 
   static IconData icon(CampusPlaceKind kind) => switch (kind) {
     CampusPlaceKind.toilets => Icons.wc_rounded,
-    CampusPlaceKind.food => Icons.restaurant_rounded,
-    CampusPlaceKind.shop => Icons.local_convenience_store_rounded,
-    CampusPlaceKind.bus => Icons.directions_bus_rounded,
   };
 
   @override
