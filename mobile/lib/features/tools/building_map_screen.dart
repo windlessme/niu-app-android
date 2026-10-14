@@ -499,9 +499,11 @@ class _FloorSheet extends StatelessWidget {
             icon: Icons.layers_rounded,
             hue: NiuHue.indigo,
             title: floor.title,
-            subtitle: coded == 0
-                ? '${floor.rooms.length} 個空間'
-                : '${floor.rooms.length} 個空間・$coded 間有編號',
+            subtitle: [
+              ?floor.unit,
+              '${floor.rooms.length} 個空間',
+              if (coded > 0) '$coded 間有編號',
+            ].join('・'),
           )
         : _SheetHeader(
             icon: Icons.meeting_room_outlined,

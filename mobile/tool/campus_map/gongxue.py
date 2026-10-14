@@ -466,6 +466,19 @@ def floor_6f():
     ])
 
 
+# The lift's directory: who each floor belongs to, with the short names
+# people search by. The signs only say 系辦公室, so those rooms get the unit
+# as a note.
+UNITS = {
+    "1F": ("院辦公室・碩專班・自學中心・研究群", [], []),
+    "2F": ("土木工程學系", ["土木系", "土木"], ["201", "202", "202-1"]),
+    "3F": ("機械與機電工程學系", ["機械系", "機電系", "機械", "機電"], ["301", "302", "302-1", "312", "315", "319"]),
+    "4F": ("建築與永續規劃研究所", ["建築所", "建築", "永續規劃"], ["401", "402"]),
+    "5F": ("環境工程學系", ["環工系", "環工", "環境工程"], ["513", "515", "516", "516-1"]),
+    "6F": ("化學工程與材料工程學系", ["化材系", "化工系", "化材", "化工"], ["601", "603", "605"]),
+}
+
+
 def main():
     building = {
         "id": "gongxue",
@@ -474,6 +487,14 @@ def main():
         "floors": [f() for f in (floor_b1, floor_1f, floor_2f, floor_3f, floor_4f, floor_5f, floor_6f)],
     }
     for floor in building["floors"]:
+        if floor["id"] in UNITS:
+            unit, aliases, offices = UNITS[floor["id"]]
+            floor["unit"] = unit
+            floor["aliases"] = aliases
+            for space in floor["spaces"]:
+                if space.get("code", "")[1:] in offices:
+                    assert "note" not in space, space
+                    space["note"] = unit
         codes = [s["code"] for s in floor["spaces"] if "code" in s]
         assert len(codes) == len(set(codes)), (floor["id"], codes)
     text = json.dumps(building, ensure_ascii=False, separators=(",", ":")) + "\n"

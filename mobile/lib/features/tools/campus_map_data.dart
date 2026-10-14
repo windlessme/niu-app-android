@@ -100,6 +100,8 @@ class MapFloor {
     required this.outline,
     required this.spaces,
     this.links = const [],
+    this.unit,
+    this.aliases = const [],
   });
 
   factory MapFloor.fromJson(Map<String, dynamic> json) => MapFloor(
@@ -113,12 +115,26 @@ class MapFloor {
       for (final l in json['links'] as List? ?? const [])
         MapLink.fromJson(l as Map<String, dynamic>),
     ],
+    unit: json['unit'] as String?,
+    aliases: [
+      for (final a in json['aliases'] as List? ?? const []) a as String,
+    ],
   );
 
   final String id;
   final List<Offset> outline;
   final List<MapSpace> spaces;
   final List<MapLink> links;
+
+  /// Who the floor belongs to, e.g. 環境工程學系, and what people call it.
+  final String? unit;
+  final List<String> aliases;
+
+  /// Whether [query] names this floor's unit: 環工, 機械系, 化學工程.
+  bool namesUnit(String query) =>
+      unit != null &&
+      (unit!.contains(query) ||
+          aliases.any((a) => a.contains(query) || query.contains(a)));
 
   /// 'B1' → '地下 1 樓', '3F' → '3 樓'.
   String get title => id.startsWith('B')
@@ -250,7 +266,8 @@ class CampusMap {
   }
 
   /// Rooms whose code, name or note contains [query], in building and
-  /// floor order; a bare number matches codes ('305' → 教305).
+  /// floor order; a bare number matches codes ('305' → 教305), and a
+  /// department's name or nickname its offices ('環工' → 系辦公室).
   List<RoomLocation> search(String query) {
     final q = query.replaceAll(RegExp(r'\s'), '');
     if (q.isEmpty) return const [];
@@ -266,7 +283,9 @@ class CampusMap {
       for (final b in buildings)
         for (final f in b.floors)
           for (final s in f.rooms)
-            if (s.label != null && hit(s)) (building: b, floor: f, space: s),
+            if (s.label != null &&
+                (hit(s) || s.note == f.unit && f.namesUnit(q)))
+              (building: b, floor: f, space: s),
     ];
   }
 }
