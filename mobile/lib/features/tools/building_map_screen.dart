@@ -141,9 +141,14 @@ class _BuildingViewState extends State<_BuildingView>
     );
   }
 
-  void collapseSheet() {
+  /// Plan height; the drawer's sizes are fractions of it.
+  double _height = 1;
+
+  double get _minSheet => _peekPixels / _height;
+  static const _maxSheet = .6;
+
+  void _sheetTo(double size) {
     if (!sheet.isAttached) return;
-    final size = sheet.pixelsToSize(_peekPixels);
     if (MediaQuery.disableAnimationsOf(context)) {
       sheet.jumpTo(size);
     } else {
@@ -153,6 +158,31 @@ class _BuildingViewState extends State<_BuildingView>
         curve: NiuMotion.curve,
       );
     }
+  }
+
+  /// The drawer's header follows the finger whatever the list's scroll.
+  void dragSheet(double dy) {
+    if (!sheet.isAttached) return;
+    sheet.jumpTo((sheet.size - dy / _height).clamp(_minSheet, _maxSheet));
+  }
+
+  /// Settles a header drag open or closed: a flick decides, else the
+  /// nearer end.
+  void settleSheet(double velocity) {
+    if (!sheet.isAttached) return;
+    final open = velocity.abs() > 300
+        ? velocity < 0
+        : sheet.size > (_minSheet + _maxSheet) / 2;
+    _sheetTo(open ? _maxSheet : _minSheet);
+  }
+
+  void toggleSheet() {
+    if (!sheet.isAttached) return;
+    _sheetTo(sheet.size > _minSheet + .01 ? _minSheet : _maxSheet);
+  }
+
+  void collapseSheet() {
+    _sheetTo(_minSheet);
   }
 
   void selectFloor(MapFloor next, {MapSpace? room}) {
@@ -211,6 +241,7 @@ class _BuildingViewState extends State<_BuildingView>
       body: LayoutBuilder(
         builder: (context, constraints) {
           final size = constraints.biggest;
+          _height = size.height;
           frame = FloorFrame(widget.building, size, padding: padding);
           final aimed = _aimed;
           if (aimed != null && _aimedSize != null && _aimedSize != size) {
@@ -251,12 +282,15 @@ class _BuildingViewState extends State<_BuildingView>
               ),
               DraggableScrollableSheet(
                 controller: sheet,
-                initialChildSize: _peekPixels / size.height,
-                minChildSize: _peekPixels / size.height,
-                maxChildSize: .6,
+                initialChildSize: _minSheet,
+                minChildSize: _minSheet,
+                maxChildSize: _maxSheet,
                 snap: true,
                 builder: (context, scroll) => _FloorSheet(
                   scroll: scroll,
+                  onDrag: dragSheet,
+                  onDragEnd: settleSheet,
+                  onToggle: toggleSheet,
                   floor: floor,
                   selected: selected,
                   onClear: () => selectRoom(null),
@@ -477,8 +511,16 @@ class _FloorSheet extends StatelessWidget {
     required this.selected,
     required this.onClear,
     required this.onPick,
+    required this.onDrag,
+    required this.onDragEnd,
+    required this.onToggle,
   });
   final ScrollController scroll;
+
+  /// The header resizes the drawer directly, so a list scrolled to a room
+  /// never pins it.
+  final ValueChanged<double> onDrag, onDragEnd;
+  final VoidCallback onToggle;
   final MapFloor floor;
   final MapSpace? selected;
   final VoidCallback onClear;
@@ -530,48 +572,68 @@ class _FloorSheet extends StatelessWidget {
           ),
         ],
       ),
-      child: ListView(
-        controller: scroll,
-        padding: EdgeInsets.fromLTRB(
-          NiuSpacing.gutter,
-          0,
-          NiuSpacing.gutter,
-          MediaQuery.viewPaddingOf(context).bottom + NiuSpacing.lg,
-        ),
+      child: Column(
         children: [
-          Center(
-            child: Container(
-              margin: const EdgeInsets.symmetric(vertical: NiuSpacing.sm),
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: colors.fillStrong,
-                borderRadius: BorderRadius.circular(2),
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onVerticalDragUpdate: (d) => onDrag(d.delta.dy),
+            onVerticalDragEnd: (d) => onDragEnd(d.velocity.pixelsPerSecond.dy),
+            onTap: onToggle,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: NiuSpacing.gutter,
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    margin: const EdgeInsets.symmetric(vertical: NiuSpacing.sm),
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: colors.fillStrong,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  summary,
+                ],
               ),
             ),
           ),
-          summary,
-          const SizedBox(height: NiuSpacing.xl),
-          const NiuEyebrow('本層教室'),
-          const SizedBox(height: NiuSpacing.sm),
-          if (numbered.isEmpty)
-            Text('這一層還沒有教室編號。', style: theme.textTheme.bodySmall)
-          else
-            NiuGroup(
-              insetDividers: NiuSpacing.lg,
+          Expanded(
+            child: ListView(
+              controller: scroll,
+              padding: EdgeInsets.fromLTRB(
+                NiuSpacing.gutter,
+                NiuSpacing.xl,
+                NiuSpacing.gutter,
+                MediaQuery.viewPaddingOf(context).bottom + NiuSpacing.lg,
+              ),
               children: [
-                for (final r in numbered)
-                  NiuRow(
-                    title: r.label!,
-                    subtitle: r.details.isEmpty ? null : r.details.join('・'),
-                    chevron: false,
-                    trailing: identical(r, room)
-                        ? Icon(Icons.place_rounded, color: colors.accent)
-                        : null,
-                    onTap: () => onPick(r),
+                const NiuEyebrow('本層教室'),
+                const SizedBox(height: NiuSpacing.sm),
+                if (numbered.isEmpty)
+                  Text('這一層還沒有教室編號。', style: theme.textTheme.bodySmall)
+                else
+                  NiuGroup(
+                    insetDividers: NiuSpacing.lg,
+                    children: [
+                      for (final r in numbered)
+                        NiuRow(
+                          title: r.label!,
+                          subtitle: r.details.isEmpty
+                              ? null
+                              : r.details.join('・'),
+                          chevron: false,
+                          trailing: identical(r, room)
+                              ? Icon(Icons.place_rounded, color: colors.accent)
+                              : null,
+                          onTap: () => onPick(r),
+                        ),
+                    ],
                   ),
               ],
             ),
+          ),
         ],
       ),
     );
