@@ -32,7 +32,7 @@
   - **1.2.2 (124) 已提交正式版審核**（2026-10-13，使用者提交，審核中）。
   - **正式版：1.2.0 (122)**（2026-10-13 使用者確認已上線，Play 上的版本說明是「我們又抓到幾隻蟲蟲」）。前兩版正式版是 1.0.40 (121)、1.0.17 (98)。注意：審查中的正式版在 API 的 track 裡也會顯示 `status: completed`，不能拿來判斷已上線。
   - 公開測試（beta）：1.0.0 (81)。
-  - internal：**1.2.4 (126)**（2026-10-14 推送）。
+  - internal：**1.2.5 (127)**（2026-10-14 推送）。
 - 正式版由使用者在 Play Console 升級（Claude 推 production 會被權限擋下，屬正常）。
 - **正式版不用每版都推**，只要 versionCode 比上一個正式版大就行。建議 internal 每版都推；等使用者在手機上測過、累積一批改動或有重要修正時，再挑一版推正式版。**版本說明的寫法（使用者 2026-10-05 要求）**：
   - internal：只寫**這一版**改了什麼，讓使用者知道要測哪裡。沒有使用者看得到的改動時寫「內部調整，功能沒有變化」。不要再沿用累計說明，否則每版看起來都一樣。
@@ -195,6 +195,7 @@
 | 1.2.2 | `dbf3bb6` | 使用者回報：Android 開歷年成績停在空白的「學生歷年學期成績及排名」頁，最後顯示逾時。校務系統用 `MenuRedirect.aspx` 的腳本 `window.open` 開成績頁，Android 的 `onCreateWindow` 拿不到這種網址（見「校務系統成績」）。`academicNavigationScript` 改從 MenuRedirect 頁讀出網址再導覽。測試在 `academic_portal_host_test.dart` |
 | 1.2.3 | `23579c3` | **小工具＋大樓平面圖**，與 iOS 的「大樓平面圖」一致。首頁加「小工具」（`/tools`，`lib/features/tools/tools_screen.dart`），首頁服務格線抽成 `CampusServiceGrid`（`campus_services.dart`），小工具清單是 `CampusServices.toolbox`。平面圖 `/tools/floor-plans?room=教305`（`floor_plan_screen.dart`）；資料 `floor_plan_data.dart` 由 iOS `CampusBuildingModels.swift` 逐格移植（Android 自己維護在 Dart，使用者決定不做共用 JSON），`CampusBuildingCatalog.locate` 從課表教室文字找最長的教室名。整週課表的課程詳情有「在平面圖上查看教室」。學校只公告這兩棟的 PDF；其他大樓要自己收集 |
 | 1.2.4 | `7eb6268` | **校園地圖**取代大樓平面圖。資料是以公尺為單位的 JSON：`app-content/campus-map/jiaose.json`（給 iOS 等共用）與 `mobile/assets/campus_map/jiaose.json`（App 內建），兩份由 `mobile/tool/campus_map/jiaose.py` 一起產生，`verify.sh` 用 `cmp` 確認一致；**改資料只改產生器**。來源是使用者拍的各樓層逃生圖，用透視校正拉成公尺格線後量測（1F–7F 共用骨架，8F 的逃生圖是轉 90 度畫的）。1F–4F 的教室編號照教務處公告（教 214 位置不明未放），5F–8F 尚無編號。`tool/preview_campus_map.py` 可輸出預覽 PNG（`--portrait` 為手機直向）。畫面：`campus_map_screen.dart`（大樓列表＋搜尋）、`building_map_screen.dart`（`/tools/campus-map/:building?room=教305`，右側樓層列、可縮放、點教室標示）、`floor_map_painter.dart`（`FloorFrame`：寬的大樓在直向畫布轉 90 度，西側朝上）。綜合教學大樓移除，等之後有平面圖再補。指北針待使用者提供方位 |
+| 1.2.5 | `a7e4f64` | 校園地圖大樓頁改版（使用者選的方案）：全螢幕平面圖，返回／大樓名稱／搜尋浮在上方；樓層選單摺疊成一顆「3F ▾」，點開列出全部樓層、選完或點外面自動收起；底部 `DraggableScrollableSheet` 收起時顯示樓層摘要或選到的教室，往上拉列出本層有編號的教室；選教室（抽屜、搜尋、課表）會用 `Matrix4Tween` 飛到該教室並放大 2.4 倍，右下角「顯示整層」還原。`FloorFrame` 改成可分邊留白，平面圖避開浮動元件與抽屜 |
 
 另外：
 
