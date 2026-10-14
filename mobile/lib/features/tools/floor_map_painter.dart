@@ -9,27 +9,32 @@ import 'campus_map_data.dart';
 /// turn 90° clockwise, so the west end sits on top; every floor of one
 /// building shares the same framing.
 class FloorFrame {
-  FloorFrame(this.building, this.size, {this.padding = 16}) {
+  FloorFrame(
+    this.building,
+    this.size, {
+    this.padding = const EdgeInsets.all(16),
+  }) {
     final b = building.bounds;
-    rotated = b.width > b.height && size.height > size.width;
+    final room = padding.deflateSize(size);
+    rotated = b.width > b.height && room.height > room.width;
     final w = rotated ? b.height : b.width;
     final h = rotated ? b.width : b.height;
-    scale = math.min(
-      (size.width - padding * 2) / w,
-      (size.height - padding * 2) / h,
-    );
+    scale = math.max(math.min(room.width / w, room.height / h), .01);
   }
 
   final MapBuilding building;
   final Size size;
-  final double padding;
+
+  /// Room kept clear for controls floating over the plan.
+  final EdgeInsets padding;
   late final bool rotated;
   late final double scale;
 
   Matrix4 get matrix {
     final c = building.bounds.center;
+    final area = padding.deflateRect(Offset.zero & size).center;
     final m = Matrix4.identity()
-      ..translateByDouble(size.width / 2, size.height / 2, 0, 1)
+      ..translateByDouble(area.dx, area.dy, 0, 1)
       ..scaleByDouble(scale, scale, 1, 1);
     if (rotated) m.rotateZ(math.pi / 2);
     return m..translateByDouble(-c.dx, -c.dy, 0, 1);
@@ -48,6 +53,7 @@ class FloorMapPainter extends CustomPainter {
     required this.colors,
     required this.hues,
     required this.textStyle,
+    this.padding = const EdgeInsets.all(16),
     this.selected,
   });
 
@@ -56,13 +62,14 @@ class FloorMapPainter extends CustomPainter {
   final NiuColors colors;
   final ({Color restroom, Color restroomEdge, Color terrace}) hues;
   final TextStyle textStyle;
+  final EdgeInsets padding;
   final MapSpace? selected;
 
   static const _gap = .18, _radius = .45;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final frame = FloorFrame(building, size);
+    final frame = FloorFrame(building, size, padding: padding);
     canvas.save();
     canvas.transform(frame.matrix.storage);
     final px = 1 / frame.scale; // one logical pixel, in metres
@@ -206,6 +213,7 @@ class FloorMapPainter extends CustomPainter {
   bool shouldRepaint(FloorMapPainter old) =>
       old.floor != floor ||
       old.selected != selected ||
+      old.padding != padding ||
       old.colors != colors ||
       old.textStyle != textStyle;
 }
