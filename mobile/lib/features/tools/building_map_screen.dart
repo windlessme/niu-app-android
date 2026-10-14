@@ -276,10 +276,13 @@ class _BuildingViewState extends State<_BuildingView>
                     .foreground(context)
                     .withValues(alpha: .25),
                 terrace: NiuHue.green.background(context),
+                link: NiuHue.indigo.foreground(context),
+                linkFill: NiuHue.indigo.background(context),
               ),
               textStyle: theme.textTheme.labelSmall ?? const TextStyle(),
               padding: padding,
               selected: selected,
+              zoom: zoom,
             ),
           ),
         ),

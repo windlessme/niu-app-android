@@ -55,15 +55,27 @@ class FloorMapPainter extends CustomPainter {
     required this.textStyle,
     this.padding = const EdgeInsets.all(16),
     this.selected,
-  });
+    this.zoom,
+  }) : super(repaint: zoom);
 
   final MapBuilding building;
   final MapFloor floor;
   final NiuColors colors;
-  final ({Color restroom, Color restroomEdge, Color terrace}) hues;
+  final ({
+    Color restroom,
+    Color restroomEdge,
+    Color terrace,
+    Color link,
+    Color linkFill,
+  })
+  hues;
   final TextStyle textStyle;
   final EdgeInsets padding;
   final MapSpace? selected;
+
+  /// The viewer's zoom; labels keep their screen size and appear in rooms
+  /// that grow big enough for them.
+  final TransformationController? zoom;
 
   static const _gap = .18, _radius = .45;
 
@@ -101,6 +113,11 @@ class FloorMapPainter extends CustomPainter {
     }
     canvas.restore();
 
+    final z = zoom?.value.getMaxScaleOnAxis() ?? 1;
+    final base = (textStyle.fontSize ?? 11) / z;
+    for (final link in floor.links) {
+      _link(canvas, frame, link, z);
+    }
     for (final s in floor.spaces) {
       if (s.kind != MapSpaceKind.room && s.kind != MapSpaceKind.restroom) {
         continue;
@@ -111,10 +128,11 @@ class FloorMapPainter extends CustomPainter {
       final width = (frame.rotated ? box.height : box.width) * frame.scale;
       final height = (frame.rotated ? box.width : box.height) * frame.scale;
       final on = identical(s, selected);
-      final painter = TextPainter(
+      TextPainter layout(String text, double size) => TextPainter(
         text: TextSpan(
-          text: label,
+          text: text,
           style: textStyle.copyWith(
+            fontSize: size,
             color: on
                 ? colors.onAccent
                 : s.isRoom
@@ -128,14 +146,72 @@ class FloorMapPainter extends CustomPainter {
         textDirection: TextDirection.ltr,
         maxLines: 1,
       )..layout();
-      // Long names stay in the drawer; labels never spill over walls.
-      if (painter.width > width - 4 || painter.height > height - 2) continue;
-      painter.paint(
+      bool fits(TextPainter t) =>
+          t.width <= width - 4 / z && t.height <= height - 2 / z;
+      // The full code, then without the building's character, then a
+      // little smaller; long names stay in the drawer and never spill over.
+      final options = [label, if (s.code != null) label.substring(1)];
+      TextPainter? shown;
+      for (final text in options) {
+        final t = layout(text, base);
+        if (fits(t)) {
+          shown = t;
+          break;
+        }
+        final shrink = (width - 4 / z) / t.width;
+        if (identical(text, options.last) && shrink >= .65) {
+          final small = layout(text, base * shrink);
+          if (fits(small)) shown = small;
+        }
+      }
+      if (shown == null) continue;
+      shown.paint(
         canvas,
-        frame.toCanvas(box.center) -
-            Offset(painter.width / 2, painter.height / 2),
+        frame.toCanvas(box.center) - Offset(shown.width / 2, shown.height / 2),
       );
     }
+  }
+
+  /// A pill reading 往… with an arrow towards the other building.
+  void _link(Canvas canvas, FloorFrame frame, MapLink link, double z) {
+    final ink = hues.link;
+    final text = TextPainter(
+      text: TextSpan(
+        text: '往${link.name}',
+        style: textStyle.copyWith(
+          fontSize: (textStyle.fontSize ?? 11) / z,
+          fontWeight: FontWeight.w600,
+          color: ink,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+      maxLines: 1,
+    )..layout();
+    final arrow = 10 / z, pad = 6 / z, gap = 4 / z;
+    final w = text.width + arrow + gap + pad * 2;
+    final h = math.max(text.height, arrow) + pad;
+    final centre = frame.toCanvas(link.at);
+    final pill = Rect.fromCenter(center: centre, width: w, height: h);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(pill, Radius.circular(h / 2)),
+      Paint()..color = hues.linkFill,
+    );
+    text.paint(canvas, Offset(pill.left + pad, centre.dy - text.height / 2));
+    // The arrow turns with the plan.
+    var d = link.toward;
+    if (frame.rotated) d = Offset(-d.dy, d.dx);
+    d = d / d.distance;
+    final tip = Offset(pill.right - pad - arrow / 2, centre.dy) + d * arrow / 2;
+    final back = tip - d * arrow;
+    final side = Offset(-d.dy, d.dx) * arrow * .45;
+    canvas.drawPath(
+      Path()
+        ..moveTo(tip.dx, tip.dy)
+        ..lineTo(back.dx + side.dx, back.dy + side.dy)
+        ..lineTo(back.dx - side.dx, back.dy - side.dy)
+        ..close(),
+      Paint()..color = ink,
+    );
   }
 
   void _space(Canvas canvas, MapSpace s, double px) {

@@ -427,6 +427,7 @@ LABELS = {
         (3, 17, "802", None),
         (6, 24, "803", None),
         (13, 29.8, "804", None),
+        (36, 18.5, None, "國際會議廳"),
     ],
 }
 
@@ -447,6 +448,8 @@ def main():
             toilets(spaces)
         if floor["id"] == "1F":
             tag(spaces, 35.6, 25.9, name="廁所")
+            # The curved east lobby opens towards 綜合教學大樓.
+            floor["links"] = [{"to": "zonghe", "name": "綜合教學大樓", "at": [46.6, 18.65], "toward": [1, 0]}]
         labelled(spaces, LABELS.get(floor["id"], []))
     text = json.dumps(building, ensure_ascii=False, separators=(",", ":")) + "\n"
     root = Path(__file__).resolve().parents[3]
