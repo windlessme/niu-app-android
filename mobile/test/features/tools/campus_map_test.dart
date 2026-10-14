@@ -93,8 +93,27 @@ void main() {
     expect(map.locate(''), isNull);
   });
 
+  test('工學院大樓 has B1 to 6F with 工 codes', () {
+    final b = map.building('gongxue')!;
+    expect(b.floors.map((f) => f.id), [
+      'B1',
+      '1F',
+      '2F',
+      '3F',
+      '4F',
+      '5F',
+      '6F',
+    ]);
+    expect(b.levels, '地上 6 層，地下 1 層');
+    expect(b.defaultFloorId, '1F');
+    expect(map.locate('工B07')!.space.name, '單元操作實驗室');
+    expect(map.locate('工 423')!.floor.id, '4F');
+    expect(map.search('結構').single.space.code, '工228');
+    expect(overview.withPlan('gongxue')!.name, '工學院大樓');
+  });
+
   test('search matches codes, bare numbers and notes', () {
-    expect(map.search('305').single.space.code, '教305');
+    expect(map.search('305').map((r) => r.space.code), ['教305', '工305']);
     expect(map.search('外語').map((r) => r.space.code), ['教401', '教412']);
     expect(map.search(' '), isEmpty);
   });

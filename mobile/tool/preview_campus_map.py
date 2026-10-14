@@ -4,16 +4,20 @@
     python3 tool/preview_campus_map.py ../app-content/campus-map/jiaose.json OUT_DIR [--portrait]
 
 --portrait turns landscape buildings 90° clockwise, as phones show them.
+--labels writes each room's code and name, and links to other buildings,
+for checking against the signs.
 """
 import json
 import sys
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
+
+FONT = "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc"
 
 PX = 22  # pixels per metre
 SS = 3  # supersampling
-PAD = 3.0  # metres around the building
+PAD = 3.0  # metres around the building; --labels adds room for link signs
 
 CANVAS = (238, 241, 246)
 SLAB = (250, 251, 253)
@@ -63,7 +67,49 @@ def inset(pts, d):
     return out
 
 
-def render(floor, out, portrait):
+def wrap(text, font, width, draw):
+    """Lines of text no wider than width, breaking anywhere (CJK)."""
+    lines, line = [], ""
+    for ch in text:
+        if line and draw.textlength(line + ch, font=font) > width:
+            lines.append(line)
+            line = ch
+        else:
+            line += ch
+    return [*lines, line] if line else lines
+
+
+def label(d, floor, pt):
+    for s in floor["spaces"]:
+        text = [t for t in (s.get("code"), s.get("name"), s.get("note")) if t]
+        if not text or s["kind"] in ("corridor",):
+            continue
+        pts = points(s)
+        xs, ys = [p[0] for p in pts], [p[1] for p in pts]
+        (a, b), (c, e) = pt(min(xs), min(ys)), pt(max(xs), max(ys))
+        width, height = c - a - 6 * SS, e - b - 6 * SS
+        for size in (13, 11, 9, 8, 7):
+            fonts = [ImageFont.truetype(FONT, (size + (2 if i == 0 and s.get("code") else 0)) * SS)
+                     for i in range(len(text))]
+            lines = [(f, l) for f, t in zip(fonts, text) for l in wrap(t, f, width, d)]
+            total = sum(f.size * 1.15 for f, _ in lines)
+            if total <= height:
+                break
+        y = (b + e) / 2 - total / 2
+        for f, l in lines:
+            d.text(((a + c) / 2, y), l, font=f, fill=(40, 52, 80), anchor="ma")
+            y += f.size * 1.15
+    for link in floor.get("links", []):
+        x, y = pt(*link["at"])
+        dx, dy = link["toward"]
+        f = ImageFont.truetype(FONT, 12 * SS)
+        d.text((x + dx * 8 * SS, y + dy * 8 * SS), f"往{link['name']} →", font=f, fill=(180, 60, 40),
+               anchor="lm" if dx > 0 else "rm")
+
+
+def render(floor, out, portrait, labels=False):
+    global PAD
+    PAD = 7.0 if labels else 3.0
     allpts = [tuple(p) for p in floor["outline"]] + [p for s in floor["spaces"] for p in points(s)]
     minx, miny = min(p[0] for p in allpts), min(p[1] for p in allpts)
     maxx, maxy = max(p[0] for p in allpts), max(p[1] for p in allpts)
@@ -111,6 +157,10 @@ def render(floor, out, portrait):
                 m = 0.4 if kind == "elevator" else 0.8
                 d.line([pt(x0 + m, y0 + m), pt(x1 - m, y1 - m)], fill=stroke, width=SS)
                 d.line([pt(x1 - m, y0 + m), pt(x0 + m, y1 - m)], fill=stroke, width=SS)
+    if labels:
+        label(d, floor, pt)
+        f = ImageFont.truetype(FONT, 20 * SS)
+        d.text((12 * SS, 10 * SS), floor["id"], font=f, fill=(40, 52, 80))
     img = img.resize((w // SS, h // SS), Image.LANCZOS)
     if portrait and img.width > img.height:
         img = img.rotate(-90, expand=True)
@@ -124,7 +174,7 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     for floor in data["floors"]:
         path = out / f"{data['id']}-{floor['id']}.png"
-        render(floor, path, portrait)
+        render(floor, path, portrait, "--labels" in sys.argv)
         print(path)
 
 
