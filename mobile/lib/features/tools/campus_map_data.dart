@@ -194,7 +194,10 @@ typedef RoomLocation = ({MapBuilding building, MapFloor floor, MapSpace space});
 class CampusMap {
   CampusMap(this.buildings);
 
-  static const assets = ['assets/campus_map/jiaose.json'];
+  static const assets = [
+    'assets/campus_map/jiaose.json',
+    'assets/campus_map/gongxue.json',
+  ];
 
   final List<MapBuilding> buildings;
 
