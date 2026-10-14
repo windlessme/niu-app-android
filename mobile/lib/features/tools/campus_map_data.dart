@@ -213,6 +213,8 @@ class CampusMap {
   static const assets = [
     'assets/campus_map/jiaose.json',
     'assets/campus_map/gongxue.json',
+    'assets/campus_map/shixi.json',
+    'assets/campus_map/dianzi.json',
   ];
 
   final List<MapBuilding> buildings;
