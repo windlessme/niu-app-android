@@ -5,9 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import '../../core/analytics/app_analytics.dart';
+import '../../core/session/campus_session.dart';
 import '../../shared/shared.dart';
 import 'moodle_demo.dart';
+import '../authentication/remember_school_login.dart';
+import '../authentication/school_reauthorization.dart';
 import 'moodle_question_demo.dart';
+import 'moodle_question_login.dart';
 import 'moodle_question_widgets.dart';
 import 'moodle_questions.dart';
 import 'moodle_repository.dart';
@@ -81,9 +85,13 @@ class MoodleQuestionScreen extends StatefulWidget {
     required this.repository,
     required this.module,
     this.driver,
+    this.session,
   });
   final MoodleRepository repository;
   final Json module;
+
+  /// Whose remembered login may recover M 園區's website session.
+  final CampusSession? session;
 
   /// Test seam; the review demo gets a simulated quiz.
   final MoodleQuestionDriver? driver;
@@ -127,13 +135,38 @@ class _MoodleQuestionScreenState extends State<MoodleQuestionScreen>
   Future<Uri> _entry() async {
     final uri = target;
     if (uri == null) throw StateError('目前無法開啟此活動。');
+    Uri entry;
     try {
-      return await widget.repository.webUri(uri);
+      entry = await widget.repository.webUri(uri);
     } catch (_) {
       // Auto-login keys are rate limited; existing cookies may still work.
-      return uri;
+      entry = uri;
     }
+    recovery?.start(viaKey: entry != uri);
+    return entry;
   }
+
+  late final QuestionLoginRecovery? recovery = target == null || simulated
+      ? null
+      : QuestionLoginRecovery(
+          target: target!,
+          autologin: () => widget.repository.webUri(target!),
+          credentials: () => RememberSchoolLogin.forSession(
+            widget.session ?? CampusSession.instance,
+          ).restore(),
+          reauthorize: () => SchoolReauthorization.restore(
+            widget.session ?? CampusSession.instance,
+            force: true,
+          ),
+          onManual: () {
+            if (!mounted) return;
+            setState(() => showWeb = true);
+            showNiuMessage(context, '請在校方頁面登入 M 園區，登入後會自動開啟活動。');
+          },
+          onTimeout: (message) {
+            if (mounted) setState(() => error = message);
+          },
+        );
 
   @override
   void initState() {
@@ -151,6 +184,7 @@ class _MoodleQuestionScreenState extends State<MoodleQuestionScreen>
   void dispose() {
     generation++;
     timer?.cancel();
+    recovery?.dispose();
     WidgetsBinding.instance.removeObserver(this);
     for (final c in texts.values) {
       c.dispose();
@@ -182,6 +216,11 @@ class _MoodleQuestionScreenState extends State<MoodleQuestionScreen>
   Future<void> read() async {
     final source = driver;
     if (source == null || reading || dialog || showWeb || !foreground) {
+      return;
+    }
+    if (recovery?.busy ?? false) {
+      // The page is mid-login; only the loading label changes.
+      if (mounted && page == null) setState(() {});
       return;
     }
     if (!current) {
@@ -483,7 +522,9 @@ class _MoodleQuestionScreenState extends State<MoodleQuestionScreen>
       if (driver case final DemoQuestionDriver demo) demo.restart();
       return;
     }
-    final uri = await entry;
+    // Auto-login keys work once; the recovery fetches a new one if needed.
+    final uri = target!;
+    recovery?.start(viaKey: false);
     await web?.loadUrl(urlRequest: URLRequest(url: WebUri('$uri')));
   }
 
@@ -587,6 +628,14 @@ class _MoodleQuestionScreenState extends State<MoodleQuestionScreen>
                           onWebViewCreated: (controller) {
                             web = controller;
                             driver = _WebQuestionDriver(controller);
+                            recovery?.page = WebQuestionLoginPage(controller);
+                          },
+                          onLoadStop: (_, url) {
+                            if (url != null) {
+                              unawaited(
+                                recovery?.pageLoaded(Uri.parse('$url')),
+                              );
+                            }
                           },
                           shouldOverrideUrlLoading: (_, action) async =>
                               action.request.url != null &&
@@ -652,7 +701,18 @@ class _MoodleQuestionScreenState extends State<MoodleQuestionScreen>
           child: NiuError(title: '問答載入失敗', message: message, onRetry: reload),
         );
       }
-      return const Center(child: NiuLoading(message: '正在讀取題目'));
+      final step = recovery?.step;
+      return Center(
+        child: NiuLoading(
+          message:
+              step == null ||
+                  step == QuestionLoginStep.direct ||
+                  step == QuestionLoginStep.autologin ||
+                  step == QuestionLoginStep.done
+              ? '正在讀取題目'
+              : '正在恢復 M 園區登入',
+        ),
+      );
     }
     final quiz = shown.isQuizFlow;
     // The summary lists every question itself; its bar keeps only the timer.

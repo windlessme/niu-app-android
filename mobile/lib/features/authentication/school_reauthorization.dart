@@ -11,8 +11,13 @@ import 'school_login_engine.dart';
 class SchoolReauthorization {
   static final _pending = Expando<Future<bool>>();
 
-  static Future<bool> restore(CampusSession session) async {
-    if (session.isSignedIn) return true;
+  /// [force] signs in again even with a live token, for school web pages
+  /// whose cookies outlived it less well (M 園區's SSO handoff).
+  static Future<bool> restore(
+    CampusSession session, {
+    bool force = false,
+  }) async {
+    if (session.isSignedIn && !force) return true;
     if (!session.hasLocalAccount) return false;
     final previous = _pending[session];
     if (previous != null) return previous;
