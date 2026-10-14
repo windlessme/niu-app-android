@@ -194,35 +194,67 @@ class FloorMapPainter extends CustomPainter {
   /// A pill reading 往… with an arrow towards the other building.
   void _link(Canvas canvas, FloorFrame frame, MapLink link, double z) {
     final ink = hues.link;
-    final text = TextPainter(
-      text: TextSpan(
-        text: '往${link.name}',
-        style: textStyle.copyWith(
-          fontSize: (textStyle.fontSize ?? 11) / z,
-          fontWeight: FontWeight.w600,
-          color: ink,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-      maxLines: 1,
-    )..layout();
-    final arrow = 10 / z, pad = 6 / z, gap = 4 / z;
-    final w = text.width + arrow + gap + pad * 2;
-    final h = math.max(text.height, arrow) + pad;
     // The arrow turns with the plan.
     var d = link.toward;
     if (frame.rotated) d = Offset(-d.dy, d.dx);
     d = d / d.distance;
+    // A link through a north or south wall reads top to bottom, one
+    // character a line, so it fits the narrow walkway it stands in.
+    final upright = d.dy.abs() > d.dx.abs();
+    final label = '往${link.name}';
+    final text = TextPainter(
+      text: TextSpan(
+        text: upright ? label.characters.join('\n') : label,
+        style: textStyle.copyWith(
+          fontSize: (textStyle.fontSize ?? 11) / z,
+          fontWeight: FontWeight.w600,
+          color: ink,
+          height: upright ? 1.05 : null,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+      textAlign: TextAlign.center,
+    )..layout();
+    final arrow = 10 / z, pad = 6 / z, gap = 4 / z;
+    final w = upright
+        ? math.max(text.width, arrow) + pad
+        : text.width + arrow + gap + pad * 2;
+    final h = upright
+        ? text.height + arrow + gap + pad * 2
+        : math.max(text.height, arrow) + pad;
     // The pill stays inside, its arrow end at the doorway, so a link on an
     // outside wall is never cut off by the screen edge.
     final centre = frame.toCanvas(link.at) - Offset(d.dx * w, d.dy * h) / 2;
     final pill = Rect.fromCenter(center: centre, width: w, height: h);
     canvas.drawRRect(
-      RRect.fromRectAndRadius(pill, Radius.circular(h / 2)),
+      RRect.fromRectAndRadius(pill, Radius.circular(math.min(w, h) / 2)),
       Paint()..color = hues.linkFill,
     );
-    text.paint(canvas, Offset(pill.left + pad, centre.dy - text.height / 2));
-    final tip = Offset(pill.right - pad - arrow / 2, centre.dy) + d * arrow / 2;
+    // Text away from the doorway, the arrow at it.
+    final towards = upright ? d.dy > 0 : d.dx > 0;
+    final Offset textAt;
+    final Offset arrowAt;
+    if (upright) {
+      textAt = Offset(
+        centre.dx - text.width / 2,
+        towards ? pill.top + pad : pill.bottom - pad - text.height,
+      );
+      arrowAt = Offset(
+        centre.dx,
+        towards ? pill.bottom - pad - arrow / 2 : pill.top + pad + arrow / 2,
+      );
+    } else {
+      textAt = Offset(
+        towards ? pill.left + pad : pill.right - pad - text.width,
+        centre.dy - text.height / 2,
+      );
+      arrowAt = Offset(
+        towards ? pill.right - pad - arrow / 2 : pill.left + pad + arrow / 2,
+        centre.dy,
+      );
+    }
+    text.paint(canvas, textAt);
+    final tip = arrowAt + d * arrow / 2;
     final back = tip - d * arrow;
     final side = Offset(-d.dy, d.dx) * arrow * .45;
     canvas.drawPath(
