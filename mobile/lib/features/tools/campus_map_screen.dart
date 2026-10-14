@@ -17,7 +17,7 @@ class _CampusMapScreenState extends State<CampusMapScreen> {
   String query = '';
 
   void open(MapBuilding building, [MapSpace? room]) =>
-      context.push(campusMapRoute(building.id, room: room?.code));
+      context.push(campusMapRoute(building.id, room: room?.label));
 
   @override
   Widget build(BuildContext context) => FutureBuilder<CampusMap>(
@@ -42,10 +42,10 @@ class _CampusMapScreenState extends State<CampusMapScreen> {
                         for (final r in results.take(30))
                           NiuRow(
                             icon: Icons.meeting_room_outlined,
-                            title: r.space.code!,
+                            title: r.space.label!,
                             subtitle: [
                               '${r.building.name} ${r.floor.title}',
-                              ?r.space.note,
+                              ...r.space.details,
                             ].join('・'),
                             onTap: () => open(r.building, r.space),
                           ),

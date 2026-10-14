@@ -31,6 +31,7 @@ class MapSpace {
     required this.points,
     required this.isRect,
     this.code,
+    this.name,
     this.note,
   });
 
@@ -44,6 +45,7 @@ class MapSpace {
       points: points,
       isRect: rect != null,
       code: json['code'] as String?,
+      name: json['name'] as String?,
       note: json['note'] as String?,
     );
   }
@@ -52,12 +54,21 @@ class MapSpace {
   final List<Offset> points;
   final bool isRect;
   final String? code;
+
+  /// What the sign calls it, e.g. 薄膜實驗室 or 男廁.
+  final String? name;
   final String? note;
 
   late final Rect bounds = _bounds(points);
   late final Path path = Path()..addPolygon(points, true);
 
   bool get isRoom => kind == MapSpaceKind.room;
+
+  /// Code, else name; what a list or card leads with.
+  String? get label => code ?? name;
+
+  /// The name and note under a code, or just the note under a name.
+  List<String> get details => [if (code != null) ?name, ?note];
 }
 
 class MapFloor {
@@ -178,9 +189,9 @@ class CampusMap {
     return null;
   }
 
-  /// Finds a classroom code in timetable text such as '教305' or
+  /// Finds a classroom code or name in timetable text such as '教305' or
   /// '教 305（電腦教室）'; whitespace and full-width forms are ignored and the
-  /// longest code wins.
+  /// longest match wins.
   RoomLocation? locate(String text) {
     final normalized = String.fromCharCodes(
       text.runes.map((c) => c >= 0xff01 && c <= 0xff5e ? c - 0xfee0 : c),
@@ -190,10 +201,10 @@ class CampusMap {
     for (final b in buildings) {
       for (final f in b.floors) {
         for (final s in f.rooms) {
-          final code = s.code;
-          if (code != null &&
-              normalized.contains(code) &&
-              (match == null || code.length > match.space.code!.length)) {
+          final label = s.label;
+          if (label != null &&
+              normalized.contains(label) &&
+              (match == null || label.length > match.space.label!.length)) {
             match = (building: b, floor: f, space: s);
           }
         }
@@ -202,19 +213,24 @@ class CampusMap {
     return match;
   }
 
-  /// Rooms whose code or note contains [query], in building and floor order.
+  /// Rooms whose code, name or note contains [query], in building and
+  /// floor order; a bare number matches codes ('305' → 教305).
   List<RoomLocation> search(String query) {
     final q = query.replaceAll(RegExp(r'\s'), '');
     if (q.isEmpty) return const [];
+    bool hit(MapSpace s) {
+      final code = s.code;
+      return code != null &&
+              (code.contains(q) || code.substring(1).startsWith(q)) ||
+          (s.name?.contains(q) ?? false) ||
+          (s.note?.contains(q) ?? false);
+    }
+
     return [
       for (final b in buildings)
         for (final f in b.floors)
           for (final s in f.rooms)
-            if (s.code != null &&
-                (s.code!.contains(q) ||
-                    s.code!.substring(1).startsWith(q) ||
-                    (s.note?.contains(q) ?? false)))
-              (building: b, floor: f, space: s),
+            if (s.label != null && hit(s)) (building: b, floor: f, space: s),
     ];
   }
 }

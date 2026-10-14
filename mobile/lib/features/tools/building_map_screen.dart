@@ -490,23 +490,24 @@ class _FloorSheet extends StatelessWidget {
     final colors = NiuColors.of(context);
     final numbered = [
       for (final r in floor.rooms)
-        if (r.code != null) r,
-    ]..sort((a, b) => a.code!.compareTo(b.code!));
+        if (r.label != null) r,
+    ]..sort((a, b) => a.label!.compareTo(b.label!));
+    final coded = numbered.where((r) => r.code != null).length;
     final room = selected;
     final summary = room == null
         ? _SheetHeader(
             icon: Icons.layers_rounded,
             hue: NiuHue.indigo,
             title: floor.title,
-            subtitle: numbered.isEmpty
+            subtitle: coded == 0
                 ? '${floor.rooms.length} 個空間'
-                : '${floor.rooms.length} 個空間・${numbered.length} 間有編號',
+                : '${floor.rooms.length} 個空間・$coded 間有編號',
           )
         : _SheetHeader(
             icon: Icons.meeting_room_outlined,
             hue: NiuHue.blue,
-            title: room.code ?? '未編號空間',
-            subtitle: [floor.title, ?room.note].join('・'),
+            title: room.label ?? '未編號空間',
+            subtitle: [floor.title, ...room.details].join('・'),
             trailing: NiuIconButton(
               icon: NiuIcons.close,
               tooltip: '取消標示',
@@ -559,8 +560,8 @@ class _FloorSheet extends StatelessWidget {
               children: [
                 for (final r in numbered)
                   NiuRow(
-                    title: r.code!,
-                    subtitle: r.note,
+                    title: r.label!,
+                    subtitle: r.details.isEmpty ? null : r.details.join('・'),
                     chevron: false,
                     trailing: identical(r, room)
                         ? Icon(Icons.place_rounded, color: colors.accent)
@@ -671,8 +672,8 @@ class _RoomSearchSheetState extends State<_RoomSearchSheet> {
                 for (final r in results.take(30))
                   NiuRow(
                     icon: Icons.meeting_room_outlined,
-                    title: r.space.code!,
-                    subtitle: [r.floor.title, ?r.space.note].join('・'),
+                    title: r.space.label!,
+                    subtitle: [r.floor.title, ...r.space.details].join('・'),
                     onTap: () => Navigator.pop(context, r),
                   ),
               ],

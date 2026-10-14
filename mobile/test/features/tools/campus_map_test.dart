@@ -36,6 +36,27 @@ void main() {
     expect(b.floor('3F')!.title, '3 樓');
   });
 
+  test('5F–8F carry the signs\' names and the marked numbers', () {
+    final b = map.building('jiaose')!;
+    MapSpace? find(String floor, String label) =>
+        b.floor(floor)!.rooms.where((r) => r.label == label).firstOrNull;
+    expect(find('5F', '教515東')!.name, '薄膜實驗室');
+    expect(find('7F', '教705')!.name, '商業營運模擬中心');
+    expect(find('7F', '教712-1')!.name, isNull);
+    expect(find('6F', '教622')!.details, isEmpty);
+    expect(find('8F', '智慧休閒農業進修學士學位學程辦公室')!.code, isNull);
+    for (final f in b.floors) {
+      final toilets = [
+        for (final s in f.spaces)
+          if (s.kind == MapSpaceKind.restroom) s.name,
+      ];
+      expect(toilets, containsAll(['男廁', '女廁']), reason: f.id);
+    }
+    expect(map.search('薄膜').single.space.code, '教515東');
+    expect(map.search('學程辦公室').single.floor.id, '8F');
+    expect(map.locate('教712-1')!.floor.id, '7F');
+  });
+
   test('locate reads timetable text', () {
     final hit = map.locate('教 305（普通教室）')!;
     expect(hit.floor.id, '3F');
@@ -94,7 +115,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.bySemanticsLabel('樓層，目前8 樓'), findsOneWidget);
     expect(find.byTooltip('取消標示'), findsNothing);
-    expect(find.textContaining('間有編號'), findsNothing);
+    expect(find.textContaining('4 間有編號'), findsOneWidget);
   });
 
   testWidgets('picking a room in the drawer marks it', (tester) async {
