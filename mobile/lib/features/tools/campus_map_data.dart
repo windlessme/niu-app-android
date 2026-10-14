@@ -33,6 +33,7 @@ class MapSpace {
     this.code,
     this.name,
     this.note,
+    this.aka = const [],
   });
 
   factory MapSpace.fromJson(Map<String, dynamic> json) {
@@ -47,6 +48,7 @@ class MapSpace {
       code: json['code'] as String?,
       name: json['name'] as String?,
       note: json['note'] as String?,
+      aka: [for (final a in json['aka'] as List? ?? const []) a as String],
     );
   }
 
@@ -58,6 +60,26 @@ class MapSpace {
   /// What the sign calls it, e.g. 薄膜實驗室 or 男廁.
   final String? name;
   final String? note;
+
+  /// Other codes the school uses for the room (E505, 格101): searchable and
+  /// found in timetables, never shown.
+  final List<String> aka;
+
+  /// The code without its building character (教305 → 305) when it has
+  /// one; E and 格 codes keep theirs.
+  String? get shortCode {
+    final c = code;
+    if (c == null ||
+        c.isEmpty ||
+        c.codeUnitAt(0) < 0x2E80 ||
+        c.startsWith('格')) {
+      return null;
+    }
+    return c.substring(1);
+  }
+
+  /// Everything a timetable or search might call the room.
+  late final List<String> names = [?label, ...aka];
 
   late final Rect bounds = _bounds(points);
   late final Path path = Path()..addPolygon(points, true);
@@ -216,6 +238,8 @@ class CampusMap {
     'assets/campus_map/shixi.json',
     'assets/campus_map/dianzi.json',
     'assets/campus_map/shihua.json',
+    'assets/campus_map/gezhi.json',
+    'assets/campus_map/zonghe.json',
   ];
 
   final List<MapBuilding> buildings;
@@ -253,14 +277,17 @@ class CampusMap {
     ).replaceAll(RegExp(r'\s'), '');
     if (normalized.isEmpty) return null;
     RoomLocation? match;
+    var matched = 0;
     for (final b in buildings) {
       for (final f in b.floors) {
         for (final s in f.rooms) {
-          final label = s.label;
-          if (label != null &&
-              normalized.contains(label) &&
-              (match == null || label.length > match.space.label!.length)) {
-            match = (building: b, floor: f, space: s);
+          if (s.label == null) continue;
+          for (final name in s.names) {
+            if (normalized.contains(name) &&
+                (match == null || name.length > matched)) {
+              match = (building: b, floor: f, space: s);
+              matched = name.length;
+            }
           }
         }
       }
@@ -277,7 +304,8 @@ class CampusMap {
     bool hit(MapSpace s) {
       final code = s.code;
       return code != null &&
-              (code.contains(q) || code.substring(1).startsWith(q)) ||
+              (code.contains(q) || (s.shortCode?.startsWith(q) ?? false)) ||
+          s.aka.any((a) => a.contains(q)) ||
           (s.name?.contains(q) ?? false) ||
           (s.note?.contains(q) ?? false);
     }
