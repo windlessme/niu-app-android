@@ -1,0 +1,246 @@
+import 'dart:convert';
+import 'dart:ui';
+
+import 'package:flutter/services.dart';
+
+/// What a space on a floor plan is; drawn and hit-tested by kind.
+enum MapSpaceKind {
+  room,
+  corridor,
+  stairs,
+  elevator,
+  restroom,
+  shaft,
+  terrace;
+
+  static MapSpaceKind parse(String value) => switch (value) {
+    'room' => room,
+    'stairs' => stairs,
+    'elevator' => elevator,
+    'restroom' => restroom,
+    'void' => shaft,
+    'terrace' => terrace,
+    _ => corridor,
+  };
+}
+
+/// One space in metres; [code] matches the school's classroom code.
+class MapSpace {
+  MapSpace({
+    required this.kind,
+    required this.points,
+    required this.isRect,
+    this.code,
+    this.note,
+  });
+
+  factory MapSpace.fromJson(Map<String, dynamic> json) {
+    final rect = json['rect'] as List?;
+    final points = rect != null
+        ? _rectPoints(rect)
+        : [for (final p in json['polygon'] as List) _offset(p)];
+    return MapSpace(
+      kind: MapSpaceKind.parse(json['kind'] as String),
+      points: points,
+      isRect: rect != null,
+      code: json['code'] as String?,
+      note: json['note'] as String?,
+    );
+  }
+
+  final MapSpaceKind kind;
+  final List<Offset> points;
+  final bool isRect;
+  final String? code;
+  final String? note;
+
+  late final Rect bounds = _bounds(points);
+  late final Path path = Path()..addPolygon(points, true);
+
+  bool get isRoom => kind == MapSpaceKind.room;
+}
+
+class MapFloor {
+  MapFloor({required this.id, required this.outline, required this.spaces});
+
+  factory MapFloor.fromJson(Map<String, dynamic> json) => MapFloor(
+    id: json['id'] as String,
+    outline: [for (final p in json['outline'] as List) _offset(p)],
+    spaces: [
+      for (final s in json['spaces'] as List)
+        MapSpace.fromJson(s as Map<String, dynamic>),
+    ],
+  );
+
+  final String id;
+  final List<Offset> outline;
+  final List<MapSpace> spaces;
+
+  /// 'B1' → '地下 1 樓', '3F' → '3 樓'.
+  String get title => id.startsWith('B')
+      ? '地下 ${id.substring(1)} 樓'
+      : '${id.substring(0, id.length - 1)} 樓';
+
+  late final List<MapSpace> rooms = [
+    for (final s in spaces)
+      if (s.isRoom) s,
+  ];
+
+  late final Rect bounds = [
+    _bounds(outline),
+    for (final s in spaces) s.bounds,
+  ].reduce((a, b) => a.expandToInclude(b));
+
+  /// The smallest room under [point], else nothing; corridors aren't picked.
+  MapSpace? roomAt(Offset point) {
+    MapSpace? hit;
+    for (final s in rooms) {
+      if (s.path.contains(point) &&
+          (hit == null || s.bounds.shortestSide < hit.bounds.shortestSide)) {
+        hit = s;
+      }
+    }
+    return hit;
+  }
+}
+
+class MapBuilding {
+  MapBuilding({required this.id, required this.name, required this.floors});
+
+  factory MapBuilding.fromJson(Map<String, dynamic> json) => MapBuilding(
+    id: json['id'] as String,
+    name: json['name'] as String,
+    floors: [
+      for (final f in json['floors'] as List)
+        MapFloor.fromJson(f as Map<String, dynamic>),
+    ],
+  );
+
+  final String id, name;
+  final List<MapFloor> floors;
+
+  String get defaultFloorId =>
+      floor('1F')?.id ?? (floors.isEmpty ? '' : floors.first.id);
+
+  MapFloor? floor(String id) {
+    for (final f in floors) {
+      if (f.id == id) return f;
+    }
+    return null;
+  }
+
+  /// Shared by every floor so switching floors keeps the same framing.
+  late final Rect bounds = floors
+      .map((f) => f.bounds)
+      .reduce((a, b) => a.expandToInclude(b));
+
+  /// '地上 8 層，地下 1 層'.
+  String get levels {
+    final below = floors.where((f) => f.id.startsWith('B')).length;
+    final above = floors.length - below;
+    return below == 0 ? '地上 $above 層' : '地上 $above 層，地下 $below 層';
+  }
+}
+
+/// Where a room sits; returned by [CampusMap.locate].
+typedef RoomLocation = ({MapBuilding building, MapFloor floor, MapSpace space});
+
+/// Buildings drawn from each floor's evacuation sign; the JSON is shared with
+/// iOS under app-content/campus-map and bundled here for offline use.
+class CampusMap {
+  CampusMap(this.buildings);
+
+  static const assets = ['assets/campus_map/jiaose.json'];
+
+  final List<MapBuilding> buildings;
+
+  static Future<CampusMap>? _shared;
+
+  /// Parsed once per app run.
+  static Future<CampusMap> load([AssetBundle? bundle]) {
+    Future<CampusMap> read() async {
+      final source = bundle ?? rootBundle;
+      return CampusMap([
+        for (final path in assets)
+          MapBuilding.fromJson(
+            jsonDecode(await source.loadString(path)) as Map<String, dynamic>,
+          ),
+      ]);
+    }
+
+    return bundle == null ? _shared ??= read() : read();
+  }
+
+  MapBuilding? building(String id) {
+    for (final b in buildings) {
+      if (b.id == id) return b;
+    }
+    return null;
+  }
+
+  /// Finds a classroom code in timetable text such as '教305' or
+  /// '教 305（電腦教室）'; whitespace and full-width forms are ignored and the
+  /// longest code wins.
+  RoomLocation? locate(String text) {
+    final normalized = String.fromCharCodes(
+      text.runes.map((c) => c >= 0xff01 && c <= 0xff5e ? c - 0xfee0 : c),
+    ).replaceAll(RegExp(r'\s'), '');
+    if (normalized.isEmpty) return null;
+    RoomLocation? match;
+    for (final b in buildings) {
+      for (final f in b.floors) {
+        for (final s in f.rooms) {
+          final code = s.code;
+          if (code != null &&
+              normalized.contains(code) &&
+              (match == null || code.length > match.space.code!.length)) {
+            match = (building: b, floor: f, space: s);
+          }
+        }
+      }
+    }
+    return match;
+  }
+
+  /// Rooms whose code or note contains [query], in building and floor order.
+  List<RoomLocation> search(String query) {
+    final q = query.replaceAll(RegExp(r'\s'), '');
+    if (q.isEmpty) return const [];
+    return [
+      for (final b in buildings)
+        for (final f in b.floors)
+          for (final s in f.rooms)
+            if (s.code != null &&
+                (s.code!.contains(q) ||
+                    s.code!.substring(1).startsWith(q) ||
+                    (s.note?.contains(q) ?? false)))
+              (building: b, floor: f, space: s),
+    ];
+  }
+}
+
+Offset _offset(Object? p) {
+  final list = p as List;
+  return Offset((list[0] as num).toDouble(), (list[1] as num).toDouble());
+}
+
+List<Offset> _rectPoints(List rect) {
+  final [x, y, w, h] = [for (final v in rect) (v as num).toDouble()];
+  return [
+    Offset(x, y),
+    Offset(x + w, y),
+    Offset(x + w, y + h),
+    Offset(x, y + h),
+  ];
+}
+
+Rect _bounds(List<Offset> points) {
+  var l = points.first.dx, t = points.first.dy, r = l, b = t;
+  for (final p in points) {
+    if (p.dx < l) l = p.dx;
+    if (p.dx > r) r = p.dx;
+    if (p.dy < t) t = p.dy;
+    if (p.dy > b) b = p.dy;
+  }
+  return Rect.fromLTRB(l, t, r, b);
+}
