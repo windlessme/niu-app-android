@@ -164,32 +164,70 @@ class CampusOverviewPainter extends CustomPainter {
           for (final b in map.buildings)
             if (b.onCampus && b.name != null) b,
         ]..sort((a, b) {
+          // Picked first, then buildings with plans, then those with a name
+          // people know them by (格致大樓 is 電資學院), then the rest;
+          // 司令台 and the like last.
           int rank(CampusBuilding x) => identical(x, selected)
               ? 0
               : x.plan != null
               ? 1
-              : 2;
+              : x.name!.contains('（')
+              ? 2
+              : x.listed
+              ? 3
+              : 4;
           final byRank = rank(a).compareTo(rank(b));
           return byRank != 0
               ? byRank
               : b.bounds.longestSide.compareTo(a.bounds.longestSide);
         });
+    // The part of the canvas on screen, where labels are laid out.
+    final visible = MatrixUtils.inverseTransformRect(
+      zoom?.value ?? Matrix4.identity(),
+      Offset.zero & size,
+    );
     for (final b in named) {
       final on = identical(b, selected);
-      final label = _text(
-        b.name!,
-        fontSize,
-        on ? colors.accent : colors.ink,
-        weight: on || b.plan != null ? FontWeight.w700 : FontWeight.w500,
-        halo: colors.canvas,
-      );
+      // On the building, else around it, then a size smaller, so the
+      // crowded west side of campus keeps its names at the whole-campus view.
       final at = frame.toCanvas(b.centre);
-      final rect = Rect.fromCenter(
-        center: at,
-        width: label.width,
-        height: label.height,
-      );
-      if (place(rect)) label.paint(canvas, rect.topLeft);
+      final half = b.bounds.size * frame.scale / 2;
+      for (final size in [fontSize, fontSize * .85]) {
+        final label = _text(
+          mapName(b.name!),
+          size,
+          on ? colors.accent : colors.ink,
+          weight: on || b.plan != null ? FontWeight.w700 : FontWeight.w500,
+          halo: colors.canvas,
+        );
+        final w = label.width, h = label.height;
+        final dx = half.width + w / 2, dy = half.height + h / 2;
+        Rect? spot;
+        for (final d in [
+          Offset.zero,
+          Offset(0, -dy),
+          Offset(0, dy),
+          Offset(-dx, 0),
+          Offset(dx, 0),
+          Offset(dx, -dy),
+          Offset(-dx, -dy),
+          Offset(dx, dy),
+          Offset(-dx, dy),
+        ]) {
+          final r = Rect.fromCenter(center: at + d, width: w, height: h);
+          // Only centred labels may run off screen; moved ones stay on it.
+          if (d != Offset.zero && !visible.contains(r.topLeft)) continue;
+          if (d != Offset.zero && !visible.contains(r.bottomRight)) continue;
+          if (place(r)) {
+            spot = r;
+            break;
+          }
+        }
+        if (spot != null) {
+          label.paint(canvas, spot.topLeft);
+          break;
+        }
+      }
     }
   }
 
@@ -220,8 +258,16 @@ class CampusOverviewPainter extends CustomPainter {
       ),
     ),
     textDirection: TextDirection.ltr,
-    maxLines: 1,
+    textAlign: TextAlign.center,
+    maxLines: 2,
   )..layout();
+
+  /// A name with another in brackets stacks them, so 格致大樓（電資學院）
+  /// takes the width of one and leaves room for its neighbours' names.
+  static String mapName(String name) => name.replaceAllMapped(
+    RegExp(r'\s*[（(]([^）)]+)[）)]\s*$'),
+    (m) => '\n${m[1]}',
+  );
 
   @override
   bool shouldRepaint(CampusOverviewPainter old) =>

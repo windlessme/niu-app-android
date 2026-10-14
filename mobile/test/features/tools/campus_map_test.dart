@@ -32,6 +32,8 @@ void main() {
     expect(overview.searchBuildings('體育館'), isNotEmpty);
     // 司令台 stays on the map and in search, out of the list.
     expect(overview.searchBuildings('司令台').single.listed, isFalse);
+    expect(CampusOverviewPainter.mapName('格致大樓（電資學院）'), '格致大樓\n電資學院');
+    expect(CampusOverviewPainter.mapName('教穡大樓'), '教穡大樓');
     final frame = OverviewFrame(overview, const Size(390, 700));
     final at = frame.toCanvas(jiaose.centre);
     expect((frame.toMetres(at) - jiaose.centre).distance, lessThan(1e-6));
