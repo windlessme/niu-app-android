@@ -88,6 +88,41 @@ def west_rooms(split=18.6):
     return [rect("room", 0, MID[0], WEST_ROOMS, split), rect("room", 0, split, WEST_ROOMS, MID[1])]
 
 
+def tag(spaces, x, y, code=None, name=None):
+    """Names the room (or toilet) whose rectangle or polygon holds (x, y)."""
+    def inside(space):
+        if "rect" in space:
+            rx, ry, rw, rh = space["rect"]
+            return rx <= x <= rx + rw and ry <= y <= ry + rh
+        pts = space["polygon"]
+        hit = False
+        for (ax, ay), (bx, by) in zip(pts, pts[1:] + pts[:1]):
+            if (ay > y) != (by > y) and x < ax + (y - ay) * (bx - ax) / (by - ay):
+                hit = not hit
+        return hit
+
+    found = [s for s in spaces if s["kind"] in ("room", "restroom") and inside(s)]
+    assert len(found) == 1, (x, y, code, name, len(found))
+    if code:
+        found[0]["code"] = code
+    if name:
+        found[0]["name"] = name
+    return found[0]
+
+
+def toilets(spaces):
+    """The east blocks of every typical floor: women's north, men's south."""
+    tag(spaces, 44, 2, name="女廁")
+    tag(spaces, 44, 35, name="男廁")
+    return spaces
+
+
+def labelled(spaces, labels):
+    for x, y, code, name in labels:
+        tag(spaces, x, y, code and f"教{code}", name)
+    return spaces
+
+
 # 教務處「教穡大樓教室編號及位置圖」(2024/05/23): north row runs n10…n06 from
 # west to east, south row n01…n05, and 3F/4F add n11 (north) and n12 (south)
 # in the west band. Notes are the office's own remarks.
@@ -329,6 +364,73 @@ def floor_8f():
     }
 
 
+# 5F and 7F follow the names on each floor's sign; 6F and 8F carry only the
+# numbers the student marked on the photos, plus one office renamed since.
+TOP_Y, BOTTOM_Y = 3.6, 33.6
+
+
+def centres(edges):
+    return [(a + b) / 2 for a, b in zip(edges, edges[1:])]
+
+
+LABELS = {
+    "5F": [
+        *[(x, TOP_Y, code, name) for x, (code, name) in zip(
+            centres([0, 8.4, 16.3, 21.5, 28.0, 33.0, 37.5, EAST]),
+            [("517", "有機分析實驗室"), ("516", "機能材料實驗室"), ("515西", "綠色複材及能源實驗室"),
+             ("515東", "薄膜實驗室"), ("514西", "綠色奈米複合材料加工實驗室"),
+             ("514中", "研究生研討室"), ("514東", "材料製備室")])],
+        (4, 14, "513", "生質能源與生化工程實驗室"),
+        (4, 22, "508", "高效率馬達量測實驗室"),
+        (18.8, 13, "512", "研討室"),
+        (18.8, 23.5, "507", "加工室"),
+        (27.7, 12.4, "511北", "精密儀器室"),
+        (36, 12.4, "510", "精密儀器室"),
+        (27.7, 16.6, "511南", "模擬及性質分析實驗室"),
+        (36, 16.6, "509", "奈米過濾實驗室"),
+        (27.7, 22.7, "506", "行動裝置實驗室"),
+        (36, 20.2, "505", "電磁分析實驗室（一）"),
+        (36, 24.5, "504", "電磁分析實驗室（二）"),
+        (8, BOTTOM_Y, "501", "先進動力與能源實驗室"),
+        (22, BOTTOM_Y, "502", "機電整合實驗室"),
+        (34, BOTTOM_Y, "503", "電學實驗室"),
+    ],
+    "6F": [
+        (21.8, TOP_Y, "622", None), (30.7, TOP_Y, "621", None),
+        (4, 14, "620", None),
+        (25.6, 12.4, "618", None), (35.9, 12.4, "616", None), (35.9, 16.6, "615", None),
+        (27.6, 20, "612", None), (35.9, 20.2, "610", None), (35.9, 24.5, "609", None),
+        (2.2, BOTTOM_Y, "606", None), (10.3, BOTTOM_Y, "605", None), (14.3, BOTTOM_Y, "604", None),
+        (26.3, 35, "602", None), (30.8, 31.8, "601", None),
+    ],
+    "7F": [
+        *[(x, TOP_Y, code, None) for x, code in zip(
+            centres([0, 4.2, 8.3, 12.2, 16.1, 20.0, 23.8, 27.75, 31.7, 35.7, EAST]),
+            ["712-1", "712-2", "712-3", "712-4", "713-1", "713-2", "713-3", "713-4", "714-1", "714-2"])],
+        *[(x, BOTTOM_Y, code, None) for x, code in zip(
+            centres([0, 4.5, 8.3, 12.25, 16.2, 20.1, 24.0, 27.9, 32.3]),
+            ["701-1", "701-2", "701-3", "701-4", "702-1", "702-2", "702-3", "702-4"])],
+        (36, BOTTOM_Y, "703", "數據管理實驗室"),
+        (4, 14, "711", "研究生研究室"),
+        (4, 22.5, "710", "經管系辦公室"),
+        (18.7, 12, "709", "機房"),
+        (18.7, 15, "709-1", "自媒體影音行銷實驗室"),
+        (18.7, 24, "708", "數據實驗室"),
+        (27.6, 16, "707", None),
+        (35.9, 16, "705", "商業營運模擬中心"),
+        (27.6, 25, "706", None),
+        (35.9, 25, "704", "經管系系學會"),
+    ],
+    "8F": [
+        (13.2, 7.2, "801", None),
+        (19.5, 7.2, None, "智慧休閒農業進修學士學位學程辦公室"),
+        (3, 17, "802", None),
+        (6, 24, "803", None),
+        (13, 29.8, "804", None),
+    ],
+}
+
+
 def main():
     building = {
         "id": "jiaose",
@@ -336,6 +438,16 @@ def main():
         "unit": "m",
         "floors": [f() for f in (floor_1f, floor_2f, floor_3f, floor_4f, floor_5f, floor_6f, floor_7f, floor_8f)],
     }
+    for floor in building["floors"]:
+        spaces = floor["spaces"]
+        if floor["id"] == "8F":
+            tag(spaces, 18, 29.8, name="男廁")
+            tag(spaces, 21.2, 29.8, name="女廁")
+        else:
+            toilets(spaces)
+        if floor["id"] == "1F":
+            tag(spaces, 35.6, 25.9, name="廁所")
+        labelled(spaces, LABELS.get(floor["id"], []))
     text = json.dumps(building, ensure_ascii=False, separators=(",", ":")) + "\n"
     root = Path(__file__).resolve().parents[3]
     # app-content is the copy iOS and others read; the app bundles its own.

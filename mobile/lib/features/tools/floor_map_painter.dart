@@ -101,24 +101,35 @@ class FloorMapPainter extends CustomPainter {
     }
     canvas.restore();
 
-    for (final s in floor.rooms) {
-      final label = s.code;
+    for (final s in floor.spaces) {
+      if (s.kind != MapSpaceKind.room && s.kind != MapSpaceKind.restroom) {
+        continue;
+      }
+      final label = s.label;
       if (label == null) continue;
       final box = s.bounds;
       final width = (frame.rotated ? box.height : box.width) * frame.scale;
+      final height = (frame.rotated ? box.width : box.height) * frame.scale;
       final on = identical(s, selected);
       final painter = TextPainter(
         text: TextSpan(
           text: label,
           style: textStyle.copyWith(
-            color: on ? colors.onAccent : colors.ink,
-            fontWeight: on ? FontWeight.w700 : FontWeight.w600,
+            color: on
+                ? colors.onAccent
+                : s.isRoom
+                ? colors.ink
+                : colors.inkSecondary,
+            fontWeight: on || s.code != null
+                ? FontWeight.w600
+                : FontWeight.w400,
           ),
         ),
         textDirection: TextDirection.ltr,
         maxLines: 1,
       )..layout();
-      if (painter.width > width - 4) continue;
+      // Long names stay in the drawer; labels never spill over walls.
+      if (painter.width > width - 4 || painter.height > height - 2) continue;
       painter.paint(
         canvas,
         frame.toCanvas(box.center) -

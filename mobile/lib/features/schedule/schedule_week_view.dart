@@ -276,7 +276,7 @@ class ScheduleWeekView extends StatelessWidget {
                       GoRouter.of(context).push(
                         campusMapRoute(
                           place.building.id,
-                          room: place.space.code,
+                          room: place.space.label,
                         ),
                       );
                     },
