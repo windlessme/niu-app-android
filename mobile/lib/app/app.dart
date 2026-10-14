@@ -38,6 +38,8 @@ import '../features/notifications/campus_notifications.dart';
 import '../features/schedule/schedule_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/postal/postal_screen.dart';
+import '../features/tools/floor_plan_screen.dart';
+import '../features/tools/tools_screen.dart';
 import '../features/registration/registration_screen.dart';
 import '../features/leave/leave_screen.dart';
 import '../core/demo/demo_account.dart';
@@ -149,6 +151,12 @@ class _NiuAppState extends State<NiuApp> {
       ),
       GoRoute(path: '/calendar', builder: (_, _) => const CalendarScreen()),
       GoRoute(path: '/postal', builder: (_, _) => const PostalScreen()),
+      GoRoute(path: '/tools', builder: (_, _) => const ToolsScreen()),
+      GoRoute(
+        path: '/tools/floor-plans',
+        builder: (_, state) =>
+            FloorPlanScreen(room: state.uri.queryParameters['room']),
+      ),
       GoRoute(
         path: '/leave',
         builder: (_, _) => const AuthGate(
