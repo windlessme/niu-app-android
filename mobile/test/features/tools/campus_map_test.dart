@@ -139,6 +139,45 @@ void main() {
     expect(find.text('1 樓・學生休息室'), findsOneWidget);
   });
 
+  testWidgets('a room opened as the keyboard closes is still centred', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390 * 3, 844 * 3);
+    tester.view.devicePixelRatio = 3;
+    tester.view.padding = const FakeViewPadding(top: 141, bottom: 102);
+    tester.view.viewPadding = const FakeViewPadding(top: 141, bottom: 102);
+    tester.view.viewInsets = const FakeViewPadding(bottom: 900);
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      app(
+        BuildingMapScreen(
+          buildingId: 'jiaose',
+          room: '教511南',
+          map: SynchronousFuture(map),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    tester.view.viewInsets = FakeViewPadding.zero;
+    await tester.pumpAndSettle();
+
+    final b = map.building('jiaose')!;
+    const size = Size(390, 844);
+    const padding = EdgeInsets.fromLTRB(16, 47 + 8 + 64, 16, 112 + 34 + 16);
+    final frame = FloorFrame(b, size, padding: padding);
+    final room = map.locate('教511南')!.space;
+    final zoom = tester
+        .widget<InteractiveViewer>(find.byType(InteractiveViewer))
+        .transformationController!
+        .value;
+    final onScreen = MatrixUtils.transformPoint(
+      zoom,
+      frame.toCanvas(room.bounds.center),
+    );
+    final centre = padding.deflateRect(Offset.zero & size).center;
+    expect((onScreen - centre).distance, lessThan(1));
+  });
+
   testWidgets('searching a room lists where it is', (tester) async {
     await tester.pumpWidget(app(CampusMapScreen(map: SynchronousFuture(map))));
     await tester.pumpAndSettle();

@@ -16,8 +16,11 @@ class _CampusMapScreenState extends State<CampusMapScreen> {
   late final Future<CampusMap> map = widget.map ?? CampusMap.load();
   String query = '';
 
-  void open(MapBuilding building, [MapSpace? room]) =>
-      context.push(campusMapRoute(building.id, room: room?.label));
+  void open(MapBuilding building, [MapSpace? room]) {
+    // The map aims at the room as it opens; let the keyboard go first.
+    FocusManager.instance.primaryFocus?.unfocus();
+    context.push(campusMapRoute(building.id, room: room?.label));
+  }
 
   @override
   Widget build(BuildContext context) => FutureBuilder<CampusMap>(
