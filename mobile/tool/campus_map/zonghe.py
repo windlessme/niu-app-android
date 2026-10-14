@@ -59,6 +59,71 @@ def outline(connector=False):
     ]
 
 
+def traced(spaces, cell=0.2, close=0.6):
+    """The outline of what the spaces cover: the signs' white margins are
+    paper, not floor. Gaps narrower than `close` between neighbouring
+    spaces are bridged; separate wings are joined by a seam of no width."""
+    import math
+    xs = [v for sp in spaces for v in (sp["rect"][0], sp["rect"][0] + sp["rect"][2])]
+    ys = [v for sp in spaces for v in (sp["rect"][1], sp["rect"][1] + sp["rect"][3])]
+    x0, y0 = min(xs) - 1, min(ys) - 1
+    nx, ny = int((max(xs) + 1 - x0) / cell) + 1, int((max(ys) + 1 - y0) / cell) + 1
+    grid = [[False] * nx for _ in range(ny)]
+    for sp in spaces:
+        x, y, w, h = sp["rect"]
+        for j in range(int((y - y0) / cell + .5), int((y + h - y0) / cell + .5)):
+            for i in range(int((x - x0) / cell + .5), int((x + w - x0) / cell + .5)):
+                grid[j][i] = True
+    r = math.ceil(close / cell / 2)
+
+    def morph(g, grow):
+        out = [[False] * nx for _ in range(ny)]
+        for j in range(ny):
+            for i in range(nx):
+                window = (g[jj][ii] for jj in range(max(0, j - r), min(ny, j + r + 1))
+                          for ii in range(max(0, i - r), min(nx, i + r + 1)))
+                out[j][i] = any(window) if grow else all(window)
+        return out
+
+    grid = morph(morph(grid, True), False)
+    # Boundary edges, each running with the covered cell on its left.
+    edges = {}
+    for j in range(ny):
+        for i in range(nx):
+            if not grid[j][i]:
+                continue
+            if j == 0 or not grid[j - 1][i]:
+                edges[(i + 1, j)] = (i, j)
+            if j == ny - 1 or not grid[j + 1][i]:
+                edges[(i, j + 1)] = (i + 1, j + 1)
+            if i == 0 or not grid[j][i - 1]:
+                edges[(i, j)] = (i, j + 1)
+            if i == nx - 1 or not grid[j][i + 1]:
+                edges[(i + 1, j + 1)] = (i + 1, j)
+    loops = []
+    while edges:
+        start, nxt = edges.popitem()
+        loop = [start]
+        while nxt != start:
+            loop.append(nxt)
+            nxt = edges.pop(nxt)
+        # Keep corners only.
+        pts = [p for k, p in enumerate(loop)
+               if (p[0] - loop[k - 1][0], p[1] - loop[k - 1][1]) !=
+               (loop[(k + 1) % len(loop)][0] - p[0], loop[(k + 1) % len(loop)][1] - p[1])]
+        area = sum(a[0] * b[1] - b[0] * a[1] for a, b in zip(pts, pts[1:] + pts[:1]))
+        if area < 0:  # outer rings run this way round; holes the other
+            loops.append([[round(x0 + i * cell, 2), round(y0 + j * cell, 2)] for i, j in pts])
+    loops.sort(key=lambda l: min(p[1] for p in l))
+    shape = loops[0]
+    for ring in loops[1:]:
+        # Seam from the nearest corners.
+        a, b = min(((a, b) for a in range(len(shape)) for b in range(len(ring))),
+                   key=lambda ab: (shape[ab[0]][0] - ring[ab[1]][0]) ** 2 + (shape[ab[0]][1] - ring[ab[1]][1]) ** 2)
+        shape = shape[:a + 1] + ring[b:] + ring[:b + 1] + shape[a:]
+    return shape
+
+
 def to_admin(y):
     return {"to": "xingzheng", "name": "行政大樓", "at": [L, y], "toward": [1, 0]}
 
@@ -120,8 +185,17 @@ def floor_2f():
         n.room((1450, 1010, 1645, 1175), 206),
         n.rect("stairs", (1645, 1010, 1745, 1180)),
     ]
-    return {"id": "2F", "outline": outline(), "spaces": spaces,
-            "links": [to_admin(41.5), to_admin(12.0)]}
+    # East of the classrooms only the corridors carry on to 行政大樓.
+    se, ne = s.x(905), n.x(780)
+    sc, nc = sorted((s.y(515), s.y(590))), sorted((n.y(950), n.y(1010)))
+    shape = [
+        [0, NORTH[0]], [ne, NORTH[0]], [ne, nc[0]], [L, nc[0]], [L, nc[1]], [ne, nc[1]], [ne, NORTH[1]],
+        [LINK[0], NORTH[1]], [LINK[0], SOUTH[0]],
+        [se, SOUTH[0]], [se, sc[0]], [L, sc[0]], [L, sc[1]], [se, sc[1]], [se, SOUTH[1]],
+        [0, SOUTH[1]], [0, SOUTH[0]], [LINK[0], SOUTH[0]], [LINK[0], NORTH[1]], [0, NORTH[1]],
+    ]
+    return {"id": "2F", "outline": shape, "spaces": spaces,
+            "links": [to_admin(round(sum(sc) / 2, 2)), to_admin(round(sum(nc) / 2, 2))]}
 
 
 def floor_3f():
@@ -180,12 +254,17 @@ def floor_4f():
     return {"id": "4F", "outline": outline(), "spaces": spaces}
 
 
+def tight(plan):
+    plan["outline"] = traced(plan["spaces"])
+    return plan
+
+
 def main():
     building = {
         "id": "zonghe",
         "name": "綜合教學大樓",
         "unit": "m",
-        "floors": [f() for f in (floor_1f, floor_2f, floor_3f, floor_4f)],
+        "floors": [tight(f()) for f in (floor_1f, floor_2f, floor_3f, floor_4f)],
     }
     text = json.dumps(building, ensure_ascii=False, separators=(",", ":")) + "\n"
     root = Path(__file__).resolve().parents[3]
