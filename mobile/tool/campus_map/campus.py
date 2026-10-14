@@ -25,6 +25,10 @@ MY = 110_574
 # know 格致大樓 as 電資學院.
 NAMES = {256119614: "格致大樓（電資學院）"}
 
+# Structures that will never have floor plans: on the map and in search,
+# not in the building list.
+UNLISTED = {"司令台", "看台", "宜蘭大學警衛室", "資源回收屋"}
+
 # Buildings with floor plans, by OSM way id.
 PLANS = {256119621: "jiaose", 256119616: "gongxue", 256119615: "shixi", 547390740: "dianzi", 256119618: "shihua"}
 
@@ -152,6 +156,8 @@ def main():
                 building["name"] = NAMES.get(way["id"], tags.get("name"))
             if tags.get("building:levels", "").isdigit():
                 building["levels"] = int(tags["building:levels"])
+            if building.get("name") in UNLISTED:
+                building["listed"] = False
             if way["id"] in PLANS:
                 building["plan"] = PLANS[way["id"]]
             out["buildings"].append(building)

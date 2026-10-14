@@ -12,6 +12,7 @@ class CampusBuilding {
     this.name,
     this.levels,
     this.plan,
+    this.listed = true,
   });
 
   factory CampusBuilding.fromJson(Map<String, dynamic> json) => CampusBuilding(
@@ -21,6 +22,7 @@ class CampusBuilding {
     name: json['name'] as String?,
     levels: json['levels'] as int?,
     plan: json['plan'] as String?,
+    listed: json['listed'] as bool? ?? true,
   );
 
   final int id;
@@ -29,6 +31,10 @@ class CampusBuilding {
   final String? name;
   final int? levels;
   final String? plan;
+
+  /// False for structures like 司令台 that stay on the map but not in the
+  /// building list.
+  final bool listed;
 
   late final Path path = Path()..addPolygon(polygon, true);
   late final Rect bounds = path.getBounds();

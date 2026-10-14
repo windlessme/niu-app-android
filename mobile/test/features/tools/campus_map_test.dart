@@ -30,6 +30,8 @@ void main() {
     // 復興國中 next door is not ours.
     expect(overview.searchBuildings('群育館'), isEmpty);
     expect(overview.searchBuildings('體育館'), isNotEmpty);
+    // 司令台 stays on the map and in search, out of the list.
+    expect(overview.searchBuildings('司令台').single.listed, isFalse);
     final frame = OverviewFrame(overview, const Size(390, 700));
     final at = frame.toCanvas(jiaose.centre);
     expect((frame.toMetres(at) - jiaose.centre).distance, lessThan(1e-6));
@@ -348,6 +350,7 @@ void main() {
       isTrue,
     );
     await tester.scrollUntilVisible(find.text('綜合教學大樓'), 200);
+    expect(find.text('司令台'), findsNothing);
     await Scrollable.ensureVisible(
       tester.element(find.text('綜合教學大樓')),
       alignment: .5,
