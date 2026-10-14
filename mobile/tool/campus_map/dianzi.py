@@ -109,7 +109,7 @@ def floor_2f():
     return {"id": "2F", "outline": outline, "spaces": spaces, "links": link}
 
 
-def upper(level, rooms_n, rooms_s, toilet_rows, east_stairs, south):
+def upper(level, rooms_n, rooms_s, toilet_rows, east_stairs, south, walkway=False):
     """3F and 4F: rooms either side of a corridor along the building, the
     lift lobby on the south side."""
     xs = [44.0, 37.1, 31.5, 26.0, 21.5, 15.5, 9.3, 3.0]  # room walls, east to west; 26–21.5 is the lift hall
@@ -119,9 +119,6 @@ def upper(level, rooms_n, rooms_s, toilet_rows, east_stairs, south):
         rect("corridor", 21.5, 0, 26.0, 4.6),
         rect("corridor", 21.5, 6.6, 26.0, 11.3),
         rect("corridor", 12.0, 11.3, 26.0, 14.3),
-        # The walkway outside 301, 303 and 305 (401, 403, 405) from the
-        # toilets to the lift hall.
-        rect("corridor", 26.0, 11.3, 47.6, 12.9),
         rect("elevator", 22.6, 14.3, 25.5, 16.6),
         rect("stairs", 12.0, 14.3, 20.8, 16.0),
         rect("stairs", 44.0, east_stairs[0], 47.6, east_stairs[1]),
@@ -132,7 +129,12 @@ def upper(level, rooms_n, rooms_s, toilet_rows, east_stairs, south):
         spaces.append(room(x0, 0, x1, 4.6, *label))
     for (x1, x0), label in zip(north, rooms_s):
         spaces.append(room(x0, 6.6, x1, 11.3, *label))
-    outline = [[3.0, 0], [44.0, 0], [44.0, 1.9], [47.6, 1.9], [47.6, 12.9], [26.0, 12.9],
+    edge = 12.9 if walkway else south
+    if walkway:
+        # 3F only: the walkway outside 301, 303 and 305 from the toilets to
+        # the lift hall.
+        spaces.append(rect("corridor", 26.0, 11.3, 47.6, edge))
+    outline = [[3.0, 0], [44.0, 0], [44.0, 1.9], [47.6, 1.9], [47.6, edge], [26.0, edge],
                [26.0, 16.6], [12.0, 16.6], [12.0, 11.3], [3.0, 11.3]]
     return {"id": level, "outline": outline, "spaces": spaces}
 
@@ -147,6 +149,7 @@ def floor_3f():
         ((1.9, 4.0), (4.0, 6.3), (6.3, 8.3)),
         (8.8, 11.3),
         11.3,
+        walkway=True,
     )
 
 
