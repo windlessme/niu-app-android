@@ -114,6 +114,9 @@ class FloorMapPainter extends CustomPainter {
         if (s.kind == kind) _space(canvas, s, px);
       }
     }
+    for (final line in floor.closed) {
+      _closed(canvas, line, px);
+    }
     canvas.restore();
 
     final z = zoom?.value.getMaxScaleOnAxis() ?? 1;
@@ -268,6 +271,36 @@ class FloorMapPainter extends CustomPainter {
         ..close(),
       Paint()..color = ink,
     );
+  }
+
+  /// A door no one may pass: a red bar across it, crossed out halfway.
+  void _closed(Canvas canvas, List<Offset> line, double px) {
+    if (line.length < 2) return;
+    final paint = Paint()
+      ..color = colors.error
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5 * px
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    canvas.drawPath(Path()..addPolygon(line, false), paint);
+    var left = 0.0;
+    for (var i = 1; i < line.length; i++) {
+      left += (line[i] - line[i - 1]).distance;
+    }
+    left /= 2;
+    var mid = line.last;
+    for (var i = 1; i < line.length; i++) {
+      final step = (line[i] - line[i - 1]).distance;
+      if (left <= step && step > 0) {
+        mid = Offset.lerp(line[i - 1], line[i], left / step)!;
+        break;
+      }
+      left -= step;
+    }
+    final r = 5 * px;
+    paint.strokeWidth = 2 * px;
+    canvas.drawLine(mid + Offset(-r, -r), mid + Offset(r, r), paint);
+    canvas.drawLine(mid + Offset(r, -r), mid + Offset(-r, r), paint);
   }
 
   void _space(Canvas canvas, MapSpace s, double px) {

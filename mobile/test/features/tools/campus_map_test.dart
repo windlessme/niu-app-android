@@ -184,14 +184,19 @@ void main() {
   });
 
   test('圖書資訊中心 and 實驗動物中心 have plans', () {
-    expect(map.building('tuzi')!.levels, '地上 6 層');
+    final tuzi = map.building('tuzi')!;
+    expect(tuzi.levels, '地上 7 層，地下 1 層');
+    // The doors the user crossed out on the signs.
+    expect(tuzi.floor('2F')!.closed, hasLength(2));
+    expect(tuzi.floor('7F')!.closed, isEmpty);
     expect(
       map.search('523').where((r) => r.building.id == 'tuzi').single.space.name,
       '523 討論室',
     );
     expect(map.search('電腦教室一').single.space.code, isNull);
     expect(map.search('電算中心').map((r) => r.space.label), contains('電算中心辦公室'));
-    expect(map.search('西文圖書區'), hasLength(2));
+    expect(map.search('西文圖書區'), hasLength(1));
+    expect(map.search('企業培育室').map((r) => r.floor.id).toSet(), {'B1'});
     expect(map.building('dongwu')!.levels, '地上 2 層');
     expect(overview.withPlan('tuzi')!.name, '圖書資訊中心（圖書館）');
     expect(overview.searchBuildings('圖書館').single.plan, 'tuzi');

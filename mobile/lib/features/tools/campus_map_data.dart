@@ -123,6 +123,7 @@ class MapFloor {
     required this.spaces,
     this.rings = const [],
     this.links = const [],
+    this.closed = const [],
     this.unit,
     this.aliases = const [],
   });
@@ -142,6 +143,10 @@ class MapFloor {
       for (final l in json['links'] as List? ?? const [])
         MapLink.fromJson(l as Map<String, dynamic>),
     ],
+    closed: [
+      for (final c in json['closed'] as List? ?? const [])
+        [for (final p in c as List) _offset(p)],
+    ],
     unit: json['unit'] as String?,
     aliases: [
       for (final a in json['aliases'] as List? ?? const []) a as String,
@@ -158,6 +163,9 @@ class MapFloor {
   List<List<Offset>> get outlines => rings.isEmpty ? [outline] : rings;
   final List<MapSpace> spaces;
   final List<MapLink> links;
+
+  /// Doors no one may pass, each a line across the doorway in metres.
+  final List<List<Offset>> closed;
 
   /// Who the floor belongs to, e.g. 環境工程學系, and what people call it.
   final String? unit;
