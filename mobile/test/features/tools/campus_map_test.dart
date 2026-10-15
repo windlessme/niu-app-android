@@ -186,9 +186,21 @@ void main() {
   test('圖書資訊中心 and 實驗動物中心 have plans', () {
     final tuzi = map.building('tuzi')!;
     expect(tuzi.levels, '地上 7 層，地下 1 層');
-    // The doors the user crossed out on the signs.
-    expect(tuzi.floor('2F')!.closed, hasLength(2));
-    expect(tuzi.floor('7F')!.closed, isEmpty);
+    // The north-west wing only its own entrance on 1F reaches.
+    final first = tuzi.floor('1F')!;
+    expect(first.zones.map((z) => z.name), ['獨立區域', '行政區域']);
+    expect(first.zones.first.entrance!.text, '獨立入口');
+    final fourth = tuzi.floor('4F')!;
+    expect(
+      fourth
+          .zoneOf(fourth.rooms.firstWhere((r) => r.name == '417 館長室'))!
+          .description,
+      '獨立區域，由 1 樓獨立入口進出',
+    );
+    expect(
+      fourth.zoneOf(fourth.rooms.firstWhere((r) => r.name == '410 工作準備室')),
+      isNull,
+    );
     expect(
       map.search('523').where((r) => r.building.id == 'tuzi').single.space.name,
       '523 討論室',

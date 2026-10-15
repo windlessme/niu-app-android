@@ -112,6 +112,15 @@ class FloorMapPainter extends CustomPainter {
         ..color = colors.hairline,
     );
 
+    // A zone's floor is shaded, so its corridors don't read as part of
+    // the rest of the floor.
+    for (final zone in floor.zones) {
+      canvas.drawPath(
+        zone.path,
+        Paint()..color = colors.inkTertiary.withValues(alpha: .1),
+      );
+    }
+
     const order = [
       MapSpaceKind.terrace,
       MapSpaceKind.corridor,
@@ -126,14 +135,17 @@ class FloorMapPainter extends CustomPainter {
         if (s.kind == kind) _space(canvas, s, px);
       }
     }
-    for (final line in floor.closed) {
-      _closed(canvas, line, px);
+    for (final zone in floor.zones) {
+      _dashed(canvas, zone.path, px);
     }
     canvas.restore();
 
     final z = zoom?.value.getMaxScaleOnAxis() ?? 1;
     final base = (textStyle.fontSize ?? 11) / z;
-    for (final link in floor.links) {
+    for (final link in [
+      ...floor.links,
+      for (final zone in floor.zones) ?zone.entrance,
+    ]) {
       _link(canvas, frame, link, z);
     }
     for (final s in floor.spaces) {
@@ -207,6 +219,9 @@ class FloorMapPainter extends CustomPainter {
         frame.toCanvas(box.center) - Offset(shown.width / 2, shown.height / 2),
       );
     }
+    for (final zone in floor.zones) {
+      _zoneTag(canvas, frame, zone, z);
+    }
   }
 
   /// A pill reading 往… with an arrow towards the other building.
@@ -219,7 +234,7 @@ class FloorMapPainter extends CustomPainter {
     // A link through a north or south wall reads top to bottom, one
     // character a line, so it fits the narrow walkway it stands in.
     final upright = d.dy.abs() > d.dx.abs();
-    final label = '往${link.name}';
+    final label = link.text;
     final text = TextPainter(
       text: TextSpan(
         text: upright ? label.characters.join('\n') : label,
@@ -285,34 +300,45 @@ class FloorMapPainter extends CustomPainter {
     );
   }
 
-  /// A door no one may pass: a red bar across it, crossed out halfway.
-  void _closed(Canvas canvas, List<Offset> line, double px) {
-    if (line.length < 2) return;
+  /// A zone's edge: a dashed line, so it reads as a boundary, not a wall.
+  void _dashed(Canvas canvas, Path path, double px) {
     final paint = Paint()
-      ..color = colors.error
+      ..color = colors.inkSecondary
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.5 * px
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-    canvas.drawPath(Path()..addPolygon(line, false), paint);
-    var left = 0.0;
-    for (var i = 1; i < line.length; i++) {
-      left += (line[i] - line[i - 1]).distance;
-    }
-    left /= 2;
-    var mid = line.last;
-    for (var i = 1; i < line.length; i++) {
-      final step = (line[i] - line[i - 1]).distance;
-      if (left <= step && step > 0) {
-        mid = Offset.lerp(line[i - 1], line[i], left / step)!;
-        break;
+      ..strokeWidth = 1.5 * px;
+    for (final metric in path.computeMetrics()) {
+      for (var d = 0.0; d < metric.length; d += 10 * px) {
+        canvas.drawPath(metric.extractPath(d, d + 6 * px), paint);
       }
-      left -= step;
     }
-    final r = 5 * px;
-    paint.strokeWidth = 2 * px;
-    canvas.drawLine(mid + Offset(-r, -r), mid + Offset(r, r), paint);
-    canvas.drawLine(mid + Offset(r, -r), mid + Offset(-r, r), paint);
+  }
+
+  /// The zone's name in a small tag, in its largest open part clear of
+  /// rooms.
+  void _zoneTag(Canvas canvas, FloorFrame frame, MapZone zone, double z) {
+    final text = TextPainter(
+      text: TextSpan(
+        text: zone.name,
+        style: textStyle.copyWith(
+          fontSize: (textStyle.fontSize ?? 11) / z,
+          fontWeight: FontWeight.w600,
+          color: colors.inkSecondary,
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    final box = zone.labelBoxAmong(floor.spaces);
+    final pad = 4 / z;
+    final pill = Rect.fromCenter(
+      center: frame.toCanvas(box.center),
+      width: text.width + pad * 3,
+      height: text.height + pad,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(pill, Radius.circular(pill.height / 2)),
+      Paint()..color = colors.surface.withValues(alpha: .9),
+    );
+    text.paint(canvas, pill.center - Offset(text.width / 2, text.height / 2));
   }
 
   void _space(Canvas canvas, MapSpace s, double px) {
