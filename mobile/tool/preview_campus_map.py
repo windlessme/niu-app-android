@@ -87,7 +87,7 @@ def inside(poly, x, y):
     return hit
 
 
-def label_box(space):
+def label_box(space, holes=()):
     """The largest upright rectangle inside a room, where the apps put its
     label (an L-shaped room's bounding box centre may be outside it)."""
     pts = points(space)
@@ -100,7 +100,9 @@ def label_box(space):
     heights, best, area = [0] * n, (x0, y0, x1, y1), 0
     for row in range(n):
         for col in range(n):
-            heights[col] = heights[col] + 1 if inside(pts, x0 + (col + .5) * cw, y0 + (row + .5) * ch) else 0
+            x, y = x0 + (col + .5) * cw, y0 + (row + .5) * ch
+            free = inside(pts, x, y) and not any(inside(h, x, y) for h in holes)
+            heights[col] = heights[col] + 1 if free else 0
         for col in range(n):
             h = heights[col]
             for end in range(col, n):
@@ -132,6 +134,17 @@ def label(d, floor, pt):
         for f, l in lines:
             d.text(((a + c) / 2, y), l, font=f, fill=(40, 52, 80), anchor="ma")
             y += f.size * 1.15
+    for zone in floor.get("zones", []):
+        rooms = [points(s) for s in floor["spaces"] if s["kind"] != "corridor"]
+        x0, y0, x1, y1 = label_box({"polygon": zone["polygon"]}, rooms)
+        f = ImageFont.truetype(FONT, 12 * SS)
+        d.text(pt((x0 + x1) / 2, (y0 + y1) / 2), zone["name"], font=f, fill=ZONE_EDGE, anchor="mm")
+        if "entrance" in zone:
+            x, y = pt(*zone["entrance"]["at"])
+            dx, _ = zone["entrance"]["toward"]
+            # The sign stands outside, pointing in.
+            d.text((x - dx * 8 * SS, y), "獨立入口 →" if dx > 0 else "← 獨立入口", font=f, fill=(180, 60, 40),
+                   anchor="rm" if dx > 0 else "lm")
     for link in floor.get("links", []):
         x, y = pt(*link["at"])
         dx, dy = link["toward"]
@@ -140,28 +153,21 @@ def label(d, floor, pt):
                anchor="lm" if dx > 0 else "rm")
 
 
-CLOSED = (214, 69, 65)
+ZONE_FILL = (228, 231, 238)
+ZONE_EDGE = (110, 118, 135)
 
 
-def midpoint(line):
-    """The point halfway along a polyline."""
-    steps = [((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2) ** .5 for a, b in zip(line, line[1:])]
-    left = sum(steps) / 2
-    for (a, b), step in zip(zip(line, line[1:]), steps):
-        if left <= step and step:
-            t = left / step
-            return a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t
-        left -= step
-    return tuple(line[-1])
-
-
-def draw_closed(d, line, pt):
-    """A door no one may pass: a red bar across it, crossed out."""
-    d.line([pt(*p) for p in line], fill=CLOSED, width=4 * SS, joint="curve")
-    x, y = midpoint(line)
-    r = 0.6
-    d.line([pt(x - r, y - r), pt(x + r, y + r)], fill=CLOSED, width=3 * SS)
-    d.line([pt(x + r, y - r), pt(x - r, y + r)], fill=CLOSED, width=3 * SS)
+def dashed(d, ring, pt):
+    """A zone's edge: dashes, so it reads as a boundary, not a wall."""
+    for a, b in zip(ring, ring[1:] + ring[:1]):
+        length = ((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2) ** .5
+        t = 0.0
+        while t < length:
+            u = min(t + .6, length)
+            p = (a[0] + (b[0] - a[0]) * t / length, a[1] + (b[1] - a[1]) * t / length)
+            q = (a[0] + (b[0] - a[0]) * u / length, a[1] + (b[1] - a[1]) * u / length)
+            d.line([pt(*p), pt(*q)], fill=ZONE_EDGE, width=2 * SS)
+            t += 1.0
 
 
 def render(floor, out, portrait, labels=False):
@@ -187,6 +193,9 @@ def render(floor, out, portrait, labels=False):
     d = ImageDraw.Draw(img)
     for outline in outlines:
         d.polygon(outline, fill=SLAB, outline=SLAB_EDGE, width=2 * SS)
+    # A zone's floor is shaded apart from the rest.
+    for zone in floor.get("zones", []):
+        d.polygon([pt(*p) for p in zone["polygon"]], fill=ZONE_FILL)
 
     for kind in ORDER:
         fill, stroke = STYLE[kind]
@@ -217,8 +226,8 @@ def render(floor, out, portrait, labels=False):
                 m = 0.4 if kind == "elevator" else 0.8
                 d.line([pt(x0 + m, y0 + m), pt(x1 - m, y1 - m)], fill=stroke, width=SS)
                 d.line([pt(x1 - m, y0 + m), pt(x0 + m, y1 - m)], fill=stroke, width=SS)
-    for line in floor.get("closed", []):
-        draw_closed(d, line, pt)
+    for zone in floor.get("zones", []):
+        dashed(d, [tuple(p) for p in zone["polygon"]], pt)
     if labels:
         label(d, floor, pt)
         f = ImageFont.truetype(FONT, 20 * SS)

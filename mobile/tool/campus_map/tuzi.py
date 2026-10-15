@@ -9,8 +9,12 @@ on the left, 7F west up and north on the right. The north-west wall is the
 slanted one, beside 農權路.
 
 1F's east half keeps the names on 電算中心's own guide; the offices west
-of it, which the emergency map names, are closed to the public, and so is
-every door the user crossed out on the signs (`closed`, drawn in red).
+of it are the emergency map's. The building is shared: the north-west wing
+(the lecture halls, the library's offices on 4F, 數位學習資源中心 on 5F,
+the old periodicals on 6F, with its own stairs and lift) is reached only by
+its own entrance on 1F, not from the library, and 1F's offices are closed
+to the public. The user outlined both on the signs (細節/), and they are
+`zones` here.
 B1 is 創新育成中心, aligned to 1F by the lifts and stairs the two share.
 Rooms carry no codes: the library names them, numbers and all (523
 討論室).
@@ -79,8 +83,20 @@ class Sign:
     def room(self, *box, name=None, note=None):
         return self.rect("room", *box, name=name, note=note)
 
-    def closed(self, *ps):
-        return self.pts(ps)
+    def zone(self, ps, name, note=None, entrance=None):
+        """A part of the floor set apart; entrance is (pixel on the wall, the
+        way in): its sign stands outside, pointing in."""
+        z = {"name": name, "polygon": self.pts(ps)}
+        if note:
+            z["note"] = note
+        if entrance:
+            z["entrance"] = {"at": self.pt(*entrance[0]), "toward": list(entrance[1])}
+        return z
+
+
+# The wing only its own entrance on 1F reaches.
+WING = "獨立區域"
+WING_NOTE = "由 1 樓獨立入口進出"
 
 
 def labelled(space, name, note):
@@ -199,7 +215,7 @@ def floor_1f():
         r("room", H, 512, 842, 553, 885, name="茶水間"),
         r("elevator", H, 555, 842, 597, 885),
         r("room", H, 515, 890, 610, 1000, name="數位教材編輯室"),
-        # The offices beyond, closed to the public.
+        # The offices beyond, closed to the public (行政區域).
         p("room", H, [(320, 735), (512, 735), (512, 888), (262, 888)], name="學術網路機房"),
         r("restroom", H, 258, 890, 343, 962, name="教職員女廁"),
         r("restroom", H, 345, 890, 400, 962, name="教職員男廁"),
@@ -216,11 +232,14 @@ def floor_1f():
     ]
     outline = g.pts([H(505, 145), H(975, 145), L(1000, 655), L(17, 655), H(320, 735), H(515, 735), H(515, 410),
                      H(380, 410), H(380, 300), H(505, 300)])
-    closed = [
-        g.closed(L(612, 55), L(612, 135)),
-        g.closed(L(445, 478), L(500, 478)),
+    # As the user outlined them (細節/IMG_6045), along the rooms' walls.
+    zones = [
+        g.zone([L(110, 400), L(445, 400), L(445, 485), L(510, 485), L(510, 655), L(17, 655)], WING, WING_NOTE,
+               entrance=(L(440, 655), (1, 0))),
+        g.zone([H(320, 735), H(512, 735), L(512, 88), L(612, 88), L(612, 400), L(110, 400)], "行政區域",
+               "不對外開放"),
     ]
-    return {"id": "1F", "outline": outline, "spaces": spaces, "closed": closed,
+    return {"id": "1F", "outline": outline, "spaces": spaces, "zones": zones,
             "unit": "電子計算機中心", "aliases": ["電算中心"]}
 
 
@@ -236,8 +255,9 @@ def floor_2f():
         g.rect("restroom", 485, 240, 585, 325, name="男廁"),
         g.rect("restroom", 485, 330, 585, 425, name="女廁"),
         g.rect("restroom", 530, 428, 580, 475, name="無障礙廁所"),
-        g.poly("room", [(488, 122), (885, 232), (965, 288), (965, 470), (590, 475), (590, 215), (510, 140)],
-               name="演講廳"),
+        # As the user redrew it: down to the lift lobby, round the stair.
+        g.poly("room", [(490, 108), (880, 232), (965, 282), (965, 470), (865, 470), (865, 452), (805, 452),
+                        (805, 488), (592, 480), (598, 228), (545, 152), (490, 120)], name="演講廳"),
         g.poly("room", [(572, 542), (665, 542), (665, 528), (805, 528), (805, 560), (850, 560), (850, 625),
                         (625, 625), (625, 600), (572, 600)], name="流通櫃臺"),
         g.rect("elevator", 808, 515, 860, 552),
@@ -251,11 +271,8 @@ def floor_2f():
         # The entrance stair down to the road, outside the west wall.
         g.poly("stairs", [(15, 590), (120, 650), (175, 650), (175, 770), (120, 770), (15, 800)]),
     ]
-    closed = [
-        g.closed((345, 215), (345, 275)),
-        g.closed((585, 495), (805, 495), (805, 480), (868, 480), (868, 465), (975, 465)),
-    ]
-    return {"id": "2F", "outline": LIBRARY, "spaces": spaces, "closed": closed}
+    zones = [g.zone([(175, 12), (345, 69), (345, 322), (175, 322)], WING, WING_NOTE)]
+    return {"id": "2F", "outline": LIBRARY, "spaces": spaces, "zones": zones}
 
 
 def floor_3f():
@@ -280,11 +297,8 @@ def floor_3f():
         g.room(1448, 768, 1578, 890, name="313 參考諮詢室"),
         g.rect("restroom", 1410, 925, 1580, 1020, name="廁所"),
     ]
-    closed = [
-        g.closed((215, 543), (270, 543)),
-        g.closed((386, 565), (386, 630)),
-    ]
-    return {"id": "3F", "outline": LIBRARY, "spaces": spaces, "closed": closed}
+    zones = [g.zone([(10, 20), (912, 298), (910, 512), (722, 512), (722, 545), (10, 545)], WING, WING_NOTE)]
+    return {"id": "3F", "outline": LIBRARY, "spaces": spaces, "zones": zones}
 
 
 def floor_4f():
@@ -315,8 +329,8 @@ def floor_4f():
         g.room(1445, 750, 1580, 860, name="409 檔案室"),
         g.rect("restroom", 1415, 915, 1585, 1000, name="廁所"),
     ]
-    closed = [g.closed((445, 512), (490, 512))]
-    return {"id": "4F", "outline": LIBRARY, "spaces": spaces, "closed": closed}
+    zones = [g.zone([(15, 15), (910, 290), (905, 500), (218, 512), (218, 533), (15, 533)], WING, WING_NOTE)]
+    return {"id": "4F", "outline": LIBRARY, "spaces": spaces, "zones": zones}
 
 
 def floor_5f():
@@ -349,11 +363,8 @@ def floor_5f():
         g.room(1440, 815, 1585, 935, name="523 討論室"),
         g.rect("restroom", 1400, 975, 1588, 1065, name="廁所"),
     ]
-    closed = [
-        g.closed((440, 533), (470, 533)),
-        g.closed((638, 538), (685, 538)),
-    ]
-    return {"id": "5F", "outline": LIBRARY, "spaces": spaces, "closed": closed}
+    zones = [g.zone([(40, 15), (908, 322), (905, 530), (40, 530)], WING, WING_NOTE)]
+    return {"id": "5F", "outline": LIBRARY, "spaces": spaces, "zones": zones}
 
 
 def floor_6f():
@@ -375,8 +386,8 @@ def floor_6f():
         g.room(1440, 812, 1575, 925, name="612 討論室"),
         g.rect("restroom", 1400, 960, 1575, 1050, name="廁所"),
     ]
-    closed = [g.closed((560, 545), (630, 545))]
-    return {"id": "6F", "outline": LIBRARY, "spaces": spaces, "closed": closed}
+    zones = [g.zone([(40, 40), (903, 318), (903, 540), (40, 540)], WING, WING_NOTE)]
+    return {"id": "6F", "outline": LIBRARY, "spaces": spaces, "zones": zones}
 
 
 def floor_7f():

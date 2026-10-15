@@ -551,7 +551,11 @@ class _FloorSheet extends StatelessWidget {
             icon: Icons.meeting_room_outlined,
             hue: NiuHue.blue,
             title: room.label ?? '未編號空間',
-            subtitle: [floor.title, ...room.details].join('・'),
+            subtitle: [
+              floor.title,
+              ...room.details,
+              ?floor.zoneOf(room)?.description,
+            ].join('・'),
             trailing: NiuIconButton(
               icon: NiuIcons.close,
               tooltip: '取消標示',

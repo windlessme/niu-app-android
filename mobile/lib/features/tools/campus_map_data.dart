@@ -87,39 +87,7 @@ class MapSpace {
 
   /// Where the label goes: the largest upright rectangle inside the room,
   /// so an L-shaped office isn't labelled in the corner it doesn't have.
-  late final Rect labelBox = isRect ? bounds : _largestBox();
-
-  Rect _largestBox() {
-    const n = 32;
-    final b = bounds;
-    final cw = b.width / n, ch = b.height / n;
-    // Run lengths of inside cells upwards, row by row, then the largest
-    // rectangle under each row's histogram.
-    final heights = List.filled(n, 0);
-    var best = Rect.zero;
-    for (var row = 0; row < n; row++) {
-      for (var col = 0; col < n; col++) {
-        final inside = path.contains(
-          Offset(b.left + (col + .5) * cw, b.top + (row + .5) * ch),
-        );
-        heights[col] = inside ? heights[col] + 1 : 0;
-      }
-      for (var col = 0; col < n; col++) {
-        var h = heights[col];
-        for (var end = col; end < n && h > 0; end++) {
-          h = math.min(h, heights[end]);
-          final r = Rect.fromLTRB(
-            b.left + col * cw,
-            b.top + (row + 1 - h) * ch,
-            b.left + (end + 1) * cw,
-            b.top + (row + 1) * ch,
-          );
-          if (r.width * r.height > best.width * best.height) best = r;
-        }
-      }
-    }
-    return best.isEmpty ? bounds : best;
-  }
+  late final Rect labelBox = isRect ? bounds : largestBox(path, bounds);
 
   bool get isRoom => kind == MapSpaceKind.room;
 
@@ -149,8 +117,66 @@ class MapLink {
   /// The other building's id, and its name for the sign.
   final String to, name;
 
+  /// What the sign reads: 往… for another building.
+  String get text => '往$name';
+
   /// Where the sign sits and which way it points, in metres.
   final Offset at, toward;
+}
+
+/// A part of a floor set apart from the rest, like 圖書資訊中心's wing that
+/// only its own entrance on 1F reaches, or offices closed to the public.
+class MapZone {
+  MapZone({required this.name, required this.points, this.note, this.entrance});
+
+  factory MapZone.fromJson(Map<String, dynamic> json) {
+    final door = json['entrance'] as Map<String, dynamic>?;
+    return MapZone(
+      name: json['name'] as String,
+      note: json['note'] as String?,
+      points: [for (final p in json['polygon'] as List) _offset(p)],
+      entrance: door == null
+          ? null
+          : _Entrance(at: _offset(door['at']), toward: _offset(door['toward'])),
+    );
+  }
+
+  /// 獨立區域, 行政區域; and how to get in, or that one can't.
+  final String name;
+  final String? note;
+  final List<Offset> points;
+
+  /// The zone's own way in, signed on the plan.
+  final MapLink? entrance;
+
+  late final Path path = Path()..addPolygon(points, true);
+  late final Rect bounds = _bounds(points);
+
+  /// Where the zone's name goes: its largest open part, clear of rooms.
+  Rect labelBoxAmong(List<MapSpace> spaces) => _tag ??= _free(spaces);
+  Rect? _tag;
+
+  Rect _free(List<MapSpace> spaces) {
+    final free = largestBox(path, bounds, [
+      for (final s in spaces)
+        if (s.kind != MapSpaceKind.corridor) s.path,
+    ]);
+    return free.shortestSide > 0 ? free : largestBox(path, bounds);
+  }
+
+  /// Whether [space] lies in the zone, by its middle.
+  bool holds(MapSpace space) => path.contains(space.labelBox.center);
+
+  /// '獨立區域，由 1 樓獨立入口進出'.
+  String get description => [name, ?note].join('，');
+}
+
+class _Entrance extends MapLink {
+  const _Entrance({required super.at, required super.toward})
+    : super(to: '', name: '');
+
+  @override
+  String get text => '獨立入口';
 }
 
 class MapFloor {
@@ -160,7 +186,7 @@ class MapFloor {
     required this.spaces,
     this.rings = const [],
     this.links = const [],
-    this.closed = const [],
+    this.zones = const [],
     this.unit,
     this.aliases = const [],
   });
@@ -180,9 +206,9 @@ class MapFloor {
       for (final l in json['links'] as List? ?? const [])
         MapLink.fromJson(l as Map<String, dynamic>),
     ],
-    closed: [
-      for (final c in json['closed'] as List? ?? const [])
-        [for (final p in c as List) _offset(p)],
+    zones: [
+      for (final z in json['zones'] as List? ?? const [])
+        MapZone.fromJson(z as Map<String, dynamic>),
     ],
     unit: json['unit'] as String?,
     aliases: [
@@ -201,8 +227,16 @@ class MapFloor {
   final List<MapSpace> spaces;
   final List<MapLink> links;
 
-  /// Doors no one may pass, each a line across the doorway in metres.
-  final List<List<Offset>> closed;
+  /// Parts of the floor set apart from the rest.
+  final List<MapZone> zones;
+
+  /// The zone [space] is in, if any.
+  MapZone? zoneOf(MapSpace space) {
+    for (final z in zones) {
+      if (z.holds(space)) return z;
+    }
+    return null;
+  }
 
   /// Who the floor belongs to, e.g. 環境工程學系, and what people call it.
   final String? unit;
@@ -411,4 +445,38 @@ Rect _bounds(List<Offset> points) {
     if (p.dy > b) b = p.dy;
   }
   return Rect.fromLTRB(l, t, r, b);
+}
+
+/// The largest upright rectangle inside [path], within its [bounds], and
+/// clear of any of [holes].
+Rect largestBox(Path path, Rect bounds, [List<Path> holes = const []]) {
+  const n = 32;
+  final b = bounds;
+  final cw = b.width / n, ch = b.height / n;
+  // Run lengths of inside cells upwards, row by row, then the largest
+  // rectangle under each row's histogram.
+  final heights = List.filled(n, 0);
+  var best = Rect.zero;
+  for (var row = 0; row < n; row++) {
+    for (var col = 0; col < n; col++) {
+      final at = Offset(b.left + (col + .5) * cw, b.top + (row + .5) * ch);
+      final inside =
+          path.contains(at) && !holes.any((hole) => hole.contains(at));
+      heights[col] = inside ? heights[col] + 1 : 0;
+    }
+    for (var col = 0; col < n; col++) {
+      var h = heights[col];
+      for (var end = col; end < n && h > 0; end++) {
+        h = math.min(h, heights[end]);
+        final r = Rect.fromLTRB(
+          b.left + col * cw,
+          b.top + (row + 1 - h) * ch,
+          b.left + (end + 1) * cw,
+          b.top + (row + 1) * ch,
+        );
+        if (r.width * r.height > best.width * best.height) best = r;
+      }
+    }
+  }
+  return best.isEmpty ? bounds : best;
 }
