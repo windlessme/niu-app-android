@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flutter/services.dart';
@@ -83,6 +84,42 @@ class MapSpace {
 
   late final Rect bounds = _bounds(points);
   late final Path path = Path()..addPolygon(points, true);
+
+  /// Where the label goes: the largest upright rectangle inside the room,
+  /// so an L-shaped office isn't labelled in the corner it doesn't have.
+  late final Rect labelBox = isRect ? bounds : _largestBox();
+
+  Rect _largestBox() {
+    const n = 32;
+    final b = bounds;
+    final cw = b.width / n, ch = b.height / n;
+    // Run lengths of inside cells upwards, row by row, then the largest
+    // rectangle under each row's histogram.
+    final heights = List.filled(n, 0);
+    var best = Rect.zero;
+    for (var row = 0; row < n; row++) {
+      for (var col = 0; col < n; col++) {
+        final inside = path.contains(
+          Offset(b.left + (col + .5) * cw, b.top + (row + .5) * ch),
+        );
+        heights[col] = inside ? heights[col] + 1 : 0;
+      }
+      for (var col = 0; col < n; col++) {
+        var h = heights[col];
+        for (var end = col; end < n && h > 0; end++) {
+          h = math.min(h, heights[end]);
+          final r = Rect.fromLTRB(
+            b.left + col * cw,
+            b.top + (row + 1 - h) * ch,
+            b.left + (end + 1) * cw,
+            b.top + (row + 1) * ch,
+          );
+          if (r.width * r.height > best.width * best.height) best = r;
+        }
+      }
+    }
+    return best.isEmpty ? bounds : best;
+  }
 
   bool get isRoom => kind == MapSpaceKind.room;
 
@@ -268,6 +305,7 @@ class CampusMap {
     'assets/campus_map/tongshi.json',
     'assets/campus_map/yuyan.json',
     'assets/campus_map/huodong.json',
+    'assets/campus_map/shipin.json',
   ];
 
   final List<MapBuilding> buildings;

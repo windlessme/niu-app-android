@@ -79,14 +79,47 @@ def wrap(text, font, width, draw):
     return [*lines, line] if line else lines
 
 
+def inside(poly, x, y):
+    hit = False
+    for (xi, yi), (xj, yj) in zip(poly, poly[-1:] + poly[:-1]):
+        if (yi > y) != (yj > y) and x < (xj - xi) * (y - yi) / (yj - yi) + xi:
+            hit = not hit
+    return hit
+
+
+def label_box(space):
+    """The largest upright rectangle inside a room, where the apps put its
+    label (an L-shaped room's bounding box centre may be outside it)."""
+    pts = points(space)
+    xs, ys = [p[0] for p in pts], [p[1] for p in pts]
+    x0, y0, x1, y1 = min(xs), min(ys), max(xs), max(ys)
+    if "rect" in space:
+        return x0, y0, x1, y1
+    n = 32
+    cw, ch = (x1 - x0) / n, (y1 - y0) / n
+    heights, best, area = [0] * n, (x0, y0, x1, y1), 0
+    for row in range(n):
+        for col in range(n):
+            heights[col] = heights[col] + 1 if inside(pts, x0 + (col + .5) * cw, y0 + (row + .5) * ch) else 0
+        for col in range(n):
+            h = heights[col]
+            for end in range(col, n):
+                h = min(h, heights[end])
+                if not h:
+                    break
+                if (end + 1 - col) * h > area:
+                    area = (end + 1 - col) * h
+                    best = (x0 + col * cw, y0 + (row + 1 - h) * ch, x0 + (end + 1) * cw, y0 + (row + 1) * ch)
+    return best
+
+
 def label(d, floor, pt):
     for s in floor["spaces"]:
         text = [t for t in (s.get("code"), s.get("name"), s.get("note")) if t]
         if not text or s["kind"] in ("corridor",):
             continue
-        pts = points(s)
-        xs, ys = [p[0] for p in pts], [p[1] for p in pts]
-        (a, b), (c, e) = pt(min(xs), min(ys)), pt(max(xs), max(ys))
+        bx0, by0, bx1, by1 = label_box(s)
+        (a, b), (c, e) = pt(bx0, by0), pt(bx1, by1)
         width, height = c - a - 6 * SS, e - b - 6 * SS
         for size in (13, 11, 9, 8, 7):
             fonts = [ImageFont.truetype(FONT, (size + (2 if i == 0 and s.get("code") else 0)) * SS)

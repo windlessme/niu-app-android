@@ -242,7 +242,12 @@ class _BuildingViewState extends State<_BuildingView>
         builder: (context, constraints) {
           final size = constraints.biggest;
           _height = size.height;
-          frame = FloorFrame(widget.building, size, padding: padding);
+          frame = FloorFrame(
+            widget.building,
+            size,
+            padding: padding,
+            floor: floor,
+          );
           final aimed = _aimed;
           if (aimed != null && _aimedSize != null && _aimedSize != size) {
             WidgetsBinding.instance.addPostFrameCallback((_) {

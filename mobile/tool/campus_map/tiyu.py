@@ -92,14 +92,12 @@ class View:
         return labelled({"kind": kind, "polygon": self.pts(ps)}, name, aka, note)
 
     def rect(self, kind, x0, y0, x1, y1, name=None, aka=None, note=None):
+        """A box on the sign, as an upright rectangle in metres; `snap` then
+        lines its walls up with its neighbours'."""
         ps = self.pts([(x0, y0), (x1, y0), (x1, y1), (x0, y1)])
         xs, ys = [p[0] for p in ps], [p[1] for p in ps]
-        area = abs(sum(p[0] * q[1] - q[0] * p[1] for p, q in zip(ps, ps[1:] + ps[:1]))) / 2
         lx, ly = min(xs), min(ys)
-        if area > .96 * (max(xs) - lx) * (max(ys) - ly):
-            space = {"kind": kind, "rect": [lx, ly, round(max(xs) - lx, 2), round(max(ys) - ly, 2)]}
-        else:
-            space = {"kind": kind, "polygon": ps}
+        space = {"kind": kind, "rect": [lx, ly, round(max(xs) - lx, 2), round(max(ys) - ly, 2)]}
         return labelled(space, name, aka, note)
 
     def room(self, *box, name=None, aka=None, note=None):
@@ -153,6 +151,10 @@ def floor_b1():
         se.rect("stairs", 240, 560, 320, 700),
         se.room(320, 350, 500, 770, name="菓嶺教室", aka=["果嶺教室"]),
         se.room(500, 355, 725, 490, name="空調主機房", aka=["9916-2"]),
+        se.room(500, 490, 725, 605),
+        se.room(500, 605, 725, 770),
+        se.rect("corridor", 60, 340, 320, 610),
+        sw.rect("corridor", 100, 460, 235, 780),
         se.poly("room", [(60, 610), (240, 610), (240, 700), (320, 700), (320, 862), (60, 862)], name="多用途空間"),
     ]
     outline = t.pts([(275, 602), (906, 604), (902, 1225), (733, 1225), (733, 1262), (260, 1262)])
@@ -178,17 +180,21 @@ def floor_1f():
         ne.rect("stairs", 725, 40, 805, 245),
         ne.wc(220, 320, 300, 480, name="男廁"),
         ne.wc(300, 320, 415, 450, name="女廁"),
-        ne.room(245, 480, 430, 740, name="運動傷害防護室"),
+        ne.room(245, 480, 430, 740, name="器材室"),
         ne.rect("void", 485, 450, 650, 690),
         ne.room(700, 300, 880, 740, name="體育組", aka=["體育教師辦公室"]),
         ne.rect("stairs", 330, 740, 440, 920),
-        se.room(260, 280, 450, 520, name="器材室"),
+        # The east lobby, under the rooms around it.
+        se.rect("corridor", 0, 0, 900, 600),
+        se.rect("corridor", 100, 600, 460, 970),
+        se.room(260, 280, 450, 520, name="運動傷害防護室"),
         se.room(450, 225, 710, 600, name="視聽室"),
         se.room(710, 280, 900, 600, name="體適能中心"),
         se.rect("elevator", 355, 535, 425, 605),
         se.rect("stairs", 355, 620, 445, 760),
+        se.rect("void", 280, 760, 460, 970),
         se.room(100, 680, 185, 740, name="管理員室"),
-        se.room(100, 750, 185, 890, name="器材室"),
+        se.room(100, 750, 185, 970, name="器材室"),
         sw.room(140, 525, 245, 640, name="器材室"),
         sw.room(245, 520, 405, 615, name="更衣室"),
         sw.room(405, 520, 515, 615, name="淋浴間"),
@@ -198,7 +204,7 @@ def floor_1f():
         se.room(0, 510, 150, 600, name="更衣室"),
         sw.rect("stairs", 60, 760, 200, 850),
         sw.room(140, 860, 245, 975, name="空調室"),
-        sw.poly("room", [(250, 685), (1035, 685), (1035, 910), (250, 910)], name="韻律舞蹈室", aka=["韻律活動室"]),
+        sw.poly("room", [(250, 685), (1035, 685), (1035, 975), (250, 975)], name="韻律舞蹈室", aka=["韻律活動室"]),
     ]
     outline = t.pts([(655, 308), (1360, 303), (1362, 890), (1184, 890), (1184, 1044), (658, 1046)])
     return {"id": "1F", "outline": outline, "spaces": spaces}
@@ -211,7 +217,6 @@ def floor_2f():
     t = View(g, 0, 0, 1)
     spaces = [
         t.rect("corridor", 580, 308, 1220, 346),
-        t.rect("corridor", 556, 308, 580, 590),
         t.rect("corridor", 1192, 346, 1220, 943),
         t.rect("corridor", 708, 346, 736, 640),
         t.rect("corridor", 608, 640, 1220, 684),
@@ -221,11 +226,14 @@ def floor_2f():
         nw.room(40, 95, 155, 195, name="空調室"),
         nw.rect("stairs", 160, 0, 245, 190),
         nw.room(315, 95, 475, 200, name="空調室"),
-        nw.room(100, 250, 320, 900, name="有氧舞蹈室"),
+        nw.room(40, 195, 320, 900, name="有氧舞蹈室"),
         nw.poly("room", [(320, 250), (465, 250), (435, 330), (350, 345), (320, 340)], name="音控室"),
         nw.poly("room", [(320, 345), (435, 330), (470, 600), (440, 910), (320, 910)], name="舞台"),
         t.room(736, 348, 1192, 612, name="籃球場兼排球、網球場", aka=["籃球場兼網球場", "籃球場", "排球場", "網球場"]),
         ne.room(805, 190, 900, 320, name="空調室"),
+        # Unnamed rooms along the west wall.
+        ne.room(800, 330, 900, 905),
+        se.room(805, 430, 900, 690),
         ne.rect("stairs", 850, 85, 990, 185),
         sw.wc(45, -20, 170, 55, name="男廁"),
         sw.wc(215, -20, 320, 55, name="女廁"),
@@ -262,7 +270,8 @@ def floor_2f():
         se.rect("stairs", 840, 290, 995, 385),
         se.rect("stairs", 840, 700, 995, 790),
     ]
-    outline = t.pts([(556, 266), (1262, 266), (1262, 943), (596, 943), (596, 760), (556, 760)])
+    # The strip of windows south of the court is no floor.
+    outline = t.pts([(556, 266), (730, 266), (730, 308), (1220, 308), (1220, 266), (1262, 266), (1262, 943), (596, 943), (596, 760), (556, 760)])
     return {"id": "2F", "outline": outline, "spaces": spaces}
 
 
@@ -273,14 +282,15 @@ def floor_3f():
     t = View(g, 0, 0, 1)
     track = {"name": "室內跑道", "aka": ["0303"]}
     spaces = [
-        # The track around the court's open space; each straight carries the
-        # name, as a ring's middle would fall in the void.
-        t.room(616, 218, 1280, 290, **track),
-        t.room(616, 585, 1280, 642, **track),
-        t.room(568, 250, 672, 585, **track),
-        t.room(1208, 290, 1280, 585, **track),
+        # The track: four straights squared around the court's open space,
+        # each carrying the name, as a ring's middle would fall in the void.
+        t.room(616, 210, 1282, 290, **track),
+        t.room(616, 585, 1282, 642, **track),
+        t.room(616, 290, 672, 585, **track),
+        t.room(1208, 290, 1282, 585, **track),
+        t.rect("corridor", 566, 250, 616, 602),
         t.rect("void", 672, 290, 1208, 585),
-        t.rect("corridor", 616, 642, 1265, 670),
+        t.rect("corridor", 616, 642, 1220, 670),
         se.rect("corridor", 0, 120, 160, 745),
         se.rect("corridor", 160, 300, 800, 355),
         se.rect("corridor", 160, 520, 760, 555),
@@ -291,13 +301,15 @@ def floor_3f():
         ne.rect("stairs", 820, 100, 990, 190),
         sw.room(45, 330, 165, 430, name="空調室", aka=["0304"]),
         sw.rect("terrace", 45, 440, 165, 610, name="露台"),
-        sw.wc(200, 490, 320, 530, name="男廁", aka=["0307"]),
-        sw.wc(165, 530, 265, 610, name="女廁", aka=["0306"]),
+        sw.wc(215, 490, 265, 610, name="男廁", aka=["0307"]),
+        sw.wc(165, 490, 215, 610, name="女廁", aka=["0306"]),
         sw.rect("stairs", 265, 530, 360, 610),
         sw.rect("elevator", 395, 515, 465, 570),
         sw.room(470, 500, 680, 605, name="學務長辦公室", aka=["0311"]),
         sw.room(680, 500, 760, 605, name="茶水間"),
         sw.room(760, 500, 900, 605, name="會議室", aka=["0314"]),
+        # A skylight grid over the 2F lobby, then steps down to the stands.
+        sw.rect("void", 610, 620, 890, 870),
         sw.rect("stairs", 610, 870, 890, 1050),
         se.rect("stairs", 160, 180, 290, 290),
         se.room(305, 185, 600, 300, name="健康教育室"),
@@ -333,6 +345,7 @@ def floor_4f():
     t = View(g, 0, 0, 1)
     spaces = [
         t.rect("corridor", 680, 382, 1137, 420),
+        t.rect("corridor", 680, 312, 735, 382),
         t.rect("corridor", 680, 420, 732, 1265),
         t.rect("corridor", 80, 1315, 137, 1370),
         t.rect("corridor", 137, 1337, 735, 1367),
@@ -363,6 +376,9 @@ def floor_4f():
         m.room(355, 15, 690, 210, name="多功能會議室"),
         m.rect("void", 355, 210, 690, 580),
         m.rect("void", 690, 390, 915, 580),
+        # Skylight grids over the floor below.
+        m.rect("void", 355, 580, 915, 770),
+        m.rect("void", 690, 210, 915, 390),
         m.room(105, 390, 350, 575, name="教學討論室"),
         m.room(105, 575, 350, 760, name="所長辦公室", note=UNIT),
         m.room(105, 760, 350, 940, name="所辦及圖書室", note=UNIT),
@@ -383,8 +399,52 @@ def floor_4f():
     return {"id": "4F", "outline": outline, "spaces": spaces, "unit": UNIT, "aliases": ["建築所", "建築", "永續規劃"]}
 
 
+def snap(floor, tol=0.7):
+    """Walls a sign draws as one line come out a few centimetres apart after
+    the fit; pull every x (and every y) within `tol` of its neighbours onto
+    one shared line, preferring the outline's, so rooms meet without gaps and
+    stay square."""
+    for axis in (0, 1):
+        outline = {p[axis] for p in floor["outline"]}
+        lo, hi = min(outline), max(outline)
+        for s in floor["spaces"]:
+            if "rect" in s and s["kind"] != "stairs":
+                r = s["rect"]
+                a, b = max(lo, r[axis]), min(hi, r[axis] + r[axis + 2])
+                r[axis], r[axis + 2] = round(a, 2), round(b - a, 2)
+        values = sorted({p[axis] for p in floor["outline"]}
+                        | {v for s in floor["spaces"] for v in edges(s, axis)})
+        line, group = {}, []
+        for v in values + [None]:
+            if group and (v is None or v - group[-1] > tol):
+                fixed = [g for g in group if g in outline]
+                at = fixed[0] if fixed else round(sum(group) / len(group), 2)
+                line.update({g: at for g in group})
+                group = []
+            if v is not None:
+                group.append(v)
+        for p in floor["outline"]:
+            p[axis] = line[p[axis]]
+        for s in floor["spaces"]:
+            if "rect" in s:
+                r = s["rect"]
+                a, b = line[r[axis]], line[round(r[axis] + r[axis + 2], 2)]
+                r[axis], r[axis + 2] = a, round(b - a, 2)
+            else:
+                for p in s["polygon"]:
+                    p[axis] = line[p[axis]]
+    return floor
+
+
+def edges(space, axis):
+    if "rect" in space:
+        r = space["rect"]
+        return [r[axis], round(r[axis] + r[axis + 2], 2)]
+    return [p[axis] for p in space["polygon"]]
+
+
 def main():
-    floors = [f() for f in (floor_b1, floor_1f, floor_2f, floor_3f, floor_4f)]
+    floors = [snap(f()) for f in (floor_b1, floor_1f, floor_2f, floor_3f, floor_4f)]
     building = {"id": "tiyu", "name": "體育館", "unit": "m", "floors": floors}
     text = json.dumps(building, ensure_ascii=False, separators=(",", ":")) + "\n"
     root = Path(__file__).resolve().parents[3]
