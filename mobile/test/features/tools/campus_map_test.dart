@@ -203,14 +203,36 @@ void main() {
     expect(overview.withPlan('dongwu')!.name, '實驗動物中心');
   });
 
+  test('the seven buildings drawn on 2026-10-15 have plans', () {
+    const levels = {
+      'huodong': '地上 5 層',
+      'yuyan': '地上 2 層',
+      'tongshi': '地上 2 層',
+      'xingzheng': '地上 5 層',
+      'tiyu': '地上 4 層，地下 1 層',
+      'jingde': '地上 7 層',
+      'shengzi': '地上 8 層',
+    };
+    for (final MapEntry(key: id, value: text) in levels.entries) {
+      expect(map.building(id)!.levels, text, reason: id);
+      expect(overview.withPlan(id), isNotNull, reason: id);
+    }
+    expect(map.search('求101').single.space.name, '通識教育中心辦公室');
+    expect(map.search('LC204').single.space.name, '會議室');
+    expect(map.search('校長室').map((r) => r.building.id), contains('xingzheng'));
+  });
+
   test('search matches codes, bare numbers and notes', () {
-    expect(map.search('305').map((r) => r.space.code), [
+    expect(map.search('305').map((r) => r.space.label), [
       '教305',
       '工305',
       '資305',
       '電317', // E305 on the sign
       '電305',
       '綜305',
+      // 生資大樓 and 學生活動中心 put the number in the name.
+      '305 蛋白質純化實驗室',
+      '305 社團辦公室',
     ]);
     expect(map.search('外語').map((r) => r.space.code), ['教401', '教412']);
     expect(map.search(' '), isEmpty);
@@ -406,17 +428,17 @@ void main() {
       (await SharedPreferences.getInstance()).getBool('campusMapListed'),
       isTrue,
     );
-    await tester.scrollUntilVisible(find.text('行政大樓'), 200);
+    await tester.scrollUntilVisible(find.text('教師宿舍'), 200);
     expect(find.text('司令台'), findsNothing);
     await Scrollable.ensureVisible(
-      tester.element(find.text('行政大樓')),
+      tester.element(find.text('教師宿舍')),
       alignment: .5,
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('行政大樓'));
+    await tester.tap(find.text('教師宿舍'));
     await tester.pumpAndSettle();
     expect(find.byTooltip('以清單顯示'), findsOneWidget);
-    expect(find.text('地上 5 層・尚無樓層平面圖'), findsOneWidget);
+    expect(find.text('地上 3 層・尚無樓層平面圖'), findsOneWidget);
   });
 
   testWidgets('the overview finds buildings and rooms and opens plans', (
