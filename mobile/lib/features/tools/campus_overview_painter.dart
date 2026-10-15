@@ -196,8 +196,12 @@ class CampusOverviewPainter extends CustomPainter {
         final label = _text(
           mapName(b.name!),
           size,
-          on ? colors.accent : colors.ink,
-          weight: on || b.plan != null ? FontWeight.w700 : FontWeight.w500,
+          colors.ink,
+          weight: on
+              ? FontWeight.w800
+              : b.plan != null
+              ? FontWeight.w700
+              : FontWeight.w500,
           halo: colors.canvas,
         );
         final w = label.width, h = label.height;
