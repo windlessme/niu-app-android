@@ -6,21 +6,33 @@ import '../../shared/shared.dart';
 import 'campus_map_data.dart';
 
 /// Maps a building's metres onto a canvas. Wide buildings on tall canvases
-/// turn 90° clockwise, so the west end sits on top; every floor of one
-/// building shares the same framing.
+/// turn 90° clockwise, so the west end sits on top. Floors of one building
+/// share the same framing, so switching floors keeps rooms in place, except
+/// a floor much smaller than the building (學生活動中心's upper floors over
+/// one end of the hall), which fills the screen on its own.
 class FloorFrame {
   FloorFrame(
     this.building,
     this.size, {
     this.padding = const EdgeInsets.all(16),
+    MapFloor? floor,
   }) {
-    final b = building.bounds;
+    final whole = building.bounds;
+    final own = floor?.bounds;
+    region =
+        own != null &&
+            (own.width < whole.width * .85 || own.height < whole.height * .85)
+        ? own
+        : whole;
     final room = padding.deflateSize(size);
-    rotated = b.width > b.height && room.height > room.width;
-    final w = rotated ? b.height : b.width;
-    final h = rotated ? b.width : b.height;
+    rotated = whole.width > whole.height && room.height > room.width;
+    final w = rotated ? region.height : region.width;
+    final h = rotated ? region.width : region.height;
     scale = math.max(math.min(room.width / w, room.height / h), .01);
   }
+
+  /// The part of the building the frame fits: the whole, or one floor.
+  late final Rect region;
 
   final MapBuilding building;
   final Size size;
@@ -31,7 +43,7 @@ class FloorFrame {
   late final double scale;
 
   Matrix4 get matrix {
-    final c = building.bounds.center;
+    final c = region.center;
     final area = padding.deflateRect(Offset.zero & size).center;
     final m = Matrix4.identity()
       ..translateByDouble(area.dx, area.dy, 0, 1)
@@ -81,7 +93,7 @@ class FloorMapPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final frame = FloorFrame(building, size, padding: padding);
+    final frame = FloorFrame(building, size, padding: padding, floor: floor);
     canvas.save();
     canvas.transform(frame.matrix.storage);
     final px = 1 / frame.scale; // one logical pixel, in metres
@@ -130,7 +142,7 @@ class FloorMapPainter extends CustomPainter {
       }
       final label = s.label;
       if (label == null) continue;
-      final box = s.bounds;
+      final box = s.labelBox;
       final width = (frame.rotated ? box.height : box.width) * frame.scale;
       final height = (frame.rotated ? box.width : box.height) * frame.scale;
       final on = identical(s, selected);

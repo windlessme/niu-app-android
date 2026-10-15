@@ -2,8 +2,12 @@
 """Generates app-content/campus-map/shengzi.json (生資大樓).
 
 Eight floors (the building's upper four are not signed), each read off a
-photo of a sign and fitted to the OpenStreetMap outline by the outer
-corners of its two wings, which also takes out the camera's slant. The
+photo of a sign and fitted by the outer corners of its two wings to an
+upright 74.6 × 60.2 m rectangle, OpenStreetMap's size without its slight
+rotation, which also takes out the camera's slant. `straighten` then squares
+each floor: outline walls run east–west or north–south, rooms reach the
+walls they stand against, and walls closer than SNAP become one line, so
+neighbours meet without gaps. The
 building is an H lying on its side: a north and a south wing, 74 m long,
 joined in the middle by the lecture-hall block, with stair towers at the
 wings' ends. Most signs put east up, so the north wing is on the left;
@@ -23,9 +27,12 @@ the library, the number leads the name (101 教學互動多功能室).
 import json
 from pathlib import Path
 
-# The OpenStreetMap outline's four outer corners, metres east and south of
-# its bounding box's north-west corner.
-NE, NW, SW, SE = (74.1, 0), (0, 1.4), (0.6, 60.2), (74.4, 58.9)
+# The building's size from OpenStreetMap, its outline's slight rotation
+# taken out: the wings' outer corners, metres east and south of the
+# north-west one.
+W, D = 74.6, 60.2
+NE, NW, SW, SE = (W, 0), (0, 0), (0, D), (W, D)
+SNAP = 0.6  # wall lines closer than this are one wall
 
 
 def solve(a, b):
@@ -67,16 +74,13 @@ class Sign:
         return [self.pt(*p) for p in ps]
 
     def rect(self, kind, u0, v0, u1, v1, name=None, note=None, aka=None):
-        """A box on the sign: a rectangle in metres unless the photo's slant
-        skews it noticeably."""
+        """A box on the sign as an axis-aligned rectangle in metres; what is
+        left of the photo's slant averages out."""
         ps = self.pts([(u0, v0), (u1, v0), (u1, v1), (u0, v1)])
-        xs, ys = [p[0] for p in ps], [p[1] for p in ps]
-        area = abs(sum(p[0] * q[1] - q[0] * p[1] for p, q in zip(ps, ps[1:] + ps[:1]))) / 2
-        x0, y0 = min(xs), min(ys)
-        if area > .96 * (max(xs) - x0) * (max(ys) - y0):
-            space = {"kind": kind, "rect": [x0, y0, round(max(xs) - x0, 2), round(max(ys) - y0, 2)]}
-        else:
-            space = {"kind": kind, "polygon": ps}
+        xs, ys = sorted(p[0] for p in ps), sorted(p[1] for p in ps)
+        x0, x1 = (xs[0] + xs[1]) / 2, (xs[2] + xs[3]) / 2
+        y0, y1 = (ys[0] + ys[1]) / 2, (ys[2] + ys[3]) / 2
+        space = {"kind": kind, "rect": [round(x0, 2), round(y0, 2), round(x1 - x0, 2), round(y1 - y0, 2)]}
         return labelled(space, name, note, aka)
 
     def poly(self, kind, ps, name=None, note=None):
@@ -308,7 +312,7 @@ def floor_4f():
         *towers(g, ts),
         *g.stack(168, 290, [300, 375, 455, 550, 740, 830, 890, 960, 1085, 1275, 1458],
                  [("445", "研究生及助理室"), ("444", "系學會辦公室"), ("443", "小型研討室（二）"),
-                  ("441", "小型研討室（一）"), ("440", "交誼廳"), ("439", "系學會辦公室"), None, ("438",),
+                  ("441", "小型研討室（一）"), ("440", "交誼廳"), ("439", "系學會辦公室"), ("",), ("438",),
                   ("437", "蜜蜂與蜂產品實驗室・陳裕文老師"),
                   ("436", "動物產品生化與加值應用實驗室・張雅琇老師")]),
         *g.stack(320, 440, [300, 398, 450, 500, 550, 600],
@@ -321,7 +325,12 @@ def floor_4f():
                  [("427",), ("426", "劉俊廷老師研究室"), ("425", "楊瀅臻老師研究室"), ("424", "林幼君老師研究室"),
                   ("423", "陳裕文老師研究室"), ("422", "蕭士翔老師研究室"), ("421", "黃士哲老師研究室"),
                   ("420", "陳永松老師研究室"), ("419", "張雅琇老師研究室")]),
-        g.room(450, 735, 525, 800, "416"),
+        # Two unmarked rooms where other floors have their toilets, and one
+        # beside 416.
+        g.room(330, 600, 395, 815),
+        g.room(395, 600, 450, 815),
+        g.room(450, 745, 530, 815, "416"),
+        g.room(530, 760, 600, 815),
         g.room(600, 740, 680, 810, "415", "電氣室"),
         g.room(450, 878, 680, 1030, "417", "多功能教室"),
         *g.stack(680, 835, [300, 440, 597, 740],
@@ -337,7 +346,7 @@ def floor_4f():
                  [("405", "產品加工分析實驗室"), ("404", "解剖生理與生化實驗室"), ("403", "生物遺傳與營養實驗室"),
                   ("402", "營養生理實驗室・黃士哲老師"), ("401", "微生物組與營養基因體實驗室・蕭士翔老師")]),
     ]
-    outline = h_outline(g, (165, 450, 300, 1458), (680, 1022, 290, 1462), (720, 1030), ts)
+    outline = h_outline(g, (165, 450, 300, 1458), (680, 1022, 290, 1462), (745, 1030), ts)
     return {"id": "4F", "outline": outline, "spaces": spaces}
 
 
@@ -553,9 +562,86 @@ UNITS = {
 }
 
 
+def lines(values, snap=SNAP):
+    """Clusters of nearly equal coordinates, each mapped to its mean."""
+    out, group = {}, []
+    for v in sorted(set(values)) + [None]:
+        if group and (v is None or v - group[-1] > snap or v - group[0] > 2 * snap):
+            mean = round(sum(group) / len(group), 2)
+            out.update((g, mean) for g in group)
+            group = []
+        if v is not None:
+            group.append(v)
+    return out
+
+
+def square(outline):
+    """Makes every outline wall run east–west or north–south: each wall's
+    two ends take the mean of the coordinate they should share."""
+    pts = [list(p) for p in outline]
+    for _ in range(3):
+        for i in range(len(pts)):
+            a, b = pts[i], pts[(i + 1) % len(pts)]
+            k = 0 if abs(b[0] - a[0]) < abs(b[1] - a[1]) else 1
+            a[k] = b[k] = round((a[k] + b[k]) / 2, 2)
+    # A wall broken by a stair tower is still one wall.
+    fx, fy = lines([p[0] for p in pts], 1.0), lines([p[1] for p in pts], 1.0)
+    return [[fx[x], fy[y]] for x, y in pts]
+
+
+def to_walls(floor, reach=2.0):
+    """Pulls a room's side onto the outline wall it stands against, when
+    the sign drew it a little short of it."""
+    pts = floor["outline"]
+    walls = [(pts[i], pts[(i + 1) % len(pts)]) for i in range(len(pts))]
+    for s in floor["spaces"]:
+        x, y, w, h = s["rect"]
+        box = [x, y, x + w, y + h]
+        for a, b in walls:
+            if a[0] == b[0]:  # north–south wall at x
+                lo, hi = sorted((a[1], b[1]))
+                if min(hi, box[3]) - max(lo, box[1]) > .5 * (box[3] - box[1]):
+                    for k in (0, 2):
+                        if abs(box[k] - a[0]) < reach and abs(box[k] - a[0]) < .4 * w:
+                            box[k] = a[0]
+            else:
+                lo, hi = sorted((a[0], b[0]))
+                if min(hi, box[2]) - max(lo, box[0]) > .5 * (box[2] - box[0]):
+                    for k in (1, 3):
+                        if abs(box[k] - a[1]) < reach and abs(box[k] - a[1]) < .4 * h:
+                            box[k] = a[1]
+        s["rect"] = [box[0], box[1], round(box[2] - box[0], 2), round(box[3] - box[1], 2)]
+
+
+def straighten(floor):
+    """Squares the outline, pulls rooms out to its walls, then snaps every
+    wall to shared lines so neighbouring rooms meet exactly."""
+    floor["outline"] = square(floor["outline"])
+    to_walls(floor)
+    xs, ys = [], []
+    for s in floor["spaces"]:
+        x, y, w, h = s["rect"]
+        xs += [x, x + w]
+        ys += [y, y + h]
+    xs += [p[0] for p in floor["outline"]]
+    ys += [p[1] for p in floor["outline"]]
+    fx, fy = lines(xs), lines(ys)
+    for s in floor["spaces"]:
+        x, y, w, h = s["rect"]
+        x0, y0, x1, y1 = fx[x], fy[y], fx[x + w], fy[y + h]
+        s["rect"] = [x0, y0, round(x1 - x0, 2), round(y1 - y0, 2)]
+    outline = []
+    for x, y in floor["outline"]:
+        p = [fx[x], fy[y]]
+        if not outline or p != outline[-1]:
+            outline.append(p)
+    floor["outline"] = outline
+
+
 def main():
     floors = [f() for f in (floor_1f, floor_2f, floor_3f, floor_4f, floor_5f, floor_6f, floor_7f, floor_8f)]
     for floor in floors:
+        straighten(floor)
         if floor["id"] in UNITS:
             unit, aliases, office = UNITS[floor["id"]]
             floor["unit"] = unit

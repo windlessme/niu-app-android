@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
 """Generates app-content/campus-map/xingzheng.json (行政大樓).
 
-Measured from the floor plan on each floor's stair landing (1F–5F) and fitted
-to the OpenStreetMap outline, 32.7 × 52.8 m. The signs are drawn east up:
-the main entrance (正門入口) at the top of the 1F sign is on the east side,
-the left wing is north, the right wing south, and the courtyard (中庭) at the
-bottom opens to the west. North up, the building is a C open to the west,
-with a stair in each inner corner of the courtyard.
+Measured from the floor plan on each floor's stair landing (1F–5F). The signs
+are drawn east up: the main entrance (正門入口) at the top of the 1F sign is
+on the east side, the left wing is north, the right wing south, and the
+courtyard (中庭) at the bottom opens to the west. North up, the building is a
+C open to the west, with a stair in each inner corner of the courtyard.
 
-The signs aren't to scale, so each photo is first squared up by its four
-corners (a projective map, which also takes out the camera's slant), then
-stretched piecewise between the lines the building and the signs share: the
-wings' inner walls, the stairs' sides and the courtyard's east edge. A last
-bilinear step bends that rectangle onto OSM's slightly skewed outline.
+The plan is drawn square, 31.8 × 52.3 m: OpenStreetMap's outline with its
+slight tilt taken out. Its notch gives the lines every floor shares: the
+wings' inner walls, the stairs' sides and the courtyard's east edge. The
+signs aren't to scale, so each photo is squared up by its four corners (a
+projective map, which also takes out the camera's slant), then stretched
+piecewise between those shared lines. Each floor's walls are read off once
+as lists of lines, and rooms are built from them.
 
 On 3F–5F the north wing stops short of the west wall (all three signs draw
 the courtyard running past its end), so those floors' outlines are cut
@@ -20,37 +21,23 @@ there. 2F has an open void over the entrance lobby.
 
 Rooms are the administrative units named on the signs and the lift
 directory; where a sign draws two units in one box with no wall between
-(教務長室／綜合業務組, 301 會議室／校友會, 事務組／採購組, 學術副校長室／
-校務研究辦公室) they stay one room with both names. Offices under 總務處 and
-教務處 carry that office as their note, so searching the office finds them.
-Floors hold several units each, so none has a floor unit. Only the three
-conference rooms are numbered; they're named with the number, as the signs
-do (101 會議室). No door is crossed out.
+(301 會議室／校友會, 事務組／採購組, 學術副校長室／校務研究辦公室,
+教務長室／綜合業務組) they stay one room with both names. 註冊課務組 (2F)
+and 教務長室／綜合業務組 (3F) wrap round the lift lobby, as L-shaped rooms. Offices under 總務處 and 教務處 carry that office as their note,
+so searching the office finds them. Floors hold several units each, so none
+has a floor unit. Only the three conference rooms are numbered; they're
+named with the number, as the signs do (101 會議室). No door is crossed out.
 """
 import json
 from pathlib import Path
 
-# OSM way 256119623 in metres east and south of its bounding box's NW corner.
-OSM = [[0.0, 0.5], [0.3, 14.0], [10.5, 13.8], [10.5, 18.4], [16.3, 18.3], [16.4, 21.1], [16.6, 31.3],
-       [16.6, 33.5], [11.0, 33.6], [11.1, 39.2], [0.5, 39.4], [0.8, 52.8], [32.7, 52.3], [31.7, 0.0]]
-NW, NE, SE, SW = OSM[0], OSM[13], OSM[12], OSM[11]
-
-# The building squared up: W east–west, D north–south, and the lines the
-# signs share, from OSM's notch corners.
-W, D = 31.8, 52.3
+W, D = 31.8, 52.3  # east–west, north–south
 N_WING = 13.5  # the north wing's inner wall (its corridor included)
 N_STAIR = 18.05  # the north stair's south side
 S_STAIR = 33.25  # the south stair's north side
 S_WING = 38.9  # the south wing's inner wall
 COURT = 16.1  # the courtyard's east edge, and the stairs' east side
 STAIR_W = 10.4  # the stairs' west side
-
-
-def bend(x, y):
-    """The squared-up frame onto OSM's outline (bilinear by its corners)."""
-    s, t = x / W, y / D
-    return [round((1 - s) * (1 - t) * NW[i] + s * (1 - t) * NE[i] + s * t * SE[i] + (1 - s) * t * SW[i], 2)
-            for i in (0, 1)]
 
 
 def solve(a, b):
@@ -100,31 +87,29 @@ class Sign:
         w = h[6] * u + h[7] * v + 1
         return (h[0] * u + h[1] * v + h[2]) / w, (h[3] * u + h[4] * v + h[5]) / w
 
-    def frame(self, u, v):
-        """Pixels to the squared-up frame, metres."""
-        s, t = self.square(u, v)
-        return interp(self.xs, t), interp(self.ys, s)
+    def x(self, v, u=600):
+        """A wall across the sign at pixel row v, as metres east."""
+        return round(interp(self.xs, self.square(u, v)[1]), 2)
 
-    def pt(self, u, v):
-        return bend(*self.frame(u, v))
+    def y(self, u, v=700):
+        """A wall down the sign at pixel column u, as metres south."""
+        return round(interp(self.ys, self.square(u, v)[0]), 2)
 
-    def poly(self, kind, ps, name=None, note=None, aka=None):
-        space = {"kind": kind, "polygon": [self.pt(*p) for p in ps]}
-        return labelled(space, name, note, aka)
 
-    def rect(self, kind, u0, v0, u1, v1, name=None, note=None, aka=None):
-        return self.poly(kind, [(u0, v0), (u1, v0), (u1, v1), (u0, v1)], name, note, aka)
+def rect(kind, x0, y0, x1, y1, name=None, note=None, aka=None):
+    """A box between wall lines, in metres; corners in any order."""
+    x0, x1 = sorted((x0, x1))
+    y0, y1 = sorted((y0, y1))
+    space = {"kind": kind, "rect": [x0, y0, round(x1 - x0, 2), round(y1 - y0, 2)]}
+    return labelled(space, name, note, aka)
 
-    def room(self, *box, name=None, note=None, aka=None):
-        return self.rect("room", *box, name=name, note=note, aka=aka)
 
-    def outline(self, north_end=None):
-        """OSM's outline; with `north_end` (a pixel row), the north wing cut
-        short there."""
-        if north_end is None:
-            return OSM
-        x = round(interp(self.xs, self.square(0, north_end)[1]), 2)
-        return [bend(x, 0), bend(x, N_WING)] + OSM[2:]
+def poly(kind, ps, name=None, note=None, aka=None):
+    return labelled({"kind": kind, "polygon": [[x, y] for x, y in ps]}, name, note, aka)
+
+
+def room(*box, name=None, note=None, aka=None):
+    return rect("room", *box, name=name, note=note, aka=aka)
 
 
 def labelled(space, name, note, aka):
@@ -137,147 +122,194 @@ def labelled(space, name, note, aka):
     return space
 
 
+def outline(cut=0):
+    """The C round the courtyard; with `cut`, the north wing stops that far
+    east of the west wall."""
+    return [[cut, 0], [W, 0], [W, D], [0, D], [0, S_WING], [STAIR_W, S_WING], [STAIR_W, S_STAIR],
+            [COURT, S_STAIR], [COURT, N_STAIR], [STAIR_W, N_STAIR], [STAIR_W, N_WING], [cut, N_WING]]
+
+
+def stairs():
+    """The two stairs filling the courtyard's inner corners."""
+    return [rect("stairs", STAIR_W, N_WING, COURT, N_STAIR), rect("stairs", STAIR_W, S_STAIR, COURT, S_WING)]
+
+
+def corridors(cut, north, south, east):
+    """The corridor round the courtyard: along the north wing (from `north`
+    to its inner wall), down the east band's courtyard side (to `east`) and
+    along the south wing (from its inner wall to `south`)."""
+    return [
+        rect("corridor", cut, north, COURT, N_WING),
+        rect("corridor", COURT, north, east, south),
+        rect("corridor", 0, S_WING, COURT, south),
+    ]
+
+
 GA, AA = "總務處", "教務處"
 
 
-def toilets(g, men, lobby, accessible, women):
-    """The south-west toilets every floor shares: men's to the east, women's
-    to the west, the accessible one off a small lobby between. Each box is
-    (u0, v0, u1, v1); men's and women's wrap round the accessible toilet."""
-    m0, m1, m2, m3 = men
-    l0, l1, l2, l3 = lobby
-    a0, a1, a2, a3 = accessible
-    w0, w1, w2, w3 = women
+def toilets(top, east, lobby, women, back, north, south):
+    """The south-west toilets every floor shares, from the south wing's
+    inner wall `top` to the south wall and from the west wall to `east`:
+    men's east of `women`, women's west of it, and the accessible toilet
+    between `north` and `south`, reached from a lobby off the corridor,
+    from `lobby` west to `back`, cut into both."""
     return [
-        g.poly("restroom", [(m0, m1), (m2, m1), (m2, m3), (a2, m3), (a2, a1), (l2, a1), (l2, l1), (m0, l1)],
-               name="男廁"),
-        g.rect("corridor", l0, l1, l2, l3),
-        g.rect("restroom", a0, a1, a2, a3, name="無障礙廁所"),
-        g.poly("restroom", [(a2, w1), (w2, w1), (w2, w3), (w0, w3), (w0, l3), (a2, l3)], name="女廁"),
+        poly("restroom", [(lobby, top), (east, top), (east, D), (women, D), (women, south), (lobby, south)],
+             name="男廁"),
+        poly("restroom", [(0, top), (back, top), (back, south), (women, south), (women, D), (0, D)], name="女廁"),
+        rect("corridor", back, top, lobby, north),
+        rect("restroom", back, north, lobby, south, name="無障礙廁所"),
     ]
 
 
 def floor_1f():
     g = Sign([(125, 212), (1102, 244), (1120, 1145), (77, 1140)],
              [(352, 800), (502, 700), (722, 700), (859, 800)], [(600, 638), (430, 770)])
+    north, south = g.y(297, 650), g.y(927, 800)  # the wings' rooms
+    east = g.x(515)  # the east band's rooms
+    split = g.x(700, 200)  # 文書組 | 事務組
+    r102 = g.y(374, 400), g.y(510, 400)
+    r101, tea, lift = g.y(730, 350), g.y(774, 490), g.y(867, 490)
+    back101 = g.x(457, 800)
+    centre = g.x(920, 1000)  # 教學發展中心's west end
     spaces = [
-        g.rect("corridor", 510, 222, 730, 520),
-        g.rect("corridor", 300, 515, 928, 638),
-        g.rect("corridor", 297, 638, 352, 1140),
-        g.rect("corridor", 858, 638, 928, 1145),
-        g.poly("room", [(125, 212), (374, 219), (374, 515), (300, 512), (297, 700), (107, 700)],
-               name="文書組", note=GA),
-        g.poly("room", [(107, 700), (297, 700), (276, 1140), (77, 1140)], name="事務組／採購組", note=GA),
-        g.room(374, 219, 510, 515, name="102 會議室"),
-        g.room(730, 229, 925, 457, name="101 會議室"),
-        g.room(727, 457, 774, 525, name="茶水間"),
-        g.rect("elevator", 774, 457, 867, 525),
-        g.room(925, 240, 1110, 920, name="教學發展中心"),
-        *toilets(g, (925, 920, 1116, 1032), (927, 985, 967, 1076), (967, 987, 1026, 1076), (930, 1032, 1120, 1145)),
-        g.rect("stairs", 365, 632, 500, 770),
-        g.rect("stairs", 722, 640, 858, 775),
+        *corridors(0, north, south, east),
+        rect("corridor", east, r102[1], W, r101),  # the entrance hall
+        rect("corridor", east, lift, back101, south),
+        poly("room", [(split, 0), (W, 0), (W, r102[0]), (east, r102[0]), (east, north), (split, north)],
+             name="文書組", note=GA),
+        room(0, 0, split, north, name="事務組／採購組", note=GA),
+        room(east, r102[0], W, r102[1], name="102 會議室"),
+        room(back101, r101, W, south, name="101 會議室"),
+        room(east, r101, back101, tea, name="茶水間"),
+        rect("elevator", east, tea, back101, lift),
+        room(centre, south, W, D, name="教學發展中心"),
+        *toilets(south, centre, g.x(985, 1000), g.x(1032, 1000), g.x(1076, 1000), g.y(967, 1000),
+                 g.y(1026, 1000)),
+        *stairs(),
         # The open courtyard, outside the walls.
-        g.poly("terrace", [(502, 638), (722, 640), (722, 776), (860, 776), (860, 1145), (350, 1140),
-                           (352, 770), (502, 770)], name="中庭"),
+        poly("terrace", [(0, N_WING), (STAIR_W, N_WING), (STAIR_W, N_STAIR), (COURT, N_STAIR), (COURT, S_STAIR),
+                         (STAIR_W, S_STAIR), (STAIR_W, S_WING), (0, S_WING)], name="中庭"),
     ]
-    return {"id": "1F", "outline": g.outline(), "spaces": spaces}
+    return {"id": "1F", "outline": outline(), "spaces": spaces}
 
 
 def floor_2f():
     g = Sign([(116, 181), (1060, 221), (1072, 1073), (99, 1086)],
              [(360, 900), (496, 660), (706, 660), (831, 900)], [(430, 597), (430, 727)])
+    north, south = g.y(296, 700), g.y(896, 700)
+    east = g.x(482)
+    wing = g.x(665, 200), g.x(865, 200)  # 營繕組 | 經營保管組 | 總務長室
+    tea, lift = g.y(752, 460), g.y(840, 460)
+    back = g.x(426, 800)  # 註冊課務組's west wall north of the lifts
+    end = g.x(862, 1000)  # 註冊課務組's west end
     spaces = [
-        g.rect("corridor", 296, 482, 896, 597),
-        g.rect("corridor", 840, 427, 895, 482),
-        g.rect("corridor", 296, 597, 360, 1085),
-        g.rect("corridor", 831, 597, 898, 1072),
-        g.poly("room", [(116, 181), (301, 190), (296, 665), (105, 664)], name="營繕組", note=GA),
-        g.room(105, 664, 296, 865, name="經營保管組", note=GA),
-        g.poly("room", [(102, 865), (296, 865), (290, 1085), (99, 1085)], name="總務長室", note=GA),
-        g.room(302, 191, 496, 482, name="出納組", note=GA),
-        # Open to 1F's entrance lobby below.
-        g.rect("void", 497, 195, 706, 482),
-        g.room(707, 425, 752, 492, name="茶水間"),
-        g.rect("elevator", 752, 427, 840, 492),
-        g.poly("room", [(707, 207), (1060, 221), (1067, 862), (896, 862), (895, 427), (707, 425)],
-               name="註冊課務組", note=AA),
-        *toilets(g, (896, 862, 1069, 967), (898, 925, 932, 1010), (932, 927, 987, 1007), (898, 967, 1072, 1072)),
-        g.rect("stairs", 364, 596, 496, 727),
-        g.rect("stairs", 706, 602, 831, 730),
+        *corridors(0, north, south, east),
+        rect("corridor", east, lift, back, south),
+        room(wing[0], 0, W, north, name="營繕組", note=GA),
+        room(wing[1], 0, wing[0], north, name="經營保管組", note=GA),
+        room(0, 0, wing[1], north, name="總務長室", note=GA),
+        room(east, north, W, N_STAIR, name="出納組", note=GA),
+        # Open to 1F's entrance hall below.
+        rect("void", east, N_STAIR, W, S_STAIR),
+        room(east, S_STAIR, back, tea, name="茶水間"),
+        rect("elevator", east, tea, back, lift),
+        poly("room", [(back, S_STAIR), (W, S_STAIR), (W, D), (end, D), (end, south), (back, south)],
+             name="註冊課務組", note=AA),
+        *toilets(south, end, g.x(925, 1000), g.x(967, 1000), g.x(1010, 1000), g.y(932, 1000), g.y(987, 1000)),
+        *stairs(),
     ]
-    return {"id": "2F", "outline": g.outline(), "spaces": spaces}
+    return {"id": "2F", "outline": outline(), "spaces": spaces}
 
 
 def floor_3f():
     g = Sign([(137, 241), (1090, 262), (1100, 1137), (112, 1131)],
              [(374, 850), (507, 700), (719, 700), (849, 900)], [(440, 650), (440, 780)])
+    cut = g.x(915, 300)
+    north, south = g.y(306, 800), g.y(916, 800)
+    east = g.x(537)
+    president = g.x(565, 200)
+    row = g.y(587, 400), g.y(725, 400), g.y(857, 400)  # 秘書室 | 主任秘書室 | (room) | 教務長室
+    tea = g.y(767, 500)
+    back = g.x(475, 800)  # the room over the lifts, and 教務長室's west wall there
+    dean = g.x(577, 1000)  # 教務長室's west wall beyond
+    end = g.x(920, 1000)  # 301's west end
     spaces = [
-        g.rect("corridor", 306, 537, 915, 650),
-        g.rect("corridor", 857, 475, 915, 537),
-        g.rect("corridor", 306, 650, 374, 915),
-        g.rect("corridor", 849, 577, 916, 1135),
-        g.poly("room", [(137, 241), (317, 246), (317, 565), (130, 565)], name="校長室"),
-        g.poly("room", [(130, 565), (317, 565), (306, 915), (118, 915)]),
-        g.room(317, 246, 587, 536, name="秘書室"),
-        g.room(587, 250, 725, 537, name="主任秘書室"),
-        g.room(725, 255, 857, 475),
-        g.room(725, 475, 767, 537, name="茶水間"),
-        g.rect("elevator", 767, 475, 857, 540),
-        g.poly("room", [(857, 257), (1090, 262), (1090, 577), (915, 577), (915, 475), (857, 475)],
-               name="教務長室／綜合業務組", note=AA),
-        g.room(914, 577, 1094, 920, name="301 會議室／校友會"),
-        *toilets(g, (916, 920, 1098, 1029), (916, 984, 953, 1070), (953, 986, 1010, 1070), (918, 1029, 1099, 1136)),
-        g.rect("stairs", 376, 650, 507, 780),
-        g.rect("stairs", 719, 654, 849, 782),
+        *corridors(cut, north, south, east),
+        rect("corridor", east, row[2], back, south),
+        room(president, 0, W, north, name="校長室"),
+        room(cut, 0, president, north),
+        room(east, north, W, row[0], name="秘書室"),
+        room(east, row[0], W, row[1], name="主任秘書室"),
+        room(back, row[1], W, row[2]),
+        room(east, row[1], back, tea, name="茶水間"),
+        rect("elevator", east, tea, back, row[2]),
+        poly("room", [(back, row[2]), (W, row[2]), (W, D), (dean, D), (dean, south), (back, south)],
+             name="教務長室／綜合業務組", note=AA),
+        room(end, south, dean, D, name="301 會議室／校友會"),
+        *toilets(south, end, g.x(984, 1000), g.x(1029, 1000), g.x(1070, 1000), g.y(953, 1000), g.y(1010, 1000)),
+        *stairs(),
     ]
-    return {"id": "3F", "outline": g.outline(north_end=915), "spaces": spaces}
+    return {"id": "3F", "outline": outline(cut), "spaces": spaces}
 
 
 def floor_4f():
     g = Sign([(128, 121), (1156, 165), (1182, 1104), (90, 1107)],
              [(386, 900), (538, 640), (771, 640), (919, 900)], [(450, 570), (450, 715)])
+    cut = g.x(862, 200)
+    north, south = g.y(320, 500), g.y(980, 500)
+    east = g.x(451)
+    row, tea, lift = g.y(770, 300), g.y(820, 420), g.y(919, 420)
+    back = g.x(382, 870)  # 環安中心's west wall
+    end = g.x(866, 1080)  # 研究發展處's west end
     spaces = [
-        g.rect("corridor", 314, 441, 987, 570),
-        g.rect("corridor", 919, 386, 974, 451),
-        g.rect("corridor", 314, 570, 386, 862),
-        g.rect("corridor", 913, 575, 990, 1104),
-        g.poly("room", [(128, 121), (329, 128), (314, 862), (99, 862)], name="主計室"),
-        g.poly("room", [(329, 131), (770, 148), (770, 451), (329, 441)], name="人事室"),
-        g.room(770, 151, 974, 382, name="環境保護暨職業安全衛生中心", aka=["環安中心"]),
-        g.room(772, 382, 820, 454, name="茶水間"),
-        g.rect("elevator", 820, 382, 919, 451),
-        g.poly("room", [(974, 160), (1156, 165), (1177, 867), (987, 866)], name="研究發展處",
-               aka=["研發處", "研發企劃組", "計畫管理組", "產學推廣組"]),
-        *toilets(g, (987, 867, 1177, 985), (987, 937, 1030, 1030), (1030, 939, 1091, 1030), (994, 985, 1182, 1104)),
-        g.rect("stairs", 391, 566, 538, 712),
-        g.rect("stairs", 771, 575, 913, 718),
+        *corridors(cut, north, south, east),
+        rect("corridor", east, lift, back, south),
+        room(cut, 0, W, north, name="主計室"),
+        room(east, north, W, row, name="人事室"),
+        room(back, row, W, south, name="環境保護暨職業安全衛生中心", aka=["環安中心"]),
+        room(east, row, back, tea, name="茶水間"),
+        rect("elevator", east, tea, back, lift),
+        room(end, south, W, D, name="研究發展處", aka=["研發處", "研發企劃組", "計畫管理組", "產學推廣組"]),
+        *toilets(south, end, g.x(937, 1050), g.x(985, 1050), g.x(1030, 1050), g.y(1030, 1000),
+                 g.y(1091, 1000)),
+        *stairs(),
     ]
-    return {"id": "4F", "outline": g.outline(north_end=862), "spaces": spaces}
+    return {"id": "4F", "outline": outline(cut), "spaces": spaces}
 
 
 def floor_5f():
     g = Sign([(215, 272), (1073, 316), (1062, 1100), (182, 1094)],
              [(428, 850), (543, 700), (730, 700), (847, 900)], [(480, 649), (480, 771)])
+    cut = g.x(888, 300)
+    corner, south = g.y(370, 600), g.y(910, 600)  # 國際事務處's east wall by the corridor; the south rooms
+    east = g.x(545)
+    row = g.y(503, 400), g.y(747, 400), south  # 第一 | 第二 | (room) | 學術副校長室
+    tea, lift = g.y(781, 530), g.y(862, 530)
+    back = g.x(505, 800)
+    stub = g.y(453, 480), g.x(427, 480)  # the corridor's stub into 第一會議室
+    vp = g.x(662, 1000)  # 學術副校長室 | 行政副校長室
+    end = g.x(908, 1000)
     spaces = [
-        g.rect("corridor", 370, 543, 903, 649),
-        g.rect("corridor", 453, 427, 503, 543),
-        g.rect("corridor", 862, 505, 912, 560),
-        g.rect("corridor", 847, 649, 903, 1095),
-        g.poly("room", [(215, 272), (503, 285), (503, 427), (453, 427), (453, 543), (370, 546), (206, 536)],
-               name="第一會議室"),
-        g.poly("room", [(206, 536), (370, 546), (370, 649), (428, 649), (420, 890), (190, 888)],
-               name="國際事務處"),
-        g.room(503, 290, 747, 545, name="第二會議室"),
-        g.room(747, 302, 914, 505),
-        g.room(741, 502, 781, 563, name="茶水間"),
-        g.rect("elevator", 781, 503, 862, 560),
-        g.room(914, 312, 1073, 662, name="學術副校長室／校務研究辦公室"),
-        g.room(903, 662, 1065, 908, name="行政副校長室"),
-        *toilets(g, (902, 908, 1063, 1005), (902, 963, 933, 1040), (933, 965, 985, 1040), (903, 1005, 1062, 1100)),
-        g.rect("stairs", 428, 649, 543, 771),
-        g.rect("stairs", 730, 650, 848, 778),
+        rect("corridor", COURT, corner, east, south),
+        rect("corridor", 0, S_WING, COURT, south),
+        rect("corridor", east, stub[0], stub[1], row[0]),
+        rect("corridor", east, lift, back, row[2]),
+        poly("room", [(east, 0), (W, 0), (W, row[0]), (stub[1], row[0]), (stub[1], stub[0]), (east, stub[0])],
+             name="第一會議室"),
+        poly("room", [(cut, 0), (east, 0), (east, corner), (COURT, corner), (COURT, N_WING), (cut, N_WING)],
+             name="國際事務處"),
+        room(east, row[0], W, row[1], name="第二會議室"),
+        room(back, row[1], W, row[2]),
+        room(east, row[1], back, tea, name="茶水間"),
+        rect("elevator", east, tea, back, lift),
+        room(vp, row[2], W, D, name="學術副校長室／校務研究辦公室"),
+        room(end, row[2], vp, D, name="行政副校長室"),
+        *toilets(row[2], end, g.x(963, 1000), g.x(1005, 1000), g.x(1040, 1000), g.y(933, 1000), g.y(985, 1000)),
+        *stairs(),
     ]
-    return {"id": "5F", "outline": g.outline(north_end=888), "spaces": spaces}
+    return {"id": "5F", "outline": outline(cut), "spaces": spaces}
 
 
 def main():

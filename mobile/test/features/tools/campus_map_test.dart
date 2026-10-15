@@ -212,6 +212,7 @@ void main() {
       'tiyu': '地上 4 層，地下 1 層',
       'jingde': '地上 7 層',
       'shengzi': '地上 8 層',
+      'shipin': '地上 3 層',
     };
     for (final MapEntry(key: id, value: text) in levels.entries) {
       expect(map.building(id)!.levels, text, reason: id);
