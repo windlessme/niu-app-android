@@ -185,11 +185,16 @@ void main() {
 
   test('圖書資訊中心 and 實驗動物中心 have plans', () {
     expect(map.building('tuzi')!.levels, '地上 6 層');
-    expect(map.locate('圖523')!.floor.id, '5F');
+    expect(
+      map.search('523').where((r) => r.building.id == 'tuzi').single.space.name,
+      '523 討論室',
+    );
+    expect(map.search('電腦教室一').single.space.code, isNull);
     expect(map.search('電算中心').map((r) => r.space.label), contains('電算中心辦公室'));
     expect(map.search('西文圖書區'), hasLength(2));
     expect(map.building('dongwu')!.levels, '地上 2 層');
-    expect(overview.withPlan('tuzi')!.name, '圖書資訊中心');
+    expect(overview.withPlan('tuzi')!.name, '圖書資訊中心（圖書館）');
+    expect(overview.searchBuildings('圖書館').single.plan, 'tuzi');
     expect(overview.withPlan('dongwu')!.name, '實驗動物中心');
   });
 

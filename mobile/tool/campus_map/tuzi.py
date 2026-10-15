@@ -7,6 +7,8 @@ left (the slanted wall is the north side; the entrance stair on 2F faces
 west), so each is mapped by its outline's box: the guide's bottom edge is
 the west wall, its right edge the south wall. The building is shared, but
 only the library's floors and 1F's computer centre are mapped so far.
+Rooms carry no codes: the library names them, numbers and all (電腦教室一,
+523 討論室).
 """
 import json
 from pathlib import Path
@@ -42,7 +44,7 @@ class Guide:
 
 def labelled(space, code, name, note):
     if code:
-        space["code"] = f"圖{code}"
+        space["code"] = code
     if name:
         space["name"] = name
     if note:
@@ -75,11 +77,11 @@ def floor_1f():
         g.room(435, 118, 488, 158, name="掃具間"),
         g.room(490, 82, 635, 158, name="工作室"),
         g.rect("restroom", 640, 85, 745, 188, name="廁所"),
-        g.room(505, 197, 748, 305, code=108, name="電腦教室（五）"),
-        g.room(505, 316, 748, 422, code=107, name="電腦教室（四）"),
-        g.room(503, 433, 747, 541, code=106, name="電腦教室（三）"),
-        g.room(502, 552, 746, 658, code=105, name="電腦教室（二）"),
-        g.room(502, 670, 746, 777, code=104, name="電腦教室（一）", note="雲端自學空間"),
+        g.room(505, 197, 748, 305, name="電腦教室五"),
+        g.room(505, 316, 748, 422, name="電腦教室四"),
+        g.room(503, 433, 747, 541, name="電腦教室三"),
+        g.room(502, 552, 746, 658, name="電腦教室二"),
+        g.room(502, 670, 746, 777, name="電腦教室一", note="雲端自學空間"),
         g.room(502, 783, 746, 890, name="電算中心辦公室"),
         g.room(503, 893, 613, 928, name="服務台"),
         g.room(380, 375, 460, 430, name="工作室"),
@@ -174,16 +176,16 @@ def floor_5f():
     spaces = [
         g.rect("stairs", 555, 30, 630, 200),
         g.room(705, 30, 820, 165, name="工作準備室"),
-        g.room(820, 30, 965, 165, code=523, name="討論室"),
+        g.room(820, 30, 965, 165, name="523 討論室"),
         g.rect("restroom", 965, 30, 1085, 215, name="廁所"),
         g.room(550, 165, 1000, 725, name="中文圖書區"),
         # Study carrels: the guide numbers 511, 510 and 506–504; the rest
         # follow on.
-        *[g.room(1005, 215 + 83 * k, 1085, 298 + 83 * k, code=511 - k, name="研究小間") for k in range(5)],
+        *[g.room(1005, 215 + 83 * k, 1085, 298 + 83 * k, name=f"{511 - k} 研究小間") for k in range(5)],
         g.rect("stairs", 870, 745, 1090, 945),
         g.rect("elevator", 590, 870, 635, 935),
         g.room(560, 950, 990, 1295, name="現期期刊區"),
-        *[g.room(992, 1020 + 90 * k, 1085, 1110 + 90 * k, code=506 - k, name="宜思菁華小間") for k in range(3)],
+        *[g.room(992, 1020 + 90 * k, 1085, 1110 + 90 * k, name=f"{506 - k} 宜思菁華小間") for k in range(3)],
         g.poly("room", [(320, 760), (455, 760), (545, 985), (430, 1020), (430, 1235), (360, 1240), (360, 1295),
                         (140, 1295)], name="數位學習資源中心"),
         g.room(550, 1300, 1090, 1670, name="I 讀書中心"),
@@ -199,7 +201,7 @@ def floor_6f():
     spaces = [
         *tower(g),
         g.room(488, 25, 565, 118, name="工作準備室"),
-        g.room(567, 25, 660, 118, code=612, name="討論室"),
+        g.room(567, 25, 660, 118, name="612 討論室"),
         g.room(380, 150, 750, 505, name="中文圖書區"),
         g.room(385, 648, 750, 1130, name="中文圖書區"),
         g.poly("room", [(222, 518), (325, 518), (325, 645), (378, 645), (378, 765), (148, 765)], name="罕用書區"),
@@ -210,7 +212,7 @@ def floor_6f():
 
 def main():
     floors = [f() for f in (floor_1f, floor_2f, floor_3f, floor_4f, floor_5f, floor_6f)]
-    building = {"id": "tuzi", "name": "圖書資訊中心", "unit": "m", "floors": floors}
+    building = {"id": "tuzi", "name": "圖書資訊中心（圖書館）", "unit": "m", "floors": floors}
     text = json.dumps(building, ensure_ascii=False, separators=(",", ":")) + "\n"
     root = Path(__file__).resolve().parents[3]
     # app-content is the copy iOS and others read; the app bundles its own.

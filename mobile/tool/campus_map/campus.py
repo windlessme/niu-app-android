@@ -22,8 +22,8 @@ MX = 111_320 * math.cos(math.radians(LAT0))
 MY = 110_574
 
 # Names people use alongside OpenStreetMap's, by OSM way id: new students
-# know 格致大樓 as 電資學院.
-NAMES = {256119614: "格致大樓（電資學院）"}
+# know 格致大樓 as 電資學院, everyone 圖書資訊中心 as 圖書館.
+NAMES = {256119614: "格致大樓（電資學院）", 256119625: "圖書資訊中心（圖書館）"}
 
 # Structures that will never have floor plans: on the map and in search,
 # not in the building list.
