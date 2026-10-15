@@ -261,6 +261,13 @@ class CampusMap {
     'assets/campus_map/zonghe.json',
     'assets/campus_map/tuzi.json',
     'assets/campus_map/dongwu.json',
+    'assets/campus_map/shengzi.json',
+    'assets/campus_map/tiyu.json',
+    'assets/campus_map/xingzheng.json',
+    'assets/campus_map/jingde.json',
+    'assets/campus_map/tongshi.json',
+    'assets/campus_map/yuyan.json',
+    'assets/campus_map/huodong.json',
   ];
 
   final List<MapBuilding> buildings;
