@@ -107,6 +107,30 @@ def label(d, floor, pt):
                anchor="lm" if dx > 0 else "rm")
 
 
+CLOSED = (214, 69, 65)
+
+
+def midpoint(line):
+    """The point halfway along a polyline."""
+    steps = [((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2) ** .5 for a, b in zip(line, line[1:])]
+    left = sum(steps) / 2
+    for (a, b), step in zip(zip(line, line[1:]), steps):
+        if left <= step and step:
+            t = left / step
+            return a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t
+        left -= step
+    return tuple(line[-1])
+
+
+def draw_closed(d, line, pt):
+    """A door no one may pass: a red bar across it, crossed out."""
+    d.line([pt(*p) for p in line], fill=CLOSED, width=4 * SS, joint="curve")
+    x, y = midpoint(line)
+    r = 0.6
+    d.line([pt(x - r, y - r), pt(x + r, y + r)], fill=CLOSED, width=3 * SS)
+    d.line([pt(x + r, y - r), pt(x - r, y + r)], fill=CLOSED, width=3 * SS)
+
+
 def render(floor, out, portrait, labels=False):
     global PAD
     PAD = 7.0 if labels else 3.0
@@ -160,6 +184,8 @@ def render(floor, out, portrait, labels=False):
                 m = 0.4 if kind == "elevator" else 0.8
                 d.line([pt(x0 + m, y0 + m), pt(x1 - m, y1 - m)], fill=stroke, width=SS)
                 d.line([pt(x1 - m, y0 + m), pt(x0 + m, y1 - m)], fill=stroke, width=SS)
+    for line in floor.get("closed", []):
+        draw_closed(d, line, pt)
     if labels:
         label(d, floor, pt)
         f = ImageFont.truetype(FONT, 20 * SS)
