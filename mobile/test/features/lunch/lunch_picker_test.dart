@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:niu_mobile/features/lunch/lunch_picker.dart';
 import 'package:niu_mobile/features/lunch/lunch_picker_screen.dart';
 import 'package:niu_mobile/shared/shared.dart';
@@ -43,6 +44,7 @@ void main() {
   testWidgets('draws a category and a dish, then opens the map', (
     tester,
   ) async {
+    SharedPreferences.setMockInitialValues({});
     final opened = <Uri>[];
     await tester.pumpWidget(
       app(
@@ -74,10 +76,19 @@ void main() {
     final dish = LunchCategory.rice.dishes.firstWhere(
       (d) => find.text('今天中午就吃$d吧！').evaluate().isNotEmpty,
     );
-    await tester.scrollUntilVisible(find.text('在地圖搜尋宜蘭火車站的$dish'), 200);
-    await tester.tap(find.text('在地圖搜尋宜蘭火車站的$dish'));
+    // One search button; the area is chosen above it and remembered.
+    await tester.scrollUntilVisible(find.text('在地圖搜尋$dish'), 200);
+    expect(find.textContaining('在地圖搜尋'), findsOneWidget);
+    await tester.tap(find.text('宜蘭火車站'));
+    await tester.pump();
+    await tester.tap(find.text('在地圖搜尋$dish'));
     await tester.pumpAndSettle();
     expect(opened.map((u) => u.scheme), ['geo', 'https']);
+    expect(opened.last.queryParameters['query'], '$dish 宜蘭火車站');
+    expect(
+      (await SharedPreferences.getInstance()).getString('lunchPicker.area'),
+      'station',
+    );
     expect(find.text('無法開啟地圖'), findsOneWidget);
 
     await tester.tap(find.text('重來'));

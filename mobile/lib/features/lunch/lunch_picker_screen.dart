@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../shared/shared.dart';
@@ -33,6 +34,26 @@ class _LunchPickerScreenState extends State<LunchPickerScreen> {
   Timer? _timer;
 
   static const _hue = NiuHue.orange;
+  static const _areaKey = 'lunchPicker.area';
+
+  /// Where to look; remembered, as iOS remembers its choice.
+  LunchArea _area = LunchArea.campus;
+
+  @override
+  void initState() {
+    super.initState();
+    SharedPreferences.getInstance().then((prefs) {
+      final saved = LunchArea.values.asNameMap()[prefs.getString(_areaKey)];
+      if (saved != null && mounted) setState(() => _area = saved);
+    });
+  }
+
+  void _pickArea(LunchArea area) {
+    setState(() => _area = area);
+    SharedPreferences.getInstance().then(
+      (p) => p.setString(_areaKey, area.name),
+    );
+  }
 
   @override
   void dispose() {
@@ -203,16 +224,21 @@ class _LunchPickerScreenState extends State<LunchPickerScreen> {
             number: 3,
             title: '去哪裡吃$dish',
             children: [
-              for (final area in LunchArea.values)
-                OutlinedButton.icon(
-                  onPressed: () => _search(area),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: _hue.foreground(context),
-                    minimumSize: const Size.fromHeight(48),
-                  ),
-                  icon: const Icon(Icons.map_rounded),
-                  label: Text('在地圖搜尋${area.title}的$dish'),
+              NiuSegmented<LunchArea>(
+                segments: [for (final a in LunchArea.values) (a, a.title)],
+                value: _area,
+                onChanged: _pickArea,
+              ),
+              FilledButton.icon(
+                onPressed: () => _search(_area),
+                style: FilledButton.styleFrom(
+                  backgroundColor: _hue.foreground(context),
+                  foregroundColor: Theme.of(context).colorScheme.surface,
+                  minimumSize: const Size.fromHeight(48),
                 ),
+                icon: const Icon(Icons.map_rounded),
+                label: Text('在地圖搜尋$dish'),
+              ),
               Text(
                 '會用手機的地圖 App 搜尋，營業時間與菜單請以店家公告為準。',
                 style: Theme.of(context).textTheme.bodySmall,
