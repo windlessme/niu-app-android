@@ -98,15 +98,23 @@ abstract final class CampusServices {
     '/tools/campus-map',
   );
 
+  static const lunch = CampusService(
+    '午餐吃什麼',
+    '隨機抽麵、飯或其他',
+    Icons.restaurant_rounded,
+    NiuHue.orange,
+    '/tools/lunch',
+  );
+
   static const tools = CampusService(
     '小工具',
-    '校園地圖',
+    '午餐吃什麼、校園地圖',
     Icons.widgets_rounded,
     NiuHue.purple,
     '/tools',
   );
 
-  static const toolbox = [campusMap];
+  static const toolbox = [lunch, campusMap];
 
   static const home = [
     mail,

@@ -8,6 +8,7 @@
 for checking against the signs.
 """
 import json
+import math
 import sys
 from pathlib import Path
 
@@ -214,7 +215,10 @@ def render(floor, out, portrait, labels=False):
             else:
                 poly = [pt(*p) for p in (pts if flat else inset(pts, GAP))]
                 d.polygon(poly, fill=fill, outline=stroke, width=SS * 2 if stroke else 0)
-            if kind == "stairs":
+            if kind == "stairs" and "rect" not in s:
+                for a, b in treads(pts):
+                    d.line([pt(*a), pt(*b)], fill=stroke, width=SS)
+            elif kind == "stairs":
                 horizontal = (x1 - x0) >= (y1 - y0)
                 t = (x0 if horizontal else y0) + 0.8
                 end = (x1 if horizontal else y1) - 0.8
@@ -236,6 +240,33 @@ def render(floor, out, portrait, labels=False):
     if portrait and img.width > img.height:
         img = img.rotate(-90, expand=True)
     img.save(out)
+
+
+def treads(ps):
+    """Tread lines across a polygon flight, square to its longest side and
+    cut at its walls (each line's crossings with the edges, paired up)."""
+    best, o, u = 0, ps[0], (1, 0)
+    for i, a in enumerate(ps):
+        b = ps[(i + 1) % len(ps)]
+        dx, dy = b[0] - a[0], b[1] - a[1]
+        length = math.hypot(dx, dy)
+        if length > best:
+            best, o, u = length, a, (dx / length, dy / length)
+    along = [(p[0] - o[0]) * u[0] + (p[1] - o[1]) * u[1] for p in ps]
+    out, t = [], min(along) + 0.8
+    while t < max(along) - 0.8:
+        hits = []
+        for i, a in enumerate(ps):
+            b = ps[(i + 1) % len(ps)]
+            ta, tb = along[i], along[(i + 1) % len(ps)]
+            if (ta - t) * (tb - t) >= 0 and not (ta == t and tb != t):
+                continue
+            k = (t - ta) / (tb - ta)
+            hits.append((a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k))
+        hits.sort(key=lambda p: -p[0] * u[1] + p[1] * u[0])
+        out += [(hits[i], hits[i + 1]) for i in range(0, len(hits) - 1, 2)]
+        t += 0.45
+    return out
 
 
 def main():

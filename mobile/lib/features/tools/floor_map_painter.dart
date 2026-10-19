@@ -403,6 +403,25 @@ class FloorMapPainter extends CustomPainter {
       ..color = colors.inkTertiary.withValues(alpha: .35)
       ..strokeWidth = px;
     switch (s.kind) {
+      case MapSpaceKind.stairs when !s.isRect:
+        // A drawn flight, maybe slanted: treads square to its longest side,
+        // kept inside its walls.
+        final (origin, along) = _longestSide(s.points);
+        final normal = Offset(-along.dy, along.dx);
+        final reach = b.longestSide * 2;
+        var lo = double.infinity, hi = -double.infinity;
+        for (final p in s.points) {
+          final t = _dot(p - origin, along);
+          if (t < lo) lo = t;
+          if (t > hi) hi = t;
+        }
+        canvas.save();
+        canvas.clipPath(s.path);
+        for (var t = lo + .8; t < hi - .8; t += .45) {
+          final at = origin + along * t;
+          canvas.drawLine(at - normal * reach, at + normal * reach, line);
+        }
+        canvas.restore();
       case MapSpaceKind.stairs:
         final across = b.width >= b.height;
         final from = (across ? b.left : b.top) + .8;
@@ -431,3 +450,19 @@ class FloorMapPainter extends CustomPainter {
       old.colors != colors ||
       old.textStyle != textStyle;
 }
+
+/// The polygon's longest side: where it starts, and its unit direction.
+(Offset, Offset) _longestSide(List<Offset> points) {
+  var best = (points.first, const Offset(1, 0));
+  var length = 0.0;
+  for (var i = 0; i < points.length; i++) {
+    final a = points[i], d = points[(i + 1) % points.length] - a;
+    if (d.distance > length) {
+      length = d.distance;
+      best = (a, d / d.distance);
+    }
+  }
+  return best;
+}
+
+double _dot(Offset a, Offset b) => a.dx * b.dx + a.dy * b.dy;
