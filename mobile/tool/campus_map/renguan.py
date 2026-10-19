@@ -24,8 +24,10 @@ OpenStreetMap rounds the west side all the way up, while every upper panel
 has square rooms there; the panels win.
 
 Room numbers lead the names (as in the library and 學生活動中心): the
-directory numbers the rooms plainly (101, 205), and the school's code for
-the building isn't known yet.
+directory numbers the rooms plainly (101, 205). The school's system codes
+only five of them (user, 2026-10-19), each its own way; those go in `aka`,
+so timetables find the room and the map keeps the sign's number. 402 is the
+room east of 401, the one the 4F panel leaves unnumbered.
 """
 import json
 import math
@@ -35,6 +37,9 @@ DEPT = "外國語文學系"
 DEPT_ALIASES = ["外文系"]
 COLLEGE = "人文及管理學院"
 COLLEGE_ALIASES = ["人管院"]
+
+# Sign number → the school's classroom code.
+CODES = {"101": "語101", "102": "語102", "103": "人管階梯教室", "308": "人文308", "402": "人文402"}
 
 
 def X(x):
@@ -71,6 +76,8 @@ def poly(kind, points, name=None, note=None):
 def labelled(space, name, note):
     if name:
         space["name"] = name
+        if code := CODES.get(name.split()[0]):
+            space["aka"] = [code]
     if note:
         space["note"] = note
     return space
@@ -232,7 +239,7 @@ def floor_4f():
             (16.1, "403 人文及管理學院會議室", COLLEGE),
         ]),
         upper_box("room", EAST, 16.1, 29.95, SOUTH, name="401 錄音室（一）"),
-        upper_box("room", 29.95, 16.1, 34, SOUTH),
+        upper_box("room", 29.95, 16.1, 34, SOUTH, name="402"),
     ], DEPT, DEPT_ALIASES)
 
 

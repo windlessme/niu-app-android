@@ -1,7 +1,7 @@
 name: niu_mobile
 description: NIU-Life Android campus companion.
 publish_to: none
-version: 1.2.29+151
+version: 1.2.30+152
 
 environment:
   sdk: '>=3.10.0 <4.0.0'

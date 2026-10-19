@@ -245,6 +245,16 @@ void main() {
       containsAll(['201 外國語文學系辦公室', '400 外國語文學系教學助理工作室']),
     );
     expect(map.search('院長').map((r) => r.floor.id), contains('3F'));
+    // The school codes only five rooms, each its own way.
+    for (final (text, room) in [
+      ('語 101', '101 外國語文學系專業教室（一）'),
+      ('語102', '102 外國語文學系專業教室（二）'),
+      ('人管階梯教室', '103 階梯教室'),
+      ('人文308', '308 外國語文學系會議室'),
+      ('人文 402', '402'),
+    ]) {
+      expect(map.locate(text)?.space.name, room, reason: text);
+    }
   });
 
   test('search matches codes, bare numbers and notes', () {
