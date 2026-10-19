@@ -340,6 +340,7 @@ class CampusMap {
     'assets/campus_map/yuyan.json',
     'assets/campus_map/huodong.json',
     'assets/campus_map/shipin.json',
+    'assets/campus_map/renguan.json',
   ];
 
   final List<MapBuilding> buildings;

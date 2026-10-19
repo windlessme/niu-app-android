@@ -30,7 +30,7 @@ NAMES = {256119614: "格致大樓（電資學院）", 256119625: "圖書資訊�
 UNLISTED = {"司令台", "看台", "宜蘭大學警衛室", "資源回收屋"}
 
 # Buildings with floor plans, by OSM way id.
-PLANS = {256119621: "jiaose", 256119616: "gongxue", 256119615: "shixi", 547390740: "dianzi", 256119618: "shihua", 256119614: "gezhi", 547390743: "zonghe", 256119625: "tuzi", 1568199845: "dongwu", 238189158: "shengzi", 256119613: "tiyu", 256119623: "xingzheng", 256119626: "jingde", 256119629: "tongshi", 256119630: "yuyan", 809483420: "huodong", 256119631: "shipin"}
+PLANS = {256119621: "jiaose", 256119616: "gongxue", 256119615: "shixi", 547390740: "dianzi", 256119618: "shihua", 256119614: "gezhi", 547390743: "zonghe", 256119625: "tuzi", 1568199845: "dongwu", 238189158: "shengzi", 256119613: "tiyu", 256119623: "xingzheng", 256119626: "jingde", 256119629: "tongshi", 256119630: "yuyan", 809483420: "huodong", 397462976: "renguan", 256119631: "shipin"}
 
 
 def project(lat, lon):

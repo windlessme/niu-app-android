@@ -235,6 +235,18 @@ void main() {
     expect(map.search('校長室').map((r) => r.building.id), contains('xingzheng'));
   });
 
+  test('人文管理學院及外文系 has 1F–4F, rooms numbered in their names', () {
+    expect(map.building('renguan')!.levels, '地上 4 層');
+    expect(overview.withPlan('renguan'), isNotNull);
+    expect(map.search('103').map((r) => r.space.name), contains('103 階梯教室'));
+    // Offices noted with the department are found by its short name.
+    expect(
+      map.search('外文系').map((r) => r.space.name),
+      containsAll(['201 外國語文學系辦公室', '400 外國語文學系教學助理工作室']),
+    );
+    expect(map.search('院長').map((r) => r.floor.id), contains('3F'));
+  });
+
   test('search matches codes, bare numbers and notes', () {
     expect(map.search('305').map((r) => r.space.label), [
       '教305',
@@ -246,6 +258,7 @@ void main() {
       // 生資大樓 and 學生活動中心 put the number in the name.
       '305 蛋白質純化實驗室',
       '305 社團辦公室',
+      '305 課業輔導室',
     ]);
     expect(map.search('外語').map((r) => r.space.code), ['教401', '教412']);
     expect(map.search(' '), isEmpty);

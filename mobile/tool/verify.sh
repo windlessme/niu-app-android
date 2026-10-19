@@ -24,6 +24,7 @@ cmp assets/campus_map/tongshi.json ../app-content/campus-map/tongshi.json
 cmp assets/campus_map/yuyan.json ../app-content/campus-map/yuyan.json
 cmp assets/campus_map/huodong.json ../app-content/campus-map/huodong.json
 cmp assets/campus_map/shipin.json ../app-content/campus-map/shipin.json
+cmp assets/campus_map/renguan.json ../app-content/campus-map/renguan.json
 cmp assets/campus_map/campus.json ../app-content/campus-map/campus.json
 dart format --output=none --set-exit-if-changed lib test integration_test
 flutter analyze
