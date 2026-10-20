@@ -4,8 +4,11 @@ This is the Android version of NIU-Life. The iOS version is maintained by Qian a
 [qian403/NIU-app](https://github.com/qian403/NIU-app); this repository started from
 its revision `96e8cdf3a4738ed31420f3de748fbee862906406`.
 
-The upstream copyright (Copyright (c) 2026 CHIEN) is kept under AGPL-3.0 (see LICENSE),
-alongside the copyright line for this repository's own work.
+Copyright (c) 2026 CHIEN
+Copyright (c) 2026 Windless
+
+The whole repository, including the work carried over from upstream, is licensed
+under the GNU Affero General Public License v3.0 (see LICENSE).
 School data, logos and third-party materials remain subject to their respective
 owners' rights. This repository does not imply affiliation or school approval.
 

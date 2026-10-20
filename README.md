@@ -95,7 +95,7 @@ App 不依賴任何私人後端：校務功能直接連線學校系統，公開�
 
 本專案以 [GNU Affero General Public License v3.0](LICENSE)（AGPL-3.0）授權，同一份授權條款也隨 App 內的授權頁發布。
 
-本 repo 以 [qian403/NIU-app](https://github.com/qian403/NIU-app) 的 revision `96e8cdf` 為起點，`calendar-data/` 與 App 內建的校曆資料（`mobile/assets/academic_calendar/`）沿用自該專案，因此 LICENSE 同時保留上游的著作權聲明（Copyright (c) 2026 CHIEN）。來源細節見 [NOTICE.md](NOTICE.md)。
+本 repo 以 [qian403/NIU-app](https://github.com/qian403/NIU-app) 的 revision `96e8cdf` 為起點，`calendar-data/` 與 App 內建的校曆資料（`mobile/assets/academic_calendar/`）沿用自該專案，因此保留上游的著作權聲明（Copyright (c) 2026 CHIEN），同樣以 AGPL-3.0 授權。來源細節見 [NOTICE.md](NOTICE.md)。
 
 學校名稱、標誌與校務資料的權利屬於各自的權利人。
 
