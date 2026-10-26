@@ -72,6 +72,23 @@ int? _number(String label) {
   return tens == null || units == null ? null : tens * 10 + units;
 }
 
+/// The school's course in [period] on [day]: teacher, name and room on
+/// separate lines (one line is the name alone), or the cell given as fields.
+ScheduleCell? scheduleCell(SchedulePeriod period, String day) {
+  if (period.cells[day] case final cell?) return cell;
+  final lines = (period.courses[day] ?? '')
+      .split('\n')
+      .map((line) => line.trim())
+      .where((line) => line.isNotEmpty)
+      .toList();
+  if (lines.isEmpty) return null;
+  return ScheduleCell(
+    lines.length > 1 ? lines[1] : lines.first,
+    teacher: lines.length > 1 ? lines.first : '',
+    room: lines.skip(2).join(' '),
+  );
+}
+
 List<ScheduleLesson> scheduleLessons(
   ClassSchedule schedule,
   String day, {
@@ -86,23 +103,15 @@ List<ScheduleLesson> scheduleLessons(
 
   for (final period in schedule.periods) {
     final custom = period.custom[day];
-    final lines = (period.courses[day] ?? '')
-        .split('\n')
-        .map((line) => line.trim())
-        .where((line) => line.isNotEmpty)
-        .toList();
-    if (lines.isEmpty && custom == null) {
+    final cell = scheduleCell(period, day);
+    if (cell == null && custom == null) {
       flush();
       continue;
     }
     // A device-added course carries its own fields; school cells are text.
-    final teacher = custom != null
-        ? custom.note
-        : lines.length > 1
-        ? lines.first
-        : '';
-    final name = custom?.name ?? (lines.length > 1 ? lines[1] : lines.first);
-    final room = custom?.classroom ?? lines.skip(2).join(' ');
+    final teacher = custom?.note ?? cell!.teacher;
+    final name = custom?.name ?? cell!.name;
+    final room = custom?.classroom ?? cell!.room;
     final times = RegExp(
       r'\d{1,2}:\d{2}',
     ).allMatches(period.time).map((match) => match.group(0)!).toList();

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/analytics/app_analytics.dart';
 import '../../core/demo/demo_data.dart';
@@ -102,6 +103,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         large: true,
         showBack: false,
         actions: [
+          NiuIconButton(
+            icon: Icons.people_alt_rounded,
+            tooltip: '課表交換',
+            onPressed: () => GoRouter.of(context).push('/schedule-exchange'),
+          ),
           NiuIconButton(
             icon: NiuIcons.refresh,
             tooltip: '更新課表',

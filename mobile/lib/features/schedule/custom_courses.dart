@@ -164,7 +164,7 @@ extension CustomCourseMerge on ClassSchedule {
           SchedulePeriod(period.label, period.time, period.courses, {
             ...period.custom,
             ...custom[i],
-          }),
+          }, period.cells),
       ],
     );
   }

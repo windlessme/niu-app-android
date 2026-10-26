@@ -36,6 +36,7 @@ import '../features/moodle/moodle_repository.dart';
 import '../features/moodle/moodle_screen.dart';
 import '../features/notifications/campus_notifications.dart';
 import '../features/schedule/schedule_screen.dart';
+import '../features/schedule_exchange/schedule_exchange_screen.dart';
 import '../features/settings/settings_screen.dart';
 import '../features/postal/postal_screen.dart';
 import '../features/lunch/lunch_picker_screen.dart';
@@ -153,6 +154,14 @@ class _NiuAppState extends State<NiuApp> {
       ),
       GoRoute(path: '/calendar', builder: (_, _) => const CalendarScreen()),
       GoRoute(path: '/postal', builder: (_, _) => const PostalScreen()),
+      GoRoute(
+        path: '/schedule-exchange',
+        builder: (_, _) => const AuthGate(
+          title: '課表交換',
+          allowLocalAccount: true,
+          child: ScheduleExchangeScreen(),
+        ),
+      ),
       GoRoute(path: '/tools', builder: (_, _) => const ToolsScreen()),
       GoRoute(
         path: '/tools/lunch',

@@ -32,8 +32,13 @@ class ScheduleWeekView extends StatelessWidget {
     this.height,
     this.onOpenCourse,
     this.onEditCustom,
+    this.freeSlots,
   });
   final ClassSchedule schedule;
+
+  /// Periods marked free for everyone compared, keyed
+  /// `mondayBasedDay * 100 + period index`.
+  final Set<int>? freeSlots;
 
   /// Opens a course added on this device for editing.
   final void Function(String id)? onEditCustom;
@@ -60,7 +65,8 @@ class ScheduleWeekView extends StatelessWidget {
       for (final list in lessons.values)
         for (final lesson in list)
           for (final p in lesson.periods) index[p] ?? -1,
-    ].where((i) => i >= 0).toList();
+      for (final key in freeSlots ?? const <int>{}) key % 100,
+    ].where((i) => i >= 0 && i < schedule.periods.length).toList();
     if (used.isEmpty) {
       return const NiuCard(
         child: NiuEmpty(
@@ -153,6 +159,18 @@ class ScheduleWeekView extends StatelessWidget {
                                 color: colors.hairline,
                               ),
                             ),
+                          for (var p = first; p <= last; p++)
+                            if (freeSlots?.contains(d * 100 + p) ?? false)
+                              Positioned(
+                                top: rowHeight * (p - first) + 2,
+                                left: 2,
+                                right: 2,
+                                height: rowHeight - 4,
+                                child: _FreeCell(
+                                  label:
+                                      '${scheduleWeekdays[d]}第 ${schedulePeriodNumber(schedule.periods[p].label)} 節，大家都沒課',
+                                ),
+                              ),
                           for (final lesson in lessons[scheduleWeekdays[d]]!)
                             if (index[lesson.periods.first] case final start?)
                               Positioned(
@@ -492,6 +510,43 @@ class _LessonBlock extends StatelessWidget {
                   ),
                 ],
               ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A period nobody compared has class in.
+class _FreeCell extends StatelessWidget {
+  const _FreeCell({required this.label});
+  final String label;
+  @override
+  Widget build(BuildContext context) {
+    final green = NiuHue.green.foreground(context);
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Semantics(
+      label: label,
+      excludeSemantics: true,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: green.withValues(alpha: dark ? .24 : .14),
+          border: Border.all(color: green.withValues(alpha: .55)),
+          borderRadius: BorderRadius.circular(NiuRadius.sm),
+        ),
+        child: Center(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 2),
+              child: Text(
+                '都沒課',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: green,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
             ),
           ),
         ),

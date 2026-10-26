@@ -1,6 +1,6 @@
 # HANDOFF
 
-給接手的 Claude Code session。最後更新：2026-10-19。目前版本：**1.3.0+153**。
+給接手的 Claude Code session。最後更新：2026-10-26。目前版本：**1.3.2+155**。
 
 ## 專案概況
 
@@ -15,7 +15,7 @@
 
 在 `mobile/` 底下執行：
 
-1. `set -o pipefail; tool/verify.sh`，包含 calendar/toolchain/分層/DOM 檢查、`dart format`、`flutter analyze`、`flutter test`，目前 449 項測試。
+1. `set -o pipefail; tool/verify.sh`，包含 calendar/toolchain/分層/DOM 檢查、`dart format`、`flutter analyze`、`flutter test`，目前 504 項測試。
 2. 把 `pubspec.yaml` 的 patch 版號和 build number 各加一。
 3. commit 到 `main`，**push 到 origin main**。
 4. `flutter build appbundle --release`，上傳到 Play internal 軌道（步驟見下節）。**每個新版本都要推。**
@@ -32,7 +32,7 @@
   - **2026-10-19 查：正式版軌道是 1.2.2 (124)**（2026-10-13 使用者提交審核；API 看不出是否已審完，以 Play Console 為準）。
   - **正式版：1.2.0 (122)**（2026-10-13 使用者確認已上線，Play 上的版本說明是「我們又抓到幾隻蟲蟲」）。前兩版正式版是 1.0.40 (121)、1.0.17 (98)。注意：審查中的正式版在 API 的 track 裡也會顯示 `status: completed`，不能拿來判斷已上線。
   - 公開測試（beta）：1.0.0 (81)。
-  - internal：**1.3.0 (153)**（2026-10-19 推送）。
+  - internal：**1.3.2 (155)**（2026-10-26 推送）。
 - 正式版由使用者在 Play Console 升級（Claude 推 production 會被權限擋下，屬正常）。
 - **正式版不用每版都推**，只要 versionCode 比上一個正式版大就行。建議 internal 每版都推；等使用者在手機上測過、累積一批改動或有重要修正時，再挑一版推正式版。**版本說明的寫法（使用者 2026-10-05 要求）**：
   - internal：只寫**這一版**改了什麼，讓使用者知道要測哪裡。沒有使用者看得到的改動時寫「內部調整，功能沒有變化」。不要再沿用累計說明，否則每版看起來都一樣。
@@ -111,6 +111,7 @@
   ・新增「小工具」與校園地圖：全校總覽地圖，教穡大樓、工學院大樓、時習大樓、格致大樓（電資學院）、電資二館、綜合教學大樓、圖書資訊中心（B1–7F）、人文管理學院及外文系（1F–4F）、實驗動物中心、時化學舍、學生活動中心、語言中心、通識教育中心、行政大樓、體育館、經德大樓、生資大樓、食品系實習工廠照比例的樓層平面圖，標出教室編號、男女廁，以及只能從獨立入口進出的區域，可以搜尋建築與教室，也能從課表直接查看教室位置
   ・M 園區問答：登入狀態失效時自動恢復登入，登入後自動開啟活動
   ・小工具新增「午餐吃什麼」：隨機抽麵、飯或其他，再抽一道菜，可直接用地圖 App 找附近店家
+  ・新增「課表交換」：用 QR Code 和同學交換課表（iOS 版也能互掃），可以看同學的課表、多人一起找共同空堂
   ```
 - 公開測試的使用者會自動拿到 versionCode 較大的正式版，公開測試軌道不用特別處理。release 名稱用 `X.Y.Z (versionCode)`，附一句 zh-TW 版本說明。
 - 上傳流程（每個新版本都要做）：`flutter build appbundle --release`，然後用 MCP 依序 `edits_insert` → `bundles_upload` → `tracks_update`（internal，status `completed`）→ `edits_commit`。
@@ -225,6 +226,7 @@
 | 1.2.30 | `ac525f8` | 使用者提供人文管理學院在校務系統上的教室代碼，只有五個：人文308、人文402、人管階梯教室、語101、語102。`renguan.py` 的 `CODES` 依告示房號放進 `aka`（課表找得到、地圖仍顯示告示房號）。4F 告示 401 東側沒編號的那間當作 402（推測，待使用者確認） |
 | 1.3.0 | `b0a6960` | 內容同 1.2.30。使用者要求：這次正式版有小工具、校園地圖、午餐吃什麼等新功能，版本號升到 1.3.0 |
 | 1.3.1 | `7b59384` | 內部調整，功能和 1.3.0 相同 |
+| 1.3.2 | （本次） | 課表交換：和 iOS 互掃的 QR Code 交換課表、看同學課表、多人比對共同空堂（見「課表交換」一節） |
 
 另外：
 
@@ -505,6 +507,18 @@
 - 1.0.18 曾把網頁登入改成隱藏 WebView 依序試 Cookie → 自動登入金鑰 → 用記住的帳密填 M 園區登入表單，並把所有隱藏登入排隊執行、掃描器打開就先登入。**使用者 2026-10-06 回報讀取 M 園區課程變慢、甚至無法讀取，要求回到原本架構，1.0.19 已還原。** 不要再用同樣做法。
 - 原本問題仍在：自動登入金鑰同一使用者 6 分鐘只能取一次（Moodle `autologinmintimebetweenreq`），每次開網頁都取新金鑰，所以第二次起會落到登入頁。要再處理時先跟使用者討論做法，避免拖慢課程讀取（例如不要排隊、不要在背景預先登入）。
 - M 園區網站實測（2026-10-06，使用者提供的 Cookie）：已登入頁面 body 沒有 `notloggedin`、有 `logout.php` 連結；登入頁是 `#page-login-index`、body 有 `notloggedin`，表單 `#login` 有 `username`／`password`／`logintoken`。前面有 Citrix NetScaler 負載平衡（`NSC_*`、`citrix_ns_id` Cookie）。
+
+## 課表交換（1.3.2）
+
+和 iOS 版 `8852f4a`（Qian 2026-10-26）同一個功能，QR Code 格式完全相同，兩個平台可以互掃。程式在 `lib/features/schedule_exchange/`。
+
+- **格式**（`schedule_share.dart`，對應 iOS `ScheduleShareModels.swift`）：`NIUTT1:` + base64url（去掉 `=`）的 **raw DEFLATE**（iOS 的 `COMPRESSION_ZLIB` 沒有 zlib header，Dart 用 `ZLibEncoder(raw: true)`）壓縮的 JSON。短 key 依字母排序：`v` 版本 1、`i` 分享 ID（大寫 UUID）、`y`/`s` 學年／學期、`t` 建立秒數、`n` 暱稱、`d` 週一為 0 的星期、`p` 節次 ID、`a` 每節起訖分鐘、`c` 課名表、`r`/`e` 教室／教師表（選擇分享才有）、`x` 每 5 個一組 `[星期, 節, 課名, 教室或 -1, 教師或 -1]`。上限：編碼後 1800 字、輸入 4096 bytes、解壓 32 KB、20 節、80 個字串、140 格、每個字串 64 bytes、暱稱 20 字。解碼拒絕外來 QR、新版本、24 小時前（容許 5 分鐘時差）、已結束學期與各種越界。文字清理（雙向字元、控制字元、Unicode White_Space）要和 iOS 一致，否則對方的碼會被當成格式錯誤。測試裡的 `iosCode` 是 iOS 檢查腳本的同一份資料，用 raw DEFLATE 產生。
+- **改 iOS 格式時兩邊要一起改**：任何欄位或上限變動都要升 `v` 並同步 Qian。
+- **儲存**（`schedule_exchange_store.dart`）：每個帳號一筆 flutter_secure_storage（Android Keystore 加密），key 是 `niu.scheduleExchange.<帳號的 SHA-256>`，不含學號；manifest 已排除備份。登出只清記憶體、保留資料（和 iOS、自訂課程一樣）。寫入成功才更新記憶體；讀不出來時顯示「清除」，不會自動覆蓋。學期結束 30 天後自動刪除。
+- **共同空堂**：比對分鐘，不比對節次編號；任何人的課表沒涵蓋的時間（沒有那天或節次時間讀不到）算未知、不算空堂；20 分鐘內的下課算涵蓋。自己的自訂課程算有課（只在本機比對，不會分享）。
+- **入口**：首頁服務格「課表交換」、課表頁右上角人像按鈕，路由 `/schedule-exchange`。示範模式有「加入示範同學」。
+- **Android 比 iOS 多的地方**（可以和 Qian 討論要不要同步）：共同空堂另外列成文字清單（「週二・第 3–4 節・9:10–11:00」）；週視圖會顯示夾在課與課之間的共同空堂列（iOS 只顯示自己有課的範圍）；「傳送圖片」把 QR Code 存成 PNG 分享，對方用「從相簿選取」讀；顯示 QR Code 時調亮螢幕。
+- **沒在實機上測過**：相機掃描、相簿讀圖（`analyzeImage`）、和 iOS 實際互掃。iOS 寫入 → Android 讀取已用同格式資料驗證；Android 寫入 → iOS 讀取還需要實機確認。
 
 ## 尚未驗證／已知事項
 

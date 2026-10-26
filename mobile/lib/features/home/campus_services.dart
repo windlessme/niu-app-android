@@ -90,6 +90,14 @@ abstract final class CampusServices {
     '/postal',
   );
 
+  static const scheduleExchange = CampusService(
+    '課表交換',
+    '看同學課表、找共同空堂',
+    Icons.people_alt_rounded,
+    NiuHue.pink,
+    '/schedule-exchange',
+  );
+
   static const campusMap = CampusService(
     '校園地圖',
     '大樓樓層與教室位置',
@@ -118,6 +126,7 @@ abstract final class CampusServices {
 
   static const home = [
     mail,
+    scheduleExchange,
     grades,
     library,
     calendar,

@@ -6,6 +6,7 @@ class SchedulePeriod {
     this.time,
     this.courses, [
     this.custom = const {},
+    this.cells = const {},
   ]);
   final String label;
   final String time;
@@ -15,6 +16,15 @@ class SchedulePeriod {
 
   /// Courses added on this device, per day, merged for display only.
   final Map<String, CustomCourse> custom;
+
+  /// Already-split fields per day, for tables that did not come from the
+  /// school's text cells (a classmate's shared timetable).
+  final Map<String, ScheduleCell> cells;
+}
+
+class ScheduleCell {
+  const ScheduleCell(this.name, {this.teacher = '', this.room = ''});
+  final String name, teacher, room;
 }
 
 class ClassSchedule {
