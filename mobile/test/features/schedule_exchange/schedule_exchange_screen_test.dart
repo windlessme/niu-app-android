@@ -6,6 +6,7 @@ import 'package:niu_mobile/features/schedule_exchange/my_schedule_code_screen.da
 import 'package:niu_mobile/features/schedule_exchange/schedule_exchange_screen.dart';
 import 'package:niu_mobile/features/schedule_exchange/schedule_exchange_store.dart';
 import 'package:niu_mobile/features/schedule_exchange/schedule_share.dart';
+import 'package:qr/qr.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../support/fakes.dart' as fakes;
@@ -33,6 +34,7 @@ ScheduleSharePayload classmate() => ScheduleSharePayload.fromSchedule(
 );
 
 void main() {
+  qrLevels();
   late fakes.ScheduleSession session;
   late ScheduleExchangeStore store;
 
@@ -110,5 +112,22 @@ void main() {
     expect(find.bySemanticsLabel('我的課表 QR Code'), findsOneWidget);
     expect(find.text('傳送圖片'), findsOneWidget);
     expect(store.preferences.useRealName, isTrue);
+  });
+}
+
+void qrLevels() {
+  test('a logo only where the error correction can restore it', () {
+    // Lengths of a typical table and of the 1800-character worst case.
+    final small = ScheduleQr('NIUTT1:${'A' * 550}');
+    expect(small.logo, isTrue);
+    expect(small.image.errorCorrectLevel, QrErrorCorrectLevel.H);
+    final hole = small.logoModules!;
+    expect(hole.start * 2 + hole.size, small.image.moduleCount);
+    expect(hole.size / small.image.moduleCount, closeTo(.22, .02));
+
+    final large = ScheduleQr('NIUTT1:${'A' * 1793}');
+    expect(large.logo, isFalse);
+    expect(large.image.errorCorrectLevel, QrErrorCorrectLevel.M);
+    expect(large.logoModules, isNull);
   });
 }

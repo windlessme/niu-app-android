@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:qr/qr.dart';
 import 'package:screen_brightness/screen_brightness.dart';
@@ -287,7 +288,7 @@ class _MyScheduleCodeScreenState extends State<MyScheduleCodeScreen> {
                             ? Semantics(
                                 image: true,
                                 label: '我的課表 QR Code',
-                                child: CustomPaint(painter: QrPainter(text)),
+                                child: ScheduleQrView(text),
                               )
                             : Center(
                                 child: Text(
@@ -407,64 +408,154 @@ class _MyScheduleCodeScreenState extends State<MyScheduleCodeScreen> {
   }
 }
 
-QrImage _qr(String text) => QrImage(
-  QrCode.fromData(data: text, errorCorrectLevel: QrErrorCorrectLevel.M),
-);
+const _logoAsset = 'assets/brand/qr_logo.png';
 
-/// Black modules on the white the caller puts behind them.
-class QrPainter extends CustomPainter {
-  QrPainter(this.text) : image = _qr(text);
-  final String text;
+/// A code with the error correction it can afford. A logo hides the middle
+/// modules, so it is drawn only at Q or H and only while the code stays
+/// sparse enough to scan off a screen; the largest tables fall back to the
+/// iOS app's level M without a logo. Scanners read every level the same.
+class ScheduleQr {
+  ScheduleQr._(this.image, this.logo);
+
+  factory ScheduleQr(String text) {
+    for (final (level, maxModules) in [
+      (QrErrorCorrectLevel.H, 129),
+      (QrErrorCorrectLevel.Q, 145),
+    ]) {
+      try {
+        final image = _image(text, level);
+        if (image.moduleCount <= maxModules) return ScheduleQr._(image, true);
+      } on InputTooLongException {
+        break;
+      }
+    }
+    return ScheduleQr._(_image(text, QrErrorCorrectLevel.M), false);
+  }
+
+  static QrImage _image(String text, int level) =>
+      QrImage(QrCode.fromData(data: text, errorCorrectLevel: level));
+
   final QrImage image;
-  @override
-  void paint(Canvas canvas, Size size) {
+  final bool logo;
+
+  /// The logo takes about 5% of the area, well within what Q (25%) or H
+  /// (30%) restores. Whole modules, centred, so none is half covered.
+  ({int start, int size})? get logoModules {
+    if (!logo) return null;
     final count = image.moduleCount;
-    final module = size.shortestSide / count;
+    var size = (count * .22).round();
+    if (size.isEven != count.isEven) size++;
+    return (start: (count - size) ~/ 2, size: size);
+  }
+
+  void paint(Canvas canvas, Rect area) {
+    final count = image.moduleCount;
+    final module = area.width / count;
+    final hole = logoModules;
+    bool hidden(int i) =>
+        hole != null && i >= hole.start && i < hole.start + hole.size;
     final paint = Paint()
       ..color = Colors.black
       ..isAntiAlias = false;
     for (var y = 0; y < count; y++) {
       for (var x = 0; x < count; x++) {
+        if (hidden(x) && hidden(y)) continue;
         if (image.isDark(y, x)) {
           canvas.drawRect(
-            Rect.fromLTWH(x * module, y * module, module + .5, module + .5),
+            Rect.fromLTWH(
+              area.left + x * module,
+              area.top + y * module,
+              module + .5,
+              module + .5,
+            ),
             paint,
           );
         }
       }
     }
   }
+}
+
+/// The code on the white the caller puts behind it, logo in the middle.
+class ScheduleQrView extends StatelessWidget {
+  const ScheduleQrView(this.text, {super.key});
+  final String text;
+  @override
+  Widget build(BuildContext context) {
+    final qr = ScheduleQr(text);
+    final hole = qr.logoModules;
+    return AspectRatio(
+      aspectRatio: 1,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          CustomPaint(painter: _QrPainter(text, qr)),
+          if (hole != null)
+            Center(
+              child: FractionallySizedBox(
+                widthFactor: hole.size / qr.image.moduleCount,
+                heightFactor: hole.size / qr.image.moduleCount,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(NiuRadius.sm),
+                  child: Image.asset(
+                    _logoAsset,
+                    filterQuality: FilterQuality.medium,
+                    excludeFromSemantics: true,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QrPainter extends CustomPainter {
+  _QrPainter(this.text, this.qr);
+  final String text;
+  final ScheduleQr qr;
+  @override
+  void paint(Canvas canvas, Size size) =>
+      qr.paint(canvas, Offset.zero & Size.square(size.shortestSide));
 
   @override
-  bool shouldRepaint(QrPainter old) => old.text != text;
+  bool shouldRepaint(_QrPainter old) => old.text != text;
 }
 
 /// A PNG with the quiet zone scanners need, for sending as a picture.
 Future<List<int>> qrPng(String text) async {
-  final image = _qr(text);
+  final qr = ScheduleQr(text);
   const scale = 12, quiet = 4;
-  final side = (image.moduleCount + quiet * 2) * scale;
+  final count = qr.image.moduleCount;
+  final side = (count + quiet * 2) * scale;
   final recorder = ui.PictureRecorder();
   final canvas = Canvas(recorder);
   canvas.drawRect(
     Rect.fromLTWH(0, 0, side.toDouble(), side.toDouble()),
     Paint()..color = Colors.white,
   );
-  final paint = Paint()..color = Colors.black;
-  for (var y = 0; y < image.moduleCount; y++) {
-    for (var x = 0; x < image.moduleCount; x++) {
-      if (image.isDark(y, x)) {
-        canvas.drawRect(
-          Rect.fromLTWH(
-            ((x + quiet) * scale).toDouble(),
-            ((y + quiet) * scale).toDouble(),
-            scale.toDouble(),
-            scale.toDouble(),
-          ),
-          paint,
-        );
-      }
-    }
+  final area = Rect.fromLTWH(
+    (quiet * scale).toDouble(),
+    (quiet * scale).toDouble(),
+    (count * scale).toDouble(),
+    (count * scale).toDouble(),
+  );
+  qr.paint(canvas, area);
+  if (qr.logoModules case final hole?) {
+    final data = await rootBundle.load(_logoAsset);
+    final codec = await ui.instantiateImageCodec(data.buffer.asUint8List());
+    final logo = (await codec.getNextFrame()).image;
+    final offset = (hole.start * scale).toDouble();
+    final box =
+        area.topLeft.translate(offset, offset) &
+        Size.square((hole.size * scale).toDouble());
+    canvas.drawImageRect(
+      logo,
+      Offset.zero & Size(logo.width.toDouble(), logo.height.toDouble()),
+      box,
+      Paint()..filterQuality = FilterQuality.medium,
+    );
   }
   final picture = await recorder.endRecording().toImage(side, side);
   final bytes = await picture.toByteData(format: ui.ImageByteFormat.png);
