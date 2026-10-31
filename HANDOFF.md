@@ -231,7 +231,7 @@
 | 1.3.3 | `28387b5` | 課表交換的 QR Code 中間加上 App logo（畫面與傳送的圖片都有） |
 | 1.3.6 | `832814a` | 功能與 1.3.3 相同，只升版。versionCode 157、158 已在 internal 用過，下一版從 160 開始 |
 | 1.3.7 | `831878e` | 學校 2026-10-28 改版 SSO 登入頁後出現「登入驗證未完成」。`SsoApiClient.info` 改成跟學校頁面一樣，帳號欄位依序接受 `acnt`、`Account`、`account`、`Username`、`username`，也接受沒有 `data` 外層的回應；失敗訊息後面加上錯誤代碼（例如 `sso_identity_missing`、`HTTP 401`），方便從截圖判斷原因。**根因未在實機確認**（Turnstile 擋自動化，無法在伺服器端重現） |
-| 1.3.8 | （本版） | **1.3.7 沒修好，真正原因是 TLS**：ccsys1.niu.edu.tw（SSO API）的憑證鏈到 2022 年的 TWCA CYBER Root CA，卻沒附上給 TWCA Global Root CA 的交叉憑證（ccsys、euni、acade、sso、webpacx 都有附）。Dart 在 Android 讀的系統憑證庫在舊機上沒有這張根憑證，所以 `/SSO/API/Authorization/info` 握手失敗（Dio 回 `unknown`／`HandshakeException`），WebView 用較新的憑證庫所以登入頁正常。`core/network/school_trust.dart` 的 `SchoolTrust` 在 `main` 設定 `HttpOverrides.global`，在裝置根憑證之外加上 TWCA CYBER Root CA（SHA-256 3F:63:BB:28…C5:58，2047 到期）。學校若補上交叉憑證就不再需要，但留著無害 |
+| 1.3.8 | `7de017f` | **1.3.7 沒修好，真正原因是 TLS**：ccsys1.niu.edu.tw（SSO API）的憑證鏈到 2022 年的 TWCA CYBER Root CA，卻沒附上給 TWCA Global Root CA 的交叉憑證（ccsys、euni、acade、sso、webpacx 都有附）。Dart 在 Android 讀的系統憑證庫在舊機上沒有這張根憑證，所以 `/SSO/API/Authorization/info` 握手失敗（Dio 回 `unknown`／`HandshakeException`），WebView 用較新的憑證庫所以登入頁正常。`core/network/school_trust.dart` 的 `SchoolTrust` 在 `main` 設定 `HttpOverrides.global`，在裝置根憑證之外加上 TWCA CYBER Root CA（SHA-256 3F:63:BB:28…C5:58，2047 到期）。學校若補上交叉憑證就不再需要，但留著無害 |
 
 另外：
 
