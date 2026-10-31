@@ -69,6 +69,21 @@ void main() {
     http.close();
   });
 
+  for (final body in [
+    '{"data":{"acnt":" B123 "}}',
+    '{"userType":"student","data":{"Account":"B123"}}',
+    '{"data":{"acnt":"","username":"b123"}}',
+    '{"acnt":"B123"}',
+  ]) {
+    test('SSO identity is read like the school page: $body', () async {
+      final http = schoolClient('https://ccsys1.niu.edu.tw');
+      http.httpClientAdapter = FixtureAdapter(body);
+      final data = await SsoApiClient(http).verifyIdentity('fixture', 'b123');
+      expect(data['acnt'], 'b123');
+      http.close();
+    });
+  }
+
   test('SSO identity must match the requested account', () async {
     final http = schoolClient('https://ccsys1.niu.edu.tw');
     http.httpClientAdapter = FixtureAdapter(

@@ -46,14 +46,31 @@ class SsoApiClient {
         },
       ),
     );
-    final data = response.data?['data'];
-    if (data is! Map<String, dynamic> ||
-        data['acnt'] is! String ||
-        (data['acnt'] as String).trim().isEmpty) {
+    final body = response.data;
+    final data = body?['data'] is Map<String, dynamic> ? body!['data'] : body;
+    // The school's own page reads the account from any of these.
+    final account = data is Map<String, dynamic>
+        ? _accountKeys
+              .map((key) => data[key])
+              .whereType<String>()
+              .firstWhere((value) => value.trim().isNotEmpty, orElse: () => '')
+        : '';
+    if (account.isEmpty) {
       throw const SchoolApiException('sso_identity_missing');
     }
-    return {...data, 'acnt': (data['acnt'] as String).trim().toLowerCase()};
+    return {
+      ...data as Map<String, dynamic>,
+      'acnt': account.trim().toLowerCase(),
+    };
   }
+
+  static const _accountKeys = [
+    'acnt',
+    'Account',
+    'account',
+    'Username',
+    'username',
+  ];
 
   Future<Map<String, dynamic>> verifyIdentity(
     String token,

@@ -1,11 +1,13 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import '../../core/analytics/app_analytics.dart';
 import '../../core/demo/demo_account.dart';
+import '../../core/network/school_clients.dart';
 import '../../core/session/campus_session.dart';
 import '../../core/web/portal_policy.dart';
 import '../../shared/shared.dart';
@@ -262,11 +264,19 @@ class _LoginScreenState extends State<LoginScreen> {
           '登入驗證未完成',
           '$error'.contains('切換帳號')
               ? '要切換帳號，請先到設定登出。'
-              : '無法確認校務登入憑證，請確認網路後重新登入。',
+              : '無法確認校務登入憑證，請確認網路後重新登入。（${failureCode(error)}）',
         ),
       );
     }
   }
+
+  /// A short code for the failure, so a screenshot says what went wrong.
+  static String failureCode(Object error) => switch (error) {
+    SchoolApiException(:final code) => code,
+    DioException(:final response?) => 'HTTP ${response.statusCode}',
+    DioException(:final type) => type.name,
+    _ => error.runtimeType.toString(),
+  };
 
   Future<void> showRejection(SchoolLoginRejected outcome) => showDialog<void>(
     context: context,
