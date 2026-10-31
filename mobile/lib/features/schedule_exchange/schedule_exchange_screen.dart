@@ -11,6 +11,7 @@ import '../schedule/custom_courses.dart';
 import '../schedule/schedule_models.dart';
 import '../schedule/schedule_presentation.dart';
 import '../schedule/schedule_week_view.dart';
+import 'group_availability.dart';
 import 'my_schedule_code_screen.dart';
 import 'schedule_exchange_store.dart';
 import 'schedule_scan_screen.dart';
@@ -729,16 +730,11 @@ class _GroupCompareScreenState extends State<GroupCompareScreen> {
           ],
         );
       }
-      final free = commonFreeSlots(
-        mine,
-        classmates.map((e) => e.payload).toList(),
-      );
-      // [mine] skips rows whose time did not parse; map back to the table.
-      final rows = [
-        for (final (i, p) in shown.periods.indexed)
-          if (ScheduleSharePayload.periodSpan(p.time) != null) i,
-      ];
       final names = ['我', ...classmates.map((e) => e.displayName)];
+      final group = GroupAvailability(mine, [
+        mine,
+        ...classmates.map((e) => e.payload),
+      ], names);
       return NiuScrollPage(
         title: '共同空堂',
         children: [
@@ -790,7 +786,7 @@ class _GroupCompareScreenState extends State<GroupCompareScreen> {
                   children: [
                     Expanded(
                       child: Text(
-                        '綠色是大家都沒課的時間。',
+                        '顏色越深越多人有空，點格子看誰有空。',
                         style: theme.textTheme.bodySmall,
                       ),
                     ),
@@ -815,15 +811,7 @@ class _GroupCompareScreenState extends State<GroupCompareScreen> {
             ),
           ),
           const SizedBox(height: NiuSpacing.xl),
-          ScheduleWeekView(
-            schedule: shown,
-            now: DateTime.now().toUtc().add(const Duration(hours: 8)),
-            height: _gridHeight(context),
-            freeSlots: {
-              for (final key in free) key ~/ 100 * 100 + rows[key % 100],
-            },
-          ),
-          _FreeTimeList(lines: freeTimeLines(mine, free)),
+          GroupAvailabilityView(group: group),
         ],
       );
     },

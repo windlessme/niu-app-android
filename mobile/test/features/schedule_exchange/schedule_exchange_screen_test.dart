@@ -95,7 +95,34 @@ void main() {
     );
     expect(find.text('2 人一起比對'), findsOneWidget);
     expect(find.text('我、小安'), findsOneWidget);
-    expect(find.text('都沒課'), findsWidgets);
+    expect(find.bySemanticsLabel('週三第 1 節，2 人中 2 人有空'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('都沒課的時間'), 300);
+    expect(find.text('週二・第 2–3 節・9:10–11:00'), findsOneWidget);
+  });
+
+  testWidgets('a period lists who is free, and a name shows their times', (
+    tester,
+  ) async {
+    final id = await tester.runAsync(() => store.save('b123', classmate()));
+    await open(
+      tester,
+      GroupCompareScreen(ids: {id!}, session: session, store: store),
+    );
+    // Monday period 1: I have 微積分, 小安 is free.
+    await tester.tap(find.bySemanticsLabel('週一第 1 節，2 人中 1 人有空'));
+    await tester.pumpAndSettle();
+    expect(find.text('週一・第 1 節・8:10–9:00'), findsOneWidget);
+    expect(find.text('2 人中 1 人有空'), findsOneWidget);
+    expect(find.text('我・微積分'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(FilterChip, '小安'));
+    await tester.pumpAndSettle();
+    expect(find.text('正在看：小安'), findsOneWidget);
+    // Five days of three periods, less their two classes.
+    expect(find.text('13 節有空'), findsOneWidget);
+    await tester.tap(find.text('看全部'));
+    await tester.pumpAndSettle();
+    expect(find.text('正在看：小安'), findsNothing);
   });
 
   testWidgets('my code asks for a name first, then shows the code', (

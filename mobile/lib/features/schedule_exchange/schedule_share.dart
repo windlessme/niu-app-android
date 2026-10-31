@@ -594,6 +594,17 @@ class ScheduleSharePayload {
     return other.start < end && start < other.end;
   });
 
+  /// The course this table has on [day] overlapping [start]–[end], if any.
+  String? courseAt(int day, int start, int end) {
+    for (final slot in slots) {
+      final other = periods[slot.period];
+      if (slot.day == day && other.start < end && start < other.end) {
+        return names[slot.name];
+      }
+    }
+    return null;
+  }
+
   /// Rows of this table, keyed `day * 100 + row`, where nobody here or in
   /// [others] has class. Times a table does not cover are left out rather
   /// than counted as free. Rows compare minutes, not period numbers, because
