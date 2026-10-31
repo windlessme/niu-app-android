@@ -230,7 +230,7 @@
 | 1.3.2 | `69f3881` | 課表交換：和 iOS 互掃的 QR Code 交換課表、看同學課表、多人比對共同空堂（見「課表交換」一節） |
 | 1.3.3 | `28387b5` | 課表交換的 QR Code 中間加上 App logo（畫面與傳送的圖片都有） |
 | 1.3.6 | `832814a` | 功能與 1.3.3 相同，只升版。versionCode 157、158 已在 internal 用過，下一版從 160 開始 |
-| 1.3.7 | （本版） | 學校 2026-10-28 改版 SSO 登入頁後出現「登入驗證未完成」。`SsoApiClient.info` 改成跟學校頁面一樣，帳號欄位依序接受 `acnt`、`Account`、`account`、`Username`、`username`，也接受沒有 `data` 外層的回應；失敗訊息後面加上錯誤代碼（例如 `sso_identity_missing`、`HTTP 401`），方便從截圖判斷原因。**根因未在實機確認**（Turnstile 擋自動化，無法在伺服器端重現） |
+| 1.3.7 | `831878e` | 學校 2026-10-28 改版 SSO 登入頁後出現「登入驗證未完成」。`SsoApiClient.info` 改成跟學校頁面一樣，帳號欄位依序接受 `acnt`、`Account`、`account`、`Username`、`username`，也接受沒有 `data` 外層的回應；失敗訊息後面加上錯誤代碼（例如 `sso_identity_missing`、`HTTP 401`），方便從截圖判斷原因。**根因未在實機確認**（Turnstile 擋自動化，無法在伺服器端重現） |
 
 另外：
 
