@@ -1,6 +1,6 @@
 # HANDOFF
 
-給接手的 Claude Code session。最後更新：2026-10-31。目前版本：**1.3.7+160**。
+給接手的 Claude Code session。最後更新：2026-10-31。目前版本：**1.3.8+161**。
 
 ## 專案概況
 
@@ -32,7 +32,7 @@
   - **2026-10-19 查：正式版軌道是 1.2.2 (124)**（2026-10-13 使用者提交審核；API 看不出是否已審完，以 Play Console 為準）。
   - **正式版：1.2.0 (122)**（2026-10-13 使用者確認已上線，Play 上的版本說明是「我們又抓到幾隻蟲蟲」）。前兩版正式版是 1.0.40 (121)、1.0.17 (98)。注意：審查中的正式版在 API 的 track 裡也會顯示 `status: completed`，不能拿來判斷已上線。
   - 公開測試（beta）：1.0.0 (81)。
-  - internal：**1.3.7 (160)**（2026-10-31 推送）。
+  - internal：**1.3.8 (161)**（2026-10-31 推送）。
 - 正式版由使用者在 Play Console 升級（Claude 推 production 會被權限擋下，屬正常）。
 - **正式版不用每版都推**，只要 versionCode 比上一個正式版大就行。建議 internal 每版都推；等使用者在手機上測過、累積一批改動或有重要修正時，再挑一版推正式版。**版本說明的寫法（使用者 2026-10-05 要求）**：
   - internal：只寫**這一版**改了什麼，讓使用者知道要測哪裡。沒有使用者看得到的改動時寫「內部調整，功能沒有變化」。不要再沿用累計說明，否則每版看起來都一樣。
@@ -112,7 +112,7 @@
   ・M 園區問答：登入狀態失效時自動恢復登入，登入後自動開啟活動
   ・小工具新增「午餐吃什麼」：隨機抽麵、飯或其他，再抽一道菜，可直接用地圖 App 找附近店家
   ・新增「課表交換」：用 QR Code 和同學交換課表（iOS 版也能互掃），可以看同學的課表、多人一起找共同空堂
-  ・修正學校更新登入頁後，登入校務系統出現「登入驗證未完成」
+  ・修正部分手機登入校務系統時出現「登入驗證未完成」
   ```
 - 公開測試的使用者會自動拿到 versionCode 較大的正式版，公開測試軌道不用特別處理。release 名稱用 `X.Y.Z (versionCode)`，附一句 zh-TW 版本說明。
 - 上傳流程（每個新版本都要做）：`flutter build appbundle --release`，然後用 MCP 依序 `edits_insert` → `bundles_upload` → `tracks_update`（internal，status `completed`）→ `edits_commit`。
@@ -231,6 +231,7 @@
 | 1.3.3 | `28387b5` | 課表交換的 QR Code 中間加上 App logo（畫面與傳送的圖片都有） |
 | 1.3.6 | `832814a` | 功能與 1.3.3 相同，只升版。versionCode 157、158 已在 internal 用過，下一版從 160 開始 |
 | 1.3.7 | `831878e` | 學校 2026-10-28 改版 SSO 登入頁後出現「登入驗證未完成」。`SsoApiClient.info` 改成跟學校頁面一樣，帳號欄位依序接受 `acnt`、`Account`、`account`、`Username`、`username`，也接受沒有 `data` 外層的回應；失敗訊息後面加上錯誤代碼（例如 `sso_identity_missing`、`HTTP 401`），方便從截圖判斷原因。**根因未在實機確認**（Turnstile 擋自動化，無法在伺服器端重現） |
+| 1.3.8 | （本版） | **1.3.7 沒修好，真正原因是 TLS**：ccsys1.niu.edu.tw（SSO API）的憑證鏈到 2022 年的 TWCA CYBER Root CA，卻沒附上給 TWCA Global Root CA 的交叉憑證（ccsys、euni、acade、sso、webpacx 都有附）。Dart 在 Android 讀的系統憑證庫在舊機上沒有這張根憑證，所以 `/SSO/API/Authorization/info` 握手失敗（Dio 回 `unknown`／`HandshakeException`），WebView 用較新的憑證庫所以登入頁正常。`core/network/school_trust.dart` 的 `SchoolTrust` 在 `main` 設定 `HttpOverrides.global`，在裝置根憑證之外加上 TWCA CYBER Root CA（SHA-256 3F:63:BB:28…C5:58，2047 到期）。學校若補上交叉憑證就不再需要，但留著無害 |
 
 另外：
 

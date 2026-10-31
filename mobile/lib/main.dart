@@ -6,10 +6,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app/app.dart';
 import 'core/analytics/app_analytics.dart';
 import 'core/demo/demo_account.dart';
+import 'core/network/school_trust.dart';
 import 'features/home/name_mask.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  // Before any request: the school's certificates need a newer root.
+  SchoolTrust.install();
   LicenseRegistry.addLicense(() async* {
     yield LicenseEntryWithLineBreaks([
       'NIU-Life',
