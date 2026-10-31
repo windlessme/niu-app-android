@@ -232,7 +232,7 @@
 | 1.3.6 | `832814a` | 功能與 1.3.3 相同，只升版。versionCode 157、158 已在 internal 用過，下一版從 160 開始 |
 | 1.3.7 | `831878e` | 學校 2026-10-28 改版 SSO 登入頁後出現「登入驗證未完成」。`SsoApiClient.info` 改成跟學校頁面一樣，帳號欄位依序接受 `acnt`、`Account`、`account`、`Username`、`username`，也接受沒有 `data` 外層的回應；失敗訊息後面加上錯誤代碼（例如 `sso_identity_missing`、`HTTP 401`），方便從截圖判斷原因。**根因未在實機確認**（Turnstile 擋自動化，無法在伺服器端重現） |
 | 1.3.8 | `7de017f` | **1.3.7 沒修好，真正原因是 TLS**：ccsys1.niu.edu.tw（SSO API）的憑證鏈到 2022 年的 TWCA CYBER Root CA，卻沒附上給 TWCA Global Root CA 的交叉憑證（ccsys、euni、acade、sso、webpacx 都有附）。Dart 在 Android 讀的系統憑證庫在舊機上沒有這張根憑證，所以 `/SSO/API/Authorization/info` 握手失敗（Dio 回 `unknown`／`HandshakeException`），WebView 用較新的憑證庫所以登入頁正常。`core/network/school_trust.dart` 的 `SchoolTrust` 在 `main` 設定 `HttpOverrides.global`，在裝置根憑證之外加上 TWCA CYBER Root CA（SHA-256 3F:63:BB:28…C5:58，2047 到期）。學校若補上交叉憑證就不再需要，但留著無害 |
-| 1.3.9 | （本版） | 多人比對的共同空堂改成**人數熱度格**（`group_availability.dart`）：每節依有空人數深淺、全員打勾；點格子顯示「N 人中 M 人有空」、有空的人（點名字只看他有空的時間，藍色）與其他人的課名；沒有全員空堂時列「最多人有空的時間」（至少 2 人）。一對一比對仍用週視圖 |
+| 1.3.9 | `e2821e7` | 多人比對的共同空堂改成**人數熱度格**（`group_availability.dart`）：每節依有空人數深淺、全員打勾；點格子顯示「N 人中 M 人有空」、有空的人（點名字只看他有空的時間，藍色）與其他人的課名；沒有全員空堂時列「最多人有空的時間」（至少 2 人）。一對一比對仍用週視圖 |
 
 另外：
 
