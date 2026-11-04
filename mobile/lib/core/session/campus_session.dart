@@ -253,6 +253,19 @@ class CampusSession extends ChangeNotifier {
     _applyDemo();
   }
 
+  /// The SSO token, only while it belongs to [owner].
+  String? ssoTokenFor(String owner) =>
+      !isDemo && isSignedIn && account == owner ? _token : null;
+
+  /// The school refused [token]; ask for a new login unless it was replaced.
+  void rejectSsoToken(String token) {
+    if (_token != token) return;
+    _token = null;
+    ssoNeedsReauthentication = true;
+    isOffline = false;
+    notifyListeners();
+  }
+
   Future<Uri> academicEntry() async {
     if (isDemo) throw StateError('示範模式不連線學校系統');
     // A freshly verified login is already authoritative. Re-reading storage
@@ -266,11 +279,8 @@ class CampusSession extends ChangeNotifier {
       uri = await sso.academicEntry(token, account!);
     } on DioException catch (error) {
       coordinator.requireCurrent(captured);
-      if (_token == token && [401, 403].contains(error.response?.statusCode)) {
-        _token = null;
-        ssoNeedsReauthentication = true;
-        isOffline = false;
-        notifyListeners();
+      if ([401, 403].contains(error.response?.statusCode)) {
+        rejectSsoToken(token);
       }
       rethrow;
     }

@@ -100,6 +100,23 @@ void main() {
       await tester.pumpWidget(const SizedBox());
     },
   );
+  testWidgets('an expired login says to sign in again', (tester) async {
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final repo = FakeLibrary();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: LibraryScreen(account: 'student', repository: repo),
+      ),
+    );
+    await tester.pump();
+    repo.requests.single.completeError(const LibraryLoginRequired());
+    await tester.pumpAndSettle();
+    expect(find.textContaining('登入狀態已過期'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
   testWidgets(
     'failed refresh retains only a young same-day image and expires at midnight',
     (tester) async {

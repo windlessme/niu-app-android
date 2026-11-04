@@ -33,7 +33,11 @@ class _LibraryScreenState extends State<LibraryScreen>
       widget.repository ??
       (CampusSession.instance.isDemo
           ? DemoLibraryRepository()
-          : LibraryRepository(schoolClient('https://sso.niu.edu.tw')));
+          : LibraryRepository(
+              schoolClient('https://sso.niu.edu.tw'),
+              token: CampusSession.instance.ssoTokenFor,
+              onRejected: CampusSession.instance.rejectSsoToken,
+            ));
   LibraryCodeKind kind = LibraryCodeKind.entrance;
   Uint8List? image;
   DateTime? updated;
@@ -182,11 +186,15 @@ class _LibraryScreenState extends State<LibraryScreen>
         imageAccount = account;
         imageKind = requestedKind;
       });
-    } catch (_) {
+    } catch (failure) {
       if (!mounted || request != generation || !active) return;
       setState(() {
         if (!valid) clearImage();
-        error = image == null ? '暫時無法取得圖碼，檢查網路後再試一次。' : '更新失敗，目前的圖碼仍有效。';
+        error = failure is LibraryLoginRequired
+            ? '登入狀態已過期，請重新登入後再開啟圖書館通行碼。'
+            : image == null
+            ? '暫時無法取得圖碼，檢查網路後再試一次。'
+            : '更新失敗，目前的圖碼仍有效。';
       });
     } finally {
       if (mounted) {

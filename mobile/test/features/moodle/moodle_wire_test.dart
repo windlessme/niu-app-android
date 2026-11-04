@@ -314,6 +314,7 @@ void main() {
     final adapter = WireAdapter((_) => {'no': ''});
     final repository = LibraryRepository(
       schoolClient('https://sso.niu.edu.tw')..httpClientAdapter = adapter,
+      token: (account) => account == 'b123' ? 'fixture-token' : null,
     );
     await expectLater(
       repository.image(' B123 ', LibraryCodeKind.entrance),
@@ -321,10 +322,47 @@ void main() {
     );
     final request = adapter.requests.single;
     expect(request.path, '/QRCode/Number/');
+    expect(request.headers['Authorization'], 'Bearer fixture-token');
     expect(jsonDecode(request.extra['wireBody'] as String), {
       'role': 'student',
       'acnt': 'b123',
     });
     expect(request.uri.query, isEmpty);
+  });
+
+  test('library codes need the SSO token of the same account', () async {
+    final adapter = WireAdapter((_) => throw StateError('unexpected request'));
+    final repository = LibraryRepository(
+      schoolClient('https://sso.niu.edu.tw')..httpClientAdapter = adapter,
+      token: (account) => account == 'other' ? 'fixture-token' : null,
+    );
+    for (final kind in LibraryCodeKind.values) {
+      await expectLater(
+        repository.image('b123', kind),
+        throwsA(isA<LibraryLoginRequired>()),
+      );
+    }
+    expect(adapter.requests, isEmpty);
+  });
+  test('a rejected library token asks for a new login', () async {
+    final rejected = <String>[];
+    final adapter = WireAdapter(
+      (request) => DioException.badResponse(
+        statusCode: 401,
+        requestOptions: request,
+        response: Response(requestOptions: request, statusCode: 401),
+      ),
+    );
+    final repository = LibraryRepository(
+      schoolClient('https://sso.niu.edu.tw')..httpClientAdapter = adapter,
+      token: (_) => 'fixture-token',
+      onRejected: rejected.add,
+    );
+    await expectLater(
+      repository.image('b123', LibraryCodeKind.borrowing),
+      throwsA(isA<LibraryLoginRequired>()),
+    );
+    expect(adapter.requests.single.path, '/QRCode/Create/Barcode');
+    expect(rejected, ['fixture-token']);
   });
 }
